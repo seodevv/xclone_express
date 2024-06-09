@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs-extra';
-import { User, UserId } from '@/model/User';
+import { User } from '@/model/User';
 import { Post } from '@/model/Post';
 import { HashTag } from '@/model/Hashtag';
 import { Room } from '@/model/Room';

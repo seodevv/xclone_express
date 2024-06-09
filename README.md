@@ -4,6 +4,14 @@ Express backend server used for x.com clone coding
 
 # Started
 
+## development
+
 ```
-npm run start
+npm run dev
+```
+
+## production
+
+```
+npm run build && npm run start
 ```
