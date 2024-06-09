@@ -2,18 +2,14 @@
   "data": [
     {
       "postId": 1,
-      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "userId": "elonmusk",
       "content": "나의 첫 번째 게시글을 보아라",
       "Images": [],
-      "createAt": "2024-05-09T17:41:15.773Z",
-      "Hearts": [{ "id": "elonmusk" }],
-      "Reposts": [],
-      "Comments": [],
-      "_count": { "Hearts": 1, "Reposts": 0, "Comments": 0 }
+      "createAt": "2024-05-09T17:41:15.773Z"
     },
     {
       "postId": 2,
-      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "userId": "elonmusk",
       "content": "나의 두 번째 게시글을 보아라",
       "Images": [
         {
@@ -21,15 +17,11 @@
           "link": "https://loremflickr.com/640/480?lock=4106402668740608"
         }
       ],
-      "createAt": "2024-05-10T17:41:15.773Z",
-      "Hearts": [{ "id": "elonmusk" }, { "id": "nextjs" }],
-      "Reposts": [],
-      "Comments": [],
-      "_count": { "Hearts": 2, "Reposts": 0, "Comments": 0 }
+      "createAt": "2024-05-10T17:41:15.773Z"
     },
     {
       "postId": 3,
-      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "userId": "elonmusk",
       "content": "나의 세 번째 게시글을 보아라",
       "Images": [
         {
@@ -41,11 +33,7 @@
           "link": "https://loremflickr.com/640/480?lock=1481163038261248"
         }
       ],
-      "createAt": "2024-05-11T17:41:15.773Z",
-      "Hearts": [],
-      "Reposts": [],
-      "Comments": [],
-      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+      "createAt": "2024-05-11T17:41:15.773Z"
     }
   ]
 }

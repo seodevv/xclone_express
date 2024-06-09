@@ -4,25 +4,19 @@
       "id": "elonmusk",
       "password": "elonmusk",
       "nickname": "Elon Musk",
-      "image": "/X.jpg",
-      "Followers": [{ "id": "nextjs" }, { "id": "kim" }],
-      "_count": { "Followers": 4, "Followings": 2 }
+      "image": "/X.jpg"
     },
     {
       "id": "nextjs",
       "password": "nextjs",
       "nickname": "next.js🔆",
-      "image": "/nextjs.png",
-      "Followers": [{ "id": "elonmusk" }],
-      "_count": { "Followers": 1, "Followings": 1 }
+      "image": "/nextjs.png"
     },
     {
       "id": "kim",
       "password": "kim",
       "nickname": "kim🔥",
-      "image": "/betman.png",
-      "Followers": [{ "id": "elonmusk" }],
-      "_count": { "Followers": 2, "Followings": 1 }
+      "image": "/betman.png"
     }
   ]
 }

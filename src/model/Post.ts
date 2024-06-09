@@ -1,24 +1,24 @@
 import { PostImage } from './PostImage';
-import { User, UserId } from './User';
+import { SafeUser, UserId } from './User';
 
 export interface Post {
   postId: number;
-  User: Pick<User, 'id' | 'nickname' | 'image'>;
+  userId: string;
   content: string;
   Images: PostImage[];
   createAt: Date;
+  ParentId?: Post['postId'];
+  OriginalId?: Post['postId'];
+}
+
+export interface AdvancedPost extends Post {
+  User: SafeUser;
   Hearts: UserId[];
   Reposts: UserId[];
   Comments: UserId[];
-  _count?: {
+  _count: {
     Hearts: number;
     Reposts: number;
     Comments: number;
   };
-  Parent?: {
-    postId: Post['postId'];
-    User: User;
-    images: PostImage[];
-  };
-  Original?: Post;
 }

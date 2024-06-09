@@ -1,15 +1,19 @@
 import path from 'path';
 import fs from 'fs-extra';
-import { User } from '@/model/User';
+import { AdvancedUser, User } from '@/model/User';
 import { Post } from '@/model/Post';
 import { HashTag } from '@/model/Hashtag';
 import { Room } from '@/model/Room';
 import { Message } from '@/model/Message';
+import { Follow } from '@/model/Follow';
+import { Reactions } from '@/model/Reaction';
 import userData from '@/data/user.json';
 import postData from '@/data/post.json';
 import tagData from '@/data/hashtag.json';
 import roomData from '@/data/room.json';
 import messageData from '@/data/message.json';
+import followData from '@/data/follow.json';
+import reactionsData from '@/data/reaction.json';
 
 let instance: DAO | null;
 
@@ -19,6 +23,8 @@ class DAO {
   private tagList: HashTag[] = [];
   private roomList: Room[] = [];
   private messageList: Message[] = [];
+  private followList: Follow[] = [];
+  private reactionList: Reactions[] = [];
 
   constructor() {
     if (instance) {
@@ -31,9 +37,6 @@ class DAO {
       ...postData.data.map((p) => ({
         ...p,
         createAt: new Date(p.createAt),
-        Original: p.Original
-          ? { ...p.Original, createAt: new Date(p.Original?.createAt) }
-          : undefined,
       }))
     );
     this.tagList.push(...tagData.data);
@@ -46,6 +49,10 @@ class DAO {
         createdAt: new Date(m.createdAt),
       }))
     );
+    this.followList.push(
+      ...followData.data.map((f) => ({ ...f, createAt: new Date(f.createAt) }))
+    );
+    this.reactionList.push(...reactionsData.data);
     instance = this;
     console.timeEnd('Data Load');
   }
@@ -65,63 +72,35 @@ class DAO {
   getMessageList() {
     return [...this.messageList];
   }
-  setUserList(userList: User[]) {
-    this.userList = userList;
-    this.writeDatabase('userList');
-  }
-  setPostList(postList: Post[]) {
-    this.postList = postList;
-    this.writeDatabase('postList');
-  }
-  setTagList(tagList: HashTag[]) {
-    this.tagList = tagList;
-    this.writeDatabase('tagList');
-  }
-  setRoomList(roomList: Room[]) {
-    this.roomList = roomList;
-    this.writeDatabase('roomList');
-  }
-  setMessageList(messageList: Message[]) {
-    this.messageList = messageList;
-    this.writeDatabase('messageList');
-  }
-  writeDatabase(
-    type: 'userList' | 'postList' | 'tagList' | 'roomList' | 'messageList'
-  ) {
-    console.time(type);
-    const dbPath = path.join(__dirname, '../data/');
-    switch (type) {
-      case 'userList':
-        fs.writeJSONSync(dbPath + '/user.json', { data: this.userList });
-        break;
-      case 'postList':
-        fs.writeJSONSync(dbPath + '/post.json', { data: this.postList });
-        break;
-      case 'tagList':
-        fs.writeJSONSync(dbPath + '/hashtag.json', { data: this.tagList });
-        break;
-      case 'roomList':
-        fs.writeJSONSync(dbPath + '/room.json', { data: this.roomList });
-        break;
-      case 'messageList':
-        fs.writeJSONSync(dbPath + '/message.json', { data: this.messageList });
-        break;
-      default:
-        throw new Error('The writeDB function received an unexpected type.');
-    }
-    console.timeEnd(type);
-  }
-  findUser(id: string, password?: string): User | null {
-    let findUser;
-    if (!password) {
-      findUser = this.userList.find((u) => u.id === id);
-    } else {
+
+  getUser(id: string, password?: string) {
+    let findUser: User | undefined;
+    if (password) {
       findUser = this.userList.find(
-        (u) => u.id === id && u.password == password
+        (u) => u.id === id && u.password === password
       );
+    } else {
+      findUser = this.userList.find((u) => u.id === id);
     }
 
-    return findUser ? { ...findUser, password: undefined } : null;
+    if (findUser) {
+      const advancedUser: AdvancedUser = {
+        id: findUser.id,
+        nickname: findUser.nickname,
+        image: findUser.image,
+        Followers: this.followList
+          .filter((f) => f.target === findUser.id)
+          .map((u) => ({ id: u.source })),
+        _count: {
+          Followers: this.followList.filter((f) => f.target === findUser.id)
+            .length,
+          Followings: this.followList.filter((f) => f.source === findUser.id)
+            .length,
+        },
+      };
+      return advancedUser;
+    }
+    return undefined;
   }
   createUser({
     id,
@@ -272,6 +251,49 @@ class DAO {
       });
       this.writeDatabase('tagList');
     }
+  }
+
+  writeDatabase(
+    type:
+      | 'userList'
+      | 'postList'
+      | 'tagList'
+      | 'roomList'
+      | 'messageList'
+      | 'followList'
+      | 'reactionList'
+  ) {
+    console.time(type);
+    const dbPath = path.join(__dirname, '../data/');
+    switch (type) {
+      case 'userList':
+        fs.writeJSONSync(dbPath + '/user.json', { data: this.userList });
+        break;
+      case 'postList':
+        fs.writeJSONSync(dbPath + '/post.json', { data: this.postList });
+        break;
+      case 'tagList':
+        fs.writeJSONSync(dbPath + '/hashtag.json', { data: this.tagList });
+        break;
+      case 'roomList':
+        fs.writeJSONSync(dbPath + '/room.json', { data: this.roomList });
+        break;
+      case 'messageList':
+        fs.writeJSONSync(dbPath + '/message.json', { data: this.messageList });
+        break;
+      case 'followList':
+        fs.writeJSONSync(dbPath + '/follow.json', { data: this.followList });
+        break;
+      case 'reactionList':
+        fs.writeJSONSync(dbPath + '/reaction.json', {
+          data: this.reactionList,
+        });
+        break;
+
+      default:
+        throw new Error('The writeDB function received an unexpected type.');
+    }
+    console.timeEnd(type);
   }
 }
 

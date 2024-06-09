@@ -4,11 +4,15 @@ export interface UserId {
 
 export interface User {
   id: string;
-  password?: string;
+  password: string;
   nickname: string;
   image: string;
-  Followers?: UserId[];
-  _count?: {
+}
+
+export interface SafeUser extends Pick<User, 'id' | 'nickname' | 'image'> {}
+export interface AdvancedUser extends SafeUser {
+  Followers: UserId[];
+  _count: {
     Followers: number;
     Followings: number;
   };

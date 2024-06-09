@@ -1,0 +1,7 @@
+{
+  "data": [
+    { "id": 1, "postId": 1, "type": "Heart", "userId": "elonmusk" },
+    { "id": 2, "postId": 1, "type": "Heart", "userId": "nextjs" },
+    { "id": 3, "postId": 1, "type": "Heart", "userId": "kim" }
+  ]
+}
