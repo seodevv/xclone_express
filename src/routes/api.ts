@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import multer from 'multer';
 import fs from 'fs-extra';
+import path from 'path';
 import apiPostsRouter from './apiRoutes/posts';
 import apiUsersRouter from './apiRoutes/users';
 import apiHashtagsRouter from './apiRoutes/hashtags';
@@ -71,7 +72,7 @@ apiRouter.get(
     const { imageName } = req.params;
     if (!imageName) return httpBadRequestResponse(res);
 
-    const imagePath = uploadPath + '/' + imageName;
+    const imagePath = path.join(uploadPath, `/${imageName}`);
     if (fs.existsSync(imagePath)) {
       return res.status(200).sendFile(imagePath);
     }
