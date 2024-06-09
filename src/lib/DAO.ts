@@ -1,9 +1,9 @@
 import path from 'path';
 import fs from 'fs-extra';
-import { AdvancedUser, SafeUser, User } from '@/model/User';
+import { AdvancedUser, SafeUser, User, UserId } from '@/model/User';
 import { AdvancedPost, Post } from '@/model/Post';
 import { HashTag } from '@/model/Hashtag';
-import { Room } from '@/model/Room';
+import { AdvancedRoom, Room } from '@/model/Room';
 import { Message } from '@/model/Message';
 import { Follow } from '@/model/Follow';
 import { Reactions } from '@/model/Reaction';
@@ -57,22 +57,23 @@ class DAO {
     console.timeEnd('Data Load');
   }
 
-  getUserList() {
+  getUserList(): AdvancedUser[] {
     const userList: AdvancedUser[] = this.userList.map((u) => ({
       id: u.id,
       nickname: u.nickname,
       image: u.image,
-      Followers: this.followList
-        .filter((f) => f.target === u.id)
-        .map((v) => ({ id: v.source })),
+      Followers: this.getFollowList({ target: u.id }).map((f) => ({
+        id: f.source,
+      })),
       _count: {
-        Followers: this.followList.filter((f) => f.target === u.id).length,
-        Followings: this.followList.filter((f) => f.source === u.id).length,
+        Followers: this.getFollowList({ target: u.id }).length,
+        Followings: this.getFollowList({ source: u.id }).length,
       },
     }));
     return userList;
   }
-  getPostList(userId?: string) {
+
+  getPostList(userId?: string): AdvancedPost[] {
     const postList: AdvancedPost[] = [];
     this.postList.forEach((p) => {
       const post = this.getFullPost(p.postId);
@@ -84,17 +85,52 @@ class DAO {
 
     return postList;
   }
+
   getTagList() {
     return [...this.tagList];
   }
-  getRoomList() {
-    return [...this.roomList];
+
+  getRoomList(userId: User['id']) {
+    const roomList: AdvancedRoom[] = [];
+    this.roomList.forEach((r) => {
+      if (r.ReceiverId !== userId && r.SenderId !== userId) return;
+      const Receiver = this.getSafeUser(r.ReceiverId);
+      const Sender = this.getSafeUser(r.SenderId);
+      if (!Receiver || !Sender) return;
+      roomList.push({
+        ...r,
+        Receiver,
+        Sender,
+      });
+    });
+    return roomList;
   }
+
   getMessageList() {
     return [...this.messageList];
   }
 
-  getUser(id: string, password?: string) {
+  getFollowList({
+    source,
+    target,
+  }: {
+    source?: User['id'];
+    target?: User['id'];
+  }): Follow[] {
+    if (!source && !target) return [...this.followList];
+    if (source && target)
+      return this.followList.filter(
+        (f) => f.source === source && f.target === target
+      );
+    return this.followList.filter(
+      (f) => f.source === source || f.target === target
+    );
+  }
+
+  getUser(
+    id: User['id'],
+    password?: User['password']
+  ): AdvancedUser | undefined {
     let findUser: User | undefined;
     if (password) {
       findUser = this.userList.find(
@@ -123,36 +159,18 @@ class DAO {
     }
     return;
   }
-  createUser({
-    id,
-    password,
-    nickname,
-    image,
-  }: {
-    id: string;
-    password: string;
-    nickname: string;
-    image: string;
-  }): AdvancedUser {
-    const newUser: User = {
-      id,
-      password,
-      nickname,
-      image,
-    };
-    this.userList.push(newUser);
-    this.writeDatabase('userList');
-    return {
-      id: newUser.id,
-      nickname: newUser.nickname,
-      image: newUser.image,
-      Followers: [],
-      _count: {
-        Followers: 0,
-        Followings: 0,
-      },
-    };
+
+  getSafeUser(id: User['id']): SafeUser | undefined {
+    const advancedUser = this.getUser(id);
+    if (advancedUser) {
+      return {
+        id: advancedUser.id,
+        image: advancedUser.image,
+        nickname: advancedUser.nickname,
+      };
+    }
   }
+
   getPost(postId: number): AdvancedPost | undefined {
     const findPost = this.postList.find((p) => p.postId === postId);
     if (!findPost) return;
@@ -184,6 +202,7 @@ class DAO {
 
     return advancedPost;
   }
+
   getFullPost(postId: number): AdvancedPost | undefined {
     const findPost = this.getPost(postId);
     if (!findPost) return;
@@ -208,6 +227,28 @@ class DAO {
 
     return findPost;
   }
+
+  createUser({ id, password, nickname, image }: User): AdvancedUser {
+    const newUser: User = {
+      id,
+      password,
+      nickname,
+      image,
+    };
+    this.userList.push(newUser);
+    this.writeDatabase('userList');
+    return {
+      id: newUser.id,
+      nickname: newUser.nickname,
+      image: newUser.image,
+      Followers: [],
+      _count: {
+        Followers: 0,
+        Followings: 0,
+      },
+    };
+  }
+
   createPost({
     user,
     content,

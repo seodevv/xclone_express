@@ -1,11 +1,11 @@
 import { Room } from './Room';
-import { UserId } from './User';
+import { User } from './User';
 
 export interface Message {
   messageId: number;
   content: string;
-  senderId: UserId;
-  receiverId: UserId;
+  senderId: User['id'];
+  receiverId: User['id'];
   room: Room['room'];
   createdAt: Date;
 }

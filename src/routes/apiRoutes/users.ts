@@ -277,9 +277,7 @@ apiUsersRouter.get(
     if (id !== currentUser.id) return httpUnAuthorizedResponse(res);
 
     const dao = new DAO();
-    const roomList = dao
-      .getRoomList()
-      .filter((r) => r.ReceiverId.id === id || r.SenderId.id === id);
+    const roomList = dao.getRoomList(currentUser.id);
     return httpSuccessResponse(res, roomList);
   }
 );

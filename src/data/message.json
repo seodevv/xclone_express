@@ -4,16 +4,16 @@
       "messageId": 1,
       "room": "elonmusk-nextjs",
       "content": "안녕?",
-      "senderId": { "id": "elonmusk" },
-      "receiverId": { "id": "nextjs" },
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
       "createdAt": "2024-05-24T05:00:07.106Z"
     },
     {
       "messageId": 2,
       "room": "elonmusk-nextjs",
       "content": "안녕하세요?",
-      "senderId": { "id": "nextjs" },
-      "receiverId": { "id": "elonmusk" },
+      "senderId": "nextjs",
+      "receiverId": "elonmusk",
       "createdAt": "2024-05-30T02:12:20.214Z"
     }
   ]

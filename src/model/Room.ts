@@ -1,11 +1,14 @@
-import { User, UserId } from './User';
+import { SafeUser, User } from './User';
 
 export interface Room {
-  Receiver: Pick<User, 'id' | 'nickname' | 'image'>;
-  ReceiverId: UserId;
-  Sender: Pick<User, 'id' | 'nickname' | 'image'>;
-  SenderId: UserId;
+  ReceiverId: User['id'];
+  SenderId: User['id'];
   room: string;
   content: string;
   createdAt: Date;
+}
+
+export interface AdvancedRoom extends Room {
+  Receiver: SafeUser;
+  Sender: SafeUser;
 }
