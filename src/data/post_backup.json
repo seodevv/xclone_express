@@ -1,0 +1,671 @@
+{
+  "data": [
+    {
+      "postId": 1,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 첫 번째 게시글을 보아라",
+      "Images": [],
+      "createAt": "2024-05-09T17:41:15.773Z",
+      "Hearts": [{ "id": "elonmusk" }],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 1, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 2,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 두 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=4106402668740608"
+        }
+      ],
+      "createAt": "2024-05-10T17:41:15.773Z",
+      "Hearts": [{ "id": "elonmusk" }, { "id": "nextjs" }],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 2, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 3,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 세 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=1166267526414336"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=1481163038261248"
+        }
+      ],
+      "createAt": "2024-05-11T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 4,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 네 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=3572353013383168"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=8566170678460416"
+        },
+        {
+          "imageId": 3,
+          "link": "https://loremflickr.com/640/480?lock=5542116186914816"
+        }
+      ],
+      "createAt": "2024-05-12T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 5,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 다섯 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=2745774251180032"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=2138265542983680"
+        },
+        {
+          "imageId": 3,
+          "link": "https://loremflickr.com/640/480?lock=7694306838052864"
+        },
+        {
+          "imageId": 4,
+          "link": "https://loremflickr.com/640/480?lock=3595968916226048"
+        }
+      ],
+      "createAt": "2024-05-13T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 6,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 여섯 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=8273987410853888"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=2209412609474560"
+        },
+        {
+          "imageId": 3,
+          "link": "https://loremflickr.com/640/480?lock=1839827886538752"
+        },
+        {
+          "imageId": 4,
+          "link": "https://loremflickr.com/640/480?lock=2941884907388928"
+        }
+      ],
+      "createAt": "2024-05-14T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 7,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 일곱 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=1932244994228224"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=7476331503681536"
+        },
+        {
+          "imageId": 3,
+          "link": "https://loremflickr.com/640/480?lock=439667090522112"
+        }
+      ],
+      "createAt": "2024-05-15T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 8,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 여덟 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=2761803067031552"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=4926971416936448"
+        }
+      ],
+      "createAt": "2024-05-16T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 9,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 아홉 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=1618739225165824"
+        }
+      ],
+      "createAt": "2024-05-17T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 10,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 열 번째 게시글을 보아라",
+      "Images": [],
+      "createAt": "2024-05-18T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 11,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 열한 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=5835725004079104"
+        }
+      ],
+      "createAt": "2024-05-19T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 12,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 열두 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=8704330452434944"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=729542496878592"
+        }
+      ],
+      "createAt": "2024-05-20T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 13,
+      "User": { "id": "elonmusk", "nickname": "Elon Musk", "image": "/X.jpg" },
+      "content": "나의 열세 번째 게시글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=7928986755661824"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=4988791244718080"
+        },
+        {
+          "imageId": 3,
+          "link": "https://loremflickr.com/640/480?lock=3637658817396736"
+        }
+      ],
+      "createAt": "2024-05-21T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 14,
+      "User": {
+        "id": "nextjs",
+        "nickname": "next.js🔆",
+        "image": "/nextjs.png"
+      },
+      "content": "삶이 있는 한 희망은 있다 -키케로",
+      "Images": [],
+      "createAt": "2024-05-22T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 15,
+      "User": {
+        "id": "nextjs",
+        "nickname": "next.js🔆",
+        "image": "/nextjs.png"
+      },
+      "content": "산다는것 그것은 치열한 전투이다. -로망로랑",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=2909021797351424"
+        }
+      ],
+      "createAt": "2024-05-23T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 16,
+      "User": {
+        "id": "nextjs",
+        "nickname": "next.js🔆",
+        "image": "/nextjs.png"
+      },
+      "content": "하루에 3시간을 걸으면 7년 후에 지구를 한바퀴 돌 수 있다. -사무엘존슨",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=1017428343521280"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=336966788841472"
+        }
+      ],
+      "createAt": "2024-05-24T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 17,
+      "User": { "id": "kim", "nickname": "kim🔥", "image": "/betman.png" },
+      "content": "언제나 현재에 집중할수 있다면 행복할것이다. -파울로 코엘료",
+      "Images": [],
+      "createAt": "2024-05-25T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 18,
+      "User": { "id": "kim", "nickname": "kim🔥", "image": "/betman.png" },
+      "content": "진정으로 웃으려면 고통을 참아야하며 , 나아가 고통을 즐길 줄 알아야 해 -찰리 채플린",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=134730542481408"
+        }
+      ],
+      "createAt": "2024-05-26T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 19,
+      "User": { "id": "kim", "nickname": "kim🔥", "image": "/betman.png" },
+      "content": "직업에서 행복을 찾아라. 아니면 행복이 무엇인지 절대 모를 것이다 -엘버트 허버드",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=1831769793888256"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=3882906923565056"
+        }
+      ],
+      "createAt": "2024-05-27T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 20,
+      "User": { "id": "choi", "nickname": "choi❤️", "image": "beardman.png" },
+      "content": "신은 용기있는자를 결코 버리지 않는다 -켄러",
+      "Images": [],
+      "createAt": "2024-05-28T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 21,
+      "User": { "id": "choi", "nickname": "choi❤️", "image": "beardman.png" },
+      "content": "행복의 문이 하나 닫히면 다른 문이 열린다 그러나 우리는 종종 닫힌 문을 멍하니 바라보다가",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=5614373536006144"
+        }
+      ],
+      "createAt": "2024-05-29T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 22,
+      "User": { "id": "choi", "nickname": "choi❤️", "image": "beardman.png" },
+      "content": "우리를 향해 열린 문을 보지 못하게 된다 – 헬렌켈러",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=515281027858432"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=7588421004427264"
+        }
+      ],
+      "createAt": "2024-05-30T17:41:15.773Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 23,
+      "User": {
+        "id": "nextjs",
+        "image": "/nextjs.png",
+        "nickname": "next.js🔆"
+      },
+      "content": "고통이 남기고 간 뒤를 보라! 고난이 지나면 반드시 기쁨이 스며든다. -괴테",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "1717177275739_KakaoTalk_20230829_142432851_02.jpg"
+        },
+        {
+          "imageId": 2,
+          "link": "1717177275754_KakaoTalk_20230829_142432851_03.jpg"
+        },
+        {
+          "imageId": 3,
+          "link": "1717177275758_KakaoTalk_20230829_142432851_04.jpg"
+        },
+        {
+          "imageId": 4,
+          "link": "1717177275764_KakaoTalk_20230829_142432851_05.jpg"
+        }
+      ],
+      "createAt": "2024-05-31T17:41:15.773Z",
+      "Hearts": [{ "id": "elonmusk" }, { "id": "nextjs" }, { "id": "choi" }],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 3, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 24,
+      "User": { "id": "elonmusk", "image": "/X.jpg", "nickname": "/X.jpg" },
+      "content": "삭제를 하기 위한 게시글입니다만..?",
+      "Images": [{ "imageId": 1, "link": "1717421505526_6134346.png" }],
+      "createAt": "2024-06-03T13:31:45.529Z",
+      "Hearts": [{ "id": "elonmusk" }],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 1, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 25,
+      "User": { "id": "elonmusk", "image": "/X.jpg", "nickname": "Elon Musk" },
+      "content": "이것은 댓글을 달기 위한 노력",
+      "Images": [],
+      "createAt": "2024-06-04T09:14:56.860Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 },
+      "Parent": {
+        "postId": 24,
+        "User": { "id": "elonmusk", "image": "/X.jpg", "nickname": "/X.jpg" },
+        "images": [{ "imageId": 1, "link": "1717421505526_6134346.png" }]
+      }
+    },
+    {
+      "postId": 26,
+      "User": {
+        "id": "seo",
+        "image": "1717089834812_6134346.png",
+        "nickname": "dev"
+      },
+      "content": "안녕하세요?",
+      "Images": [],
+      "createAt": "2024-06-04T10:15:54.513Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 27,
+      "User": {
+        "id": "seo",
+        "image": "1717089834812_6134346.png",
+        "nickname": "dev"
+      },
+      "content": "reposts",
+      "Images": [],
+      "createAt": "2024-06-04T10:18:11.022Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 },
+      "Original": {
+        "postId": 26,
+        "User": {
+          "id": "seo",
+          "image": "1717089834812_6134346.png",
+          "nickname": "dev"
+        },
+        "content": "안녕하세요?",
+        "Images": [],
+        "createAt": "2024-06-04T10:15:54.513Z",
+        "Hearts": [],
+        "Reposts": [],
+        "Comments": [],
+        "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+      }
+    },
+    {
+      "postId": 28,
+      "User": {
+        "id": "seo",
+        "image": "1717089834812_6134346.png",
+        "nickname": "dev"
+      },
+      "content": "반갑습니다~",
+      "Images": [],
+      "createAt": "2024-06-04T10:18:29.952Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 },
+      "Parent": {
+        "postId": 26,
+        "User": {
+          "id": "seo",
+          "image": "1717089834812_6134346.png",
+          "nickname": "dev"
+        },
+        "images": []
+      }
+    },
+    {
+      "postId": 29,
+      "User": {
+        "id": "seo",
+        "image": "1717089834812_6134346.png",
+        "nickname": "dev"
+      },
+      "content": "어떻게 오셨어요?",
+      "Images": [],
+      "createAt": "2024-06-04T10:18:49.225Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 },
+      "Parent": {
+        "postId": 26,
+        "User": {
+          "id": "seo",
+          "image": "1717089834812_6134346.png",
+          "nickname": "dev"
+        },
+        "images": []
+      }
+    },
+    {
+      "postId": 30,
+      "User": {
+        "id": "seo",
+        "image": "1717089834812_6134346.png",
+        "nickname": "dev"
+      },
+      "content": "해시태그(#hashtag)를 추가하는 행동은 키워드(#keyword)를 추가하여 다른 사용자들에게 노출하기 쉽다. #So #easy",
+      "Images": [],
+      "createAt": "2024-06-04T16:32:55.703Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 }
+    },
+    {
+      "postId": 31,
+      "User": {
+        "id": "test",
+        "image": "1717853465734_KakaoTalk_20230823_002843976.gif",
+        "nickname": "test"
+      },
+      "content": "#리액션 한번 해보자 !",
+      "Images": [],
+      "createAt": "2024-06-08T16:53:36.789Z",
+      "Hearts": [{ "id": "test" }],
+      "Reposts": [{ "id": "test" }],
+      "Comments": [],
+      "_count": { "Hearts": 1, "Reposts": 1, "Comments": 0 }
+    },
+    {
+      "postId": 32,
+      "User": {
+        "id": "test",
+        "image": "1717853465734_KakaoTalk_20230823_002843976.gif",
+        "nickname": "test"
+      },
+      "content": "reposts",
+      "Images": [],
+      "createAt": "2024-06-08T18:09:59.731Z",
+      "Hearts": [{ "id": "test" }],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 1, "Reposts": 0, "Comments": 0 },
+      "Original": {
+        "postId": 31,
+        "User": {
+          "id": "test",
+          "image": "1717853465734_KakaoTalk_20230823_002843976.gif",
+          "nickname": "test"
+        },
+        "content": "#리액션 한번 해보자 !",
+        "Images": [],
+        "createAt": "2024-06-08T16:53:36.789Z",
+        "Hearts": [{ "id": "test" }],
+        "Reposts": [{ "id": "test" }],
+        "Comments": [],
+        "_count": { "Hearts": 1, "Reposts": 1, "Comments": 0 }
+      }
+    },
+    {
+      "postId": 33,
+      "User": {
+        "id": "test",
+        "image": "1717853465734_KakaoTalk_20230823_002843976.gif",
+        "nickname": "test"
+      },
+      "content": "#리액션 두번 해보자 !",
+      "Images": [],
+      "createAt": "2024-06-08T18:18:23.388Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 },
+      "Parent": {
+        "postId": 31,
+        "User": {
+          "id": "test",
+          "image": "1717853465734_KakaoTalk_20230823_002843976.gif",
+          "nickname": "test"
+        },
+        "images": []
+      }
+    },
+    {
+      "postId": 34,
+      "User": {
+        "id": "test",
+        "image": "1717853465734_KakaoTalk_20230823_002843976.gif",
+        "nickname": "test"
+      },
+      "content": "포스팅 감사합니다!! #감사 #맞팔",
+      "Images": [],
+      "createAt": "2024-06-08T18:19:30.275Z",
+      "Hearts": [],
+      "Reposts": [],
+      "Comments": [],
+      "_count": { "Hearts": 0, "Reposts": 0, "Comments": 0 },
+      "Parent": {
+        "postId": 24,
+        "User": { "id": "elonmusk", "image": "/X.jpg", "nickname": "/X.jpg" },
+        "images": [{ "imageId": 1, "link": "1717421505526_6134346.png" }]
+      }
+    }
+  ]
+}
