@@ -56,9 +56,9 @@ apiUsersRouter.post(
       Object,
       Object,
       {
-        id: string | undefined;
-        password: string | undefined;
-        nickname: string | undefined;
+        id?: string;
+        password?: string;
+        nickname?: string;
       }
     >,
     res: Response<{ data?: User; message: string }>
@@ -132,27 +132,24 @@ apiUsersRouter.get('/followRecommends', (req: Request, res: Response) => {
 
 // "GET /api/users/:id"
 // 특정 유저 정보 조회
-apiUsersRouter.get(
-  '/:id',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
-    const { id } = req.params;
-    if (!id) return httpBadRequestResponse(res);
+apiUsersRouter.get('/:id', (req: Request<{ id?: string }>, res: Response) => {
+  const { id } = req.params;
+  if (!id) return httpBadRequestResponse(res);
 
-    const dao = new DAO();
-    const findUser = dao.getUser(id);
-    if (findUser) {
-      return httpSuccessResponse(res, findUser);
-    }
-
-    return httpNotFoundResponse(res, 'User not found');
+  const dao = new DAO();
+  const findUser = dao.getUser(id);
+  if (findUser) {
+    return httpSuccessResponse(res, findUser);
   }
-);
+
+  return httpNotFoundResponse(res, 'User not found');
+});
 
 // "GET /api/users/:id/posts"
 // 특정 유저의 게시물 조회
 apiUsersRouter.get(
   '/:id/posts',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (req: Request<{ id?: string }>, res: Response) => {
     const { id } = req.params;
     if (!id) return httpBadRequestResponse(res);
 
@@ -173,7 +170,7 @@ apiUsersRouter.get(
 // 특정 유저 팔로우
 apiUsersRouter.post(
   '/:id/follow',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (req: Request<{ id?: string }>, res: Response) => {
     const { id } = req.params;
     const { ['connect.sid']: token } = req.cookies;
     if (!id) return httpBadRequestResponse(res);
@@ -216,7 +213,7 @@ apiUsersRouter.post(
 // 특정 유저 언팔로우
 apiUsersRouter.delete(
   '/:id/follow',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (req: Request<{ id?: string }>, res: Response) => {
     const { id } = req.params;
     const { ['connect.sid']: token } = req.cookies;
     if (!id) return httpBadRequestResponse(res);
@@ -262,7 +259,7 @@ apiUsersRouter.delete(
 // 특정 유저가 참여중인 채팅 리스트
 apiUsersRouter.get(
   '/:id/rooms',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (req: Request<{ id?: string }>, res: Response) => {
     const { id } = req.params;
     const { ['connect.sid']: token } = req.cookies;
     if (!id) return httpBadRequestResponse(res);
@@ -288,10 +285,16 @@ apiUsersRouter.get(
 apiUsersRouter.get(
   '/:id/rooms/:roomId',
   (
-    req: Request<{ id: string | undefined; roomId: string | undefined }>,
+    req: Request<
+      { id?: string; roomId?: string },
+      Object,
+      Object,
+      { cursor?: string }
+    >,
     res: Response
   ) => {
     const { id, roomId } = req.params;
+    const { cursor } = req.query;
     const { ['connect.sid']: token } = req.cookies;
     if (!id || !roomId) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
@@ -305,13 +308,19 @@ apiUsersRouter.get(
 
     const room = [id, roomId].sort().join('-');
     const dao = new DAO();
-    const findRoom = dao.getRoomList().find((r) => r.room === room);
+    const findRoom = dao
+      .getRoomList(currentUser.id)
+      .find((r) => r.room === room);
     if (!findRoom) {
       return httpNotFoundResponse(res, 'Room not found');
     }
 
-    const messageList = dao.getMessageList().filter((m) => m.room === room);
-    messageList.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1));
+    let messageList = dao.getMessageList(room);
+    const regex = /^[0-9]+$/;
+    if (cursor && regex.test(cursor)) {
+      messageList = messageList.filter((m) => m.messageId < parseInt(cursor));
+    }
+    messageList.splice(0, messageList.length - 10);
 
     return httpSuccessResponse(res, messageList);
   }

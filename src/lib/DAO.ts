@@ -106,8 +106,10 @@ class DAO {
     return roomList;
   }
 
-  getMessageList() {
-    return [...this.messageList];
+  getMessageList(room: Room['room']): Message[] {
+    return this.messageList
+      .filter((m) => m.room === room)
+      .sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
   }
 
   getFollowList({

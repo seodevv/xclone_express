@@ -15,6 +15,86 @@
       "senderId": "nextjs",
       "receiverId": "elonmusk",
       "createdAt": "2024-05-30T02:12:20.214Z"
+    },
+    {
+      "messageId": 3,
+      "room": "elonmusk-nextjs",
+      "content": "1",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-01T05:00:07.106Z"
+    },
+    {
+      "messageId": 4,
+      "room": "elonmusk-nextjs",
+      "content": "2",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-02T05:00:07.106Z"
+    },
+    {
+      "messageId": 5,
+      "room": "elonmusk-nextjs",
+      "content": "3",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-03T05:00:07.106Z"
+    },
+    {
+      "messageId": 6,
+      "room": "elonmusk-nextjs",
+      "content": "4",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-04T05:00:07.106Z"
+    },
+    {
+      "messageId": 7,
+      "room": "elonmusk-nextjs",
+      "content": "5",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-05T05:00:07.106Z"
+    },
+    {
+      "messageId": 8,
+      "room": "elonmusk-nextjs",
+      "content": "6",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-06T05:00:07.106Z"
+    },
+    {
+      "messageId": 9,
+      "room": "elonmusk-nextjs",
+      "content": "7",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-07T05:00:07.106Z"
+    },
+    {
+      "messageId": 10,
+      "room": "elonmusk-nextjs",
+      "content": "8",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-08T05:00:07.106Z"
+    },
+    {
+      "messageId": 11,
+      "room": "elonmusk-nextjs",
+      "content": "9",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-09T05:00:07.106Z"
+    },
+    {
+      "messageId": 12,
+      "room": "elonmusk-nextjs",
+      "content": "10",
+      "senderId": "elonmusk",
+      "receiverId": "nextjs",
+      "createdAt": "2024-06-10T05:00:07.106Z"
     }
   ]
 }
