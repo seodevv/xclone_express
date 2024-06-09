@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { AdvancedUser, User } from '../model/User';
+import { AdvancedUser, SafeUser, User } from '../model/User';
 import DAO from './DAO';
 
 export const generateUserToken = (user: AdvancedUser) => {
@@ -11,27 +11,26 @@ export const generateUserToken = (user: AdvancedUser) => {
       secret,
       options
     );
+
     return token;
   } catch (err) {
     console.error(err);
-    return null;
+    return;
   }
 };
 
-export const decodingUserToken = (token: string): User | null => {
-  let user: User | null = null;
-  const secret = process.env.JWT_SECRET || 'secret';
-  const options: jwt.VerifyOptions = {};
-  const callback: jwt.VerifyCallback = (error, decoded) => {
-    if (error) {
-      console.error(error);
-      return;
-    }
-    const { id } = decoded as User;
-    const userInfo = new DAO().findUser(id);
-    user = userInfo ? userInfo : null;
-  };
-  jwt.verify(token, secret, options, callback);
+export const decodingUserToken = (token: string) => {
+  try {
+    const secret = process.env.JWT_SECRET || 'secret';
+    const options: jwt.VerifyOptions = {};
+    const decode = jwt.verify(token, secret, options) as SafeUser;
 
-  return user;
+    const dao = new DAO();
+    const user = dao.getUser(decode.id);
+
+    return user;
+  } catch (error) {
+    console.error(error);
+    return;
+  }
 };
