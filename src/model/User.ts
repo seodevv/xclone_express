@@ -9,7 +9,7 @@ export interface User {
   image: string;
 }
 
-export interface SafeUser extends Pick<User, 'id' | 'nickname' | 'image'> {}
+export interface SafeUser extends Omit<User, 'password'> {}
 export interface AdvancedUser extends SafeUser {
   Followers: UserId[];
   _count: {

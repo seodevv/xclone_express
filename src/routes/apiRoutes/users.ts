@@ -120,7 +120,7 @@ apiUsersRouter.get('/followRecommends', (req: Request, res: Response) => {
     (u) => u.id === currentUser.id
   );
   recommendsList.splice(currentUserIndex, 1);
-  currentUser.Followers?.forEach((f) => {
+  currentUser.Followers.forEach((f) => {
     const index = recommendsList.findIndex((u) => u.id === f.id);
     if (index >= 0) {
       recommendsList.splice(index, 1);
@@ -159,9 +159,7 @@ apiUsersRouter.get(
     const dao = new DAO();
     const findUser = dao.getUser(id);
     if (findUser) {
-      const userPostList = dao
-        .getPostList()
-        .filter((p) => p.User.id === findUser.id);
+      const userPostList = dao.getPostList(findUser.id);
       userPostList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
 
       return httpSuccessResponse(res, userPostList);
@@ -188,7 +186,7 @@ apiUsersRouter.post(
     }
 
     const dao = new DAO();
-    const targetUser = dao.findUser(id);
+    const targetUser = dao.getUser(id);
     if (!targetUser) {
       return httpNotFoundResponse(res, 'User not found');
     }
@@ -197,36 +195,20 @@ apiUsersRouter.post(
       return httpForbiddenResponse(res, 'You cannot follow yourself.');
     }
 
-    const isFollow = !!targetUser.Followers?.find(
+    const isFollow = !!targetUser.Followers.find(
       (u) => u.id === currentUser.id
     );
     if (isFollow) {
       return httpForbiddenResponse(res, 'You are already following this user.');
     }
 
-    dao.updateUser({
-      id: targetUser.id,
-      Followers: targetUser.Followers
-        ? [...targetUser.Followers, { id: currentUser.id }]
-        : [{ id: currentUser.id }],
-      _count: targetUser._count
-        ? { ...targetUser._count, Followers: targetUser._count.Followers + 1 }
-        : { Followers: 1, Followings: 0 },
-    });
-    dao.updateUser({
-      id: currentUser.id,
-      _count: currentUser._count
-        ? {
-            ...currentUser._count,
-            Followings: currentUser._count.Followings + 1,
-          }
-        : {
-            Followers: 0,
-            Followings: 1,
-          },
+    const followedUser = dao.followHandler({
+      type: 'follow',
+      source: currentUser.id,
+      target: targetUser.id,
     });
 
-    return httpSuccessResponse(res, targetUser);
+    return httpSuccessResponse(res, followedUser);
   }
 );
 
@@ -247,7 +229,7 @@ apiUsersRouter.delete(
     }
 
     const dao = new DAO();
-    const targetUser = dao.findUser(id);
+    const targetUser = dao.getUser(id);
     if (!targetUser) {
       return httpNotFoundResponse(res, 'User not found');
     }
@@ -266,35 +248,13 @@ apiUsersRouter.delete(
       );
     }
 
-    dao.updateUser({
-      id: targetUser.id,
-      Followers: targetUser.Followers
-        ? targetUser.Followers.filter((u) => u.id !== currentUser.id)
-        : [],
-      _count: targetUser._count
-        ? {
-            ...targetUser._count,
-            Followers:
-              targetUser._count.Followers === 0
-                ? 0
-                : targetUser._count.Followers - 1,
-          }
-        : { Followers: 0, Followings: 0 },
-    });
-    dao.updateUser({
-      id: currentUser.id,
-      _count: currentUser._count
-        ? {
-            ...currentUser._count,
-            Followings:
-              currentUser._count.Followings === 0
-                ? 0
-                : currentUser._count.Followings - 1,
-          }
-        : { Followers: 0, Followings: 0 },
+    const unFollowedUser = dao.followHandler({
+      type: 'unfollow',
+      source: currentUser.id,
+      target: targetUser.id,
     });
 
-    return httpSuccessResponse(res, { ...targetUser, password: undefined });
+    return httpSuccessResponse(res, unFollowedUser);
   }
 );
 

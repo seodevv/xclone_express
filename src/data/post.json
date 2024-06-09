@@ -42,15 +42,27 @@
       "Images": [
         {
           "imageId": 1,
-          "link": "https://loremflickr.com/640/480?lock=1166267526414336"
+          "link": "https://loremflickr.com/640/480?lock=1481163038261241"
         },
         {
           "imageId": 2,
-          "link": "https://loremflickr.com/640/480?lock=1481163038261248"
+          "link": "https://loremflickr.com/640/480?lock=1481163038261242"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=1481163038261243"
         }
       ],
       "createAt": "2024-05-12T17:41:15.773Z",
       "ParentId": 1
+    },
+    {
+      "postId": 5,
+      "userId": "robot",
+      "content": "repost",
+      "Images": [],
+      "createAt": "2024-05-12T17:41:15.773Z",
+      "OriginalId": 1
     }
   ]
 }

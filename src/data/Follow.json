@@ -4,25 +4,13 @@
       "id": 1,
       "source": "elonmusk",
       "target": "nextjs",
-      "createAt": "2024-06-06T17:41:15.773Z"
+      "createAt": "2024-06-09T17:32:28.246Z"
     },
     {
       "id": 2,
       "source": "elonmusk",
       "target": "kim",
-      "createAt": "2024-06-07T17:41:15.773Z"
-    },
-    {
-      "id": 3,
-      "source": "nextjs",
-      "target": "elonmusk",
-      "createAt": "2024-06-08T17:41:15.773Z"
-    },
-    {
-      "id": 4,
-      "source": "kim",
-      "target": "elonmusk",
-      "createAt": "2024-06-09T17:41:15.773Z"
+      "createAt": "2024-06-09T17:32:35.161Z"
     }
   ]
 }

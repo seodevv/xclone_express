@@ -72,11 +72,12 @@ class DAO {
     }));
     return userList;
   }
-  getPostList() {
+  getPostList(userId?: string) {
     const postList: AdvancedPost[] = [];
     this.postList.forEach((p) => {
       const post = this.getFullPost(p.postId);
       if (!post) return;
+      if (userId && post.userId !== userId) return;
 
       postList.push(post);
     });
@@ -151,19 +152,6 @@ class DAO {
         Followings: 0,
       },
     };
-  }
-  updateUser({
-    id,
-    Followers,
-    _count,
-  }: Pick<AdvancedUser, 'id' | 'Followers' | '_count'>) {
-    let target = this.userList.find((u) => u.id === id);
-    if (target) {
-      target.Followers = Followers ? Followers : target.Followers;
-      target._count = _count ? _count : target._count;
-    }
-    this.writeDatabase('userList');
-    return target;
   }
   getPost(postId: number): AdvancedPost | undefined {
     const findPost = this.postList.find((p) => p.postId === postId);
@@ -287,6 +275,49 @@ class DAO {
       this.writeDatabase('postList');
     }
   }
+
+  followHandler({
+    type,
+    source,
+    target,
+  }: {
+    type: 'follow' | 'unfollow';
+    source: string;
+    target: string;
+  }) {
+    const isFollow = !!this.followList.find(
+      (f) => f.source === source && f.target === target
+    );
+
+    switch (type) {
+      case 'follow':
+        if (!isFollow) {
+          const nextId = Math.max(...this.followList.map((f) => f.id)) + 1;
+          this.followList.push({
+            id: !isFinite(nextId) ? 1 : nextId,
+            source,
+            target,
+            createAt: new Date(),
+          });
+        }
+        break;
+      case 'unfollow':
+        if (isFollow) {
+          const newFollowList = this.followList.filter((f) => {
+            return f.source !== source || f.target !== target;
+          });
+          this.followList = newFollowList;
+        }
+        break;
+      default:
+        throw new Error('unexpected type in followHander method');
+    }
+    this.writeDatabase('followList');
+
+    const updatedUser = this.getUser(target);
+    return updatedUser;
+  }
+
   hashtagsAnalysis(content: string) {
     if (!content || !content.trim()) return;
 
