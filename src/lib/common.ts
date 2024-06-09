@@ -1,8 +1,8 @@
 import jwt from 'jsonwebtoken';
-import { User } from '../model/User';
+import { AdvancedUser, User } from '../model/User';
 import DAO from './DAO';
 
-export const generateUserToken = (user: User) => {
+export const generateUserToken = (user: AdvancedUser) => {
   try {
     const secret = process.env.JWT_SECRET || 'secret';
     const options: jwt.SignOptions = {};

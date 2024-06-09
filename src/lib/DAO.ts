@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs-extra';
-import { AdvancedUser, User } from '@/model/User';
+import { AdvancedUser, SafeUser, User } from '@/model/User';
 import { Post } from '@/model/Post';
 import { HashTag } from '@/model/Hashtag';
 import { Room } from '@/model/Room';
@@ -112,21 +112,25 @@ class DAO {
     password: string;
     nickname: string;
     image: string;
-  }): Pick<User, 'id' | 'nickname' | 'image'> {
+  }): AdvancedUser {
     const newUser: User = {
       id,
       password,
       nickname,
       image,
+    };
+    this.userList.push(newUser);
+    this.writeDatabase('userList');
+    return {
+      id: newUser.id,
+      nickname: newUser.nickname,
+      image: newUser.image,
       Followers: [],
       _count: {
         Followers: 0,
         Followings: 0,
       },
     };
-    this.userList.push(newUser);
-    this.writeDatabase('userList');
-    return { id: newUser.id, nickname: newUser.nickname, image: newUser.image };
   }
   updateUser({
     id,

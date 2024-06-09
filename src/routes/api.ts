@@ -36,7 +36,8 @@ apiRouter.post(
     // body 가 없을 시
     if (!id || !password) return httpBadRequestResponse(res);
 
-    const findUser = new DAO().findUser(id, password);
+    const dao = new DAO();
+    const findUser = dao.getUser(id, password);
 
     // 로그인 성공 시
     if (findUser) {
@@ -49,7 +50,7 @@ apiRouter.post(
         httpOnly: true,
         path: '/',
       });
-      return httpSuccessResponse(res, { findUser, password: undefined });
+      return httpSuccessResponse(res, findUser);
     }
 
     // 로그인 실패 시
