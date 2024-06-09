@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { AdvancedUser, SafeUser, User } from '@/model/User';
-import { Post } from '@/model/Post';
+import { AdvancedPost, Post } from '@/model/Post';
 import { HashTag } from '@/model/Hashtag';
 import { Room } from '@/model/Room';
 import { Message } from '@/model/Message';
@@ -58,10 +58,30 @@ class DAO {
   }
 
   getUserList() {
-    return [...this.userList];
+    const userList: AdvancedUser[] = this.userList.map((u) => ({
+      id: u.id,
+      nickname: u.nickname,
+      image: u.image,
+      Followers: this.followList
+        .filter((f) => f.target === u.id)
+        .map((v) => ({ id: v.source })),
+      _count: {
+        Followers: this.followList.filter((f) => f.target === u.id).length,
+        Followings: this.followList.filter((f) => f.source === u.id).length,
+      },
+    }));
+    return userList;
   }
   getPostList() {
-    return [...this.postList];
+    const postList: AdvancedPost[] = [];
+    this.postList.forEach((p) => {
+      const post = this.getFullPost(p.postId);
+      if (!post) return;
+
+      postList.push(post);
+    });
+
+    return postList;
   }
   getTagList() {
     return [...this.tagList];
@@ -100,7 +120,7 @@ class DAO {
       };
       return advancedUser;
     }
-    return undefined;
+    return;
   }
   createUser({
     id,
@@ -136,7 +156,7 @@ class DAO {
     id,
     Followers,
     _count,
-  }: Pick<User, 'id' | 'Followers' | '_count'>) {
+  }: Pick<AdvancedUser, 'id' | 'Followers' | '_count'>) {
     let target = this.userList.find((u) => u.id === id);
     if (target) {
       target.Followers = Followers ? Followers : target.Followers;
@@ -145,22 +165,60 @@ class DAO {
     this.writeDatabase('userList');
     return target;
   }
-  findPost({
-    id,
-    repostUserId,
-  }: {
-    id: string;
-    repostUserId?: string;
-  }): Post | null {
-    let findPost: Post | undefined;
-    if (repostUserId) {
-      findPost = this.postList.find(
-        (p) => p.Original?.postId === parseInt(id) && p.User.id === repostUserId
-      );
-    } else {
-      findPost = this.postList.find((p) => p.postId === parseInt(id));
+  getPost(postId: number): AdvancedPost | undefined {
+    const findPost = this.postList.find((p) => p.postId === postId);
+    if (!findPost) return;
+
+    const user = this.userList.find((u) => u.id === findPost.userId);
+    if (!user) return;
+
+    const Hearts = this.reactionList
+      .filter((r) => r.type === 'Heart' && r.postId === findPost.postId)
+      .map((r) => ({ id: r.userId }));
+    const Reposts = this.reactionList
+      .filter((r) => r.type === 'Repost' && r.postId === findPost.postId)
+      .map((r) => ({ id: r.userId }));
+    const Comments = this.reactionList
+      .filter((r) => r.type === 'Comment' && r.postId === findPost.postId)
+      .map((r) => ({ id: r.userId }));
+    const advancedPost: AdvancedPost = {
+      ...findPost,
+      User: user,
+      Hearts,
+      Reposts,
+      Comments,
+      _count: {
+        Hearts: Hearts.length,
+        Reposts: Reposts.length,
+        Comments: Comments.length,
+      },
+    };
+
+    return advancedPost;
+  }
+  getFullPost(postId: number): AdvancedPost | undefined {
+    const findPost = this.getPost(postId);
+    if (!findPost) return;
+
+    if (findPost.ParentId) {
+      const Parent = this.getPost(findPost.ParentId);
+      if (Parent) {
+        findPost.Parent = {
+          postId: Parent.postId,
+          User: Parent.User,
+          images: Parent.Images,
+        };
+      }
     }
-    return findPost ? { ...findPost } : null;
+
+    if (findPost.OriginalId) {
+      const Original = this.getPost(findPost.OriginalId);
+      if (Original) {
+        findPost.Original = Original;
+      }
+    }
+
+    return findPost;
   }
   createPost({
     user,

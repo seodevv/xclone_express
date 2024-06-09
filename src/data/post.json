@@ -34,6 +34,23 @@
         }
       ],
       "createAt": "2024-05-11T17:41:15.773Z"
+    },
+    {
+      "postId": 4,
+      "userId": "elonmusk",
+      "content": "나의 첫 번째 댓글을 보아라",
+      "Images": [
+        {
+          "imageId": 1,
+          "link": "https://loremflickr.com/640/480?lock=1166267526414336"
+        },
+        {
+          "imageId": 2,
+          "link": "https://loremflickr.com/640/480?lock=1481163038261248"
+        }
+      ],
+      "createAt": "2024-05-12T17:41:15.773Z",
+      "ParentId": 1
     }
   ]
 }

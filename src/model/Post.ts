@@ -21,4 +21,10 @@ export interface AdvancedPost extends Post {
     Reposts: number;
     Comments: number;
   };
+  Parent?: {
+    postId: Post['postId'];
+    User: SafeUser;
+    images: PostImage[];
+  };
+  Original?: AdvancedPost;
 }

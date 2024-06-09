@@ -4,19 +4,25 @@
       "id": "elonmusk",
       "password": "elonmusk",
       "nickname": "Elon Musk",
-      "image": "/X.jpg"
+      "image": "X.jpg"
     },
     {
       "id": "nextjs",
       "password": "nextjs",
       "nickname": "next.js🔆",
-      "image": "/nextjs.png"
+      "image": "nextjs.png"
     },
     {
       "id": "kim",
       "password": "kim",
       "nickname": "kim🔥",
-      "image": "/betman.png"
+      "image": "betman.png"
+    },
+    {
+      "id": "robot",
+      "password": "robot",
+      "nickname": "Robot.AI",
+      "image": "1717920967418_6134346.png"
     }
   ]
 }

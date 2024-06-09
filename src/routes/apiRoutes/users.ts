@@ -70,7 +70,7 @@ apiUsersRouter.post(
     }
 
     const dao = new DAO();
-    const findUser = dao.findUser(id);
+    const findUser = dao.getUser(id);
     if (findUser) {
       fs.removeSync(uploadPath + '/' + file.filename);
       return httpBadRequestResponse(res, 'This ID already exists.');
@@ -104,10 +104,9 @@ apiUsersRouter.get('/followRecommends', (req: Request, res: Response) => {
 
   const dao = new DAO();
   const recommendsList = dao.getUserList();
-  recommendsList.sort((a, b) => {
-    if (!a._count || !b._count) return 0;
-    return a._count.Followers > b._count.Followers ? -1 : 1;
-  });
+  recommendsList.sort((a, b) =>
+    a._count.Followers > b._count.Followers ? -1 : 1
+  );
 
   if (!token) return httpSuccessResponse(res, recommendsList);
 
@@ -140,7 +139,7 @@ apiUsersRouter.get(
     if (!id) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findUser = dao.findUser(id);
+    const findUser = dao.getUser(id);
     if (findUser) {
       return httpSuccessResponse(res, findUser);
     }
@@ -158,7 +157,7 @@ apiUsersRouter.get(
     if (!id) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findUser = dao.findUser(id);
+    const findUser = dao.getUser(id);
     if (findUser) {
       const userPostList = dao
         .getPostList()
