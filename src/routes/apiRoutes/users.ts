@@ -156,7 +156,7 @@ apiUsersRouter.get(
     const dao = new DAO();
     const findUser = dao.getUser(id);
     if (findUser) {
-      const userPostList = dao.getPostList(findUser.id);
+      const userPostList = dao.getPostList({ userId: findUser.id });
       userPostList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
 
       return httpSuccessResponse(res, userPostList);

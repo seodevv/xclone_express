@@ -11,6 +11,12 @@
       "source": "elonmusk",
       "target": "kim",
       "createAt": "2024-06-09T17:32:35.161Z"
+    },
+    {
+      "id": 3,
+      "source": "robot",
+      "target": "elonmusk",
+      "createAt": "2024-06-10T04:23:12.740Z"
     }
   ]
 }

@@ -58,11 +58,52 @@
     },
     {
       "postId": 5,
+      "userId": "elonmusk",
+      "content": "내가 헛되이 보낸 오늘은 어제 죽어간 이들이 그토록 바라던 하루이다 단 하루면 인간적인 모든 것을 멸망시킬수도 다시 소생시킬수도 있다. -소포클레스",
+      "Images": [{ "link": "1717992786251_Philoctetes.jpg", "imageId": 1 }],
+      "createAt": "2024-06-10T04:13:06.262Z"
+    },
+    {
+      "postId": 6,
       "userId": "robot",
-      "content": "repost",
+      "content": "진짜 문제는 사람들의 마음이다. 그것은 절대로 물리학이나 윤리학의 문제가 아니다. -아인슈타인",
+      "Images": [
+        { "link": "1717992999800_img.jpg", "imageId": 1 },
+        { "link": "1717992999809_unnamed.jpg", "imageId": 2 }
+      ],
+      "createAt": "2024-06-10T04:16:39.815Z"
+    },
+    {
+      "postId": 7,
+      "userId": "robot",
+      "content": "reposts",
       "Images": [],
-      "createAt": "2024-05-12T17:41:15.773Z",
-      "OriginalId": 1
+      "createAt": "2024-06-10T08:23:24.092Z",
+      "OriginalId": 5
+    },
+    {
+      "postId": 8,
+      "userId": "robot",
+      "content": "안녕하세요?",
+      "Images": [],
+      "createAt": "2024-06-10T08:45:35.085Z",
+      "ParentId": 1
+    },
+    {
+      "postId": 9,
+      "userId": "robot",
+      "content": "저는 로봇입니다.",
+      "Images": [],
+      "createAt": "2024-06-10T08:45:45.189Z",
+      "ParentId": 1
+    },
+    {
+      "postId": 10,
+      "userId": "robot",
+      "content": "댓글의 댓글은 대댓글입니다.",
+      "Images": [{ "link": "1718009285198_6134346.png", "imageId": 1 }],
+      "createAt": "2024-06-10T08:48:05.202Z",
+      "ParentId": 9
     }
   ]
 }

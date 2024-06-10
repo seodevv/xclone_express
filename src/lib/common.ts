@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { AdvancedUser, SafeUser, User } from '../model/User';
+import { AdvancedUser, SafeUser } from '../model/User';
 import DAO from './DAO';
 
 export const generateUserToken = (user: AdvancedUser) => {

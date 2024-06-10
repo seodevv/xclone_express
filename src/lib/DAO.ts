@@ -73,12 +73,22 @@ class DAO {
     return userList;
   }
 
-  getPostList(userId?: string): AdvancedPost[] {
+  getPostList({
+    userId,
+    parentId,
+    followIds,
+  }: {
+    userId?: User['id'];
+    parentId?: Post['postId'];
+    followIds?: User['id'][];
+  }): AdvancedPost[] {
     const postList: AdvancedPost[] = [];
     this.postList.forEach((p) => {
       const post = this.getFullPost(p.postId);
       if (!post) return;
       if (userId && post.userId !== userId) return;
+      if (parentId && post.ParentId !== parentId) return;
+      if (followIds && !followIds.includes(post.User.id)) return;
 
       postList.push(post);
     });
@@ -177,7 +187,7 @@ class DAO {
     const findPost = this.postList.find((p) => p.postId === postId);
     if (!findPost) return;
 
-    const user = this.userList.find((u) => u.id === findPost.userId);
+    const user = this.getSafeUser(findPost.userId);
     if (!user) return;
 
     const Hearts = this.reactionList
@@ -203,6 +213,19 @@ class DAO {
     };
 
     return advancedPost;
+  }
+
+  getRepostPost({
+    OriginalId,
+    userId,
+  }: {
+    OriginalId: Post['postId'];
+    userId: User['id'];
+  }) {
+    const findPost = this.postList.find(
+      (p) => p.OriginalId === OriginalId && p.userId === userId
+    );
+    return findPost;
   }
 
   getFullPost(postId: number): AdvancedPost | undefined {
@@ -252,24 +275,25 @@ class DAO {
   }
 
   createPost({
-    user,
+    userId,
     content,
     files,
-    Parent,
-    Original,
+    ParentId,
+    OriginalId,
   }: {
-    user: User;
-    content: string;
+    userId: User['id'];
+    content: Post['content'];
     files?:
       | { [fieldname: string]: Express.Multer.File[] }
       | Express.Multer.File[];
-    Parent?: Post['Parent'];
-    Original?: Post;
-  }) {
+    ParentId?: Post['postId'];
+    OriginalId?: Post['postId'];
+  }): AdvancedPost | undefined {
     this.hashtagsAnalysis(content);
+    const nextId = Math.max(...this.postList.map((p) => p.postId)) + 1;
     const newPost: Post = {
-      postId: Math.max(...this.postList.map((p) => p.postId)) + 1,
-      User: { id: user.id, image: user.image, nickname: user.nickname },
+      postId: isFinite(nextId) ? nextId : 1,
+      userId,
       content,
       Images: files
         ? Object.values(files).map((v, i) => ({
@@ -278,42 +302,18 @@ class DAO {
           }))
         : [],
       createAt: new Date(),
-      Hearts: [],
-      Reposts: [],
-      Comments: [],
-      _count: {
-        Hearts: 0,
-        Reposts: 0,
-        Comments: 0,
-      },
-      Parent,
-      Original,
+      ParentId,
+      OriginalId,
     };
     this.postList.push(newPost);
     this.writeDatabase('postList');
-    return newPost;
+
+    return this.getFullPost(newPost.postId);
   }
-  updatePost({
-    postId,
-    Hearts,
-    Reposts,
-    Comments,
-    _count,
-  }: Pick<Post, 'postId'> &
-    Partial<Pick<Post, 'Hearts' | 'Reposts' | 'Comments' | '_count'>>) {
-    let target = this.postList.find((p) => p.postId === postId);
-    if (target) {
-      target.Hearts = Hearts ? Hearts : target.Hearts;
-      target.Reposts = Reposts ? Reposts : target.Reposts;
-      target.Comments = Comments ? Comments : target.Comments;
-      target._count = _count ? _count : target._count;
-      this.writeDatabase('postList');
-    }
-    return target;
-  }
-  deletePost(id: number) {
-    const targetIndex = this.postList.findIndex((p) => p.postId === id);
-    if (targetIndex !== -1) {
+
+  deletePost(postId: number) {
+    const targetIndex = this.postList.findIndex((p) => p.postId === postId);
+    if (targetIndex > -1) {
       this.postList.splice(targetIndex, 1);
       this.writeDatabase('postList');
     }
@@ -359,6 +359,41 @@ class DAO {
 
     const updatedUser = this.getUser(target);
     return updatedUser;
+  }
+
+  reactionHandler({
+    type,
+    method,
+    userId,
+    postId,
+  }: {
+    type: 'Heart' | 'Repost' | 'Comment';
+    method: 'post' | 'delete';
+    userId: User['id'];
+    postId: Post['postId'];
+  }) {
+    const isReaction = !!this.reactionList.find(
+      (r) => r.type === type && r.userId === userId && r.postId === postId
+    );
+
+    if (method === 'post' && !isReaction) {
+      const nextId = Math.max(...this.reactionList.map((r) => r.id)) + 1;
+      const newReaction: Reactions = {
+        id: isFinite(nextId) ? nextId : 1,
+        type,
+        postId,
+        userId,
+      };
+      this.reactionList.push(newReaction);
+    } else if (method === 'delete' && isReaction) {
+      this.reactionList = this.reactionList.filter(
+        (r) => r.type !== type || r.postId !== postId || r.userId !== userId
+      );
+    }
+    this.writeDatabase('reactionList');
+
+    const updatedPost = this.getFullPost(postId);
+    return updatedPost;
   }
 
   hashtagsAnalysis(content: string) {

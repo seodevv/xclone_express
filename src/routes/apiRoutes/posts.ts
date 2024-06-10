@@ -49,7 +49,7 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    let searchList = dao.getPostList();
+    let searchList = dao.getPostList({});
     const regex = /^[0-9]*$/;
     if (cursor && regex.test(cursor)) {
       searchList = searchList.filter((p) => p.postId < parseInt(cursor));
@@ -58,13 +58,30 @@ apiPostsRouter.get(
     if (q && q.trim()) {
       searchList = searchList.filter((p) => {
         const regex = new RegExp(`${q.toLowerCase()}`);
-        if (
-          regex.test(p.content.toLowerCase()) ||
-          regex.test(p.User.id.toLowerCase()) ||
-          regex.test(p.User.nickname.toLowerCase())
-        ) {
-          return true;
+        if (!p.Original) {
+          if (
+            regex.test(p.content.toLowerCase()) ||
+            regex.test(p.User.id.toLowerCase()) ||
+            regex.test(p.User.nickname.toLowerCase())
+          ) {
+            return true;
+          }
+          return false;
         }
+
+        if (p.Original) {
+          if (
+            regex.test(p.Original.content.toLowerCase()) ||
+            regex.test(p.Original.User.id.toLowerCase()) ||
+            regex.test(p.Original.User.nickname.toLowerCase()) ||
+            regex.test(p.User.id.toLowerCase()) ||
+            regex.test(p.User.nickname.toLowerCase())
+          ) {
+            return true;
+          }
+          return false;
+        }
+
         return false;
       });
     }
@@ -98,7 +115,7 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const newPost = dao.createPost({ user: currentUser, content, files });
+    const newPost = dao.createPost({ userId: currentUser.id, content, files });
 
     return httpCreatedResponse(res, newPost);
   }
@@ -112,7 +129,7 @@ apiPostsRouter.get(
     const { cursor = '' } = req.query;
 
     const dao = new DAO();
-    let recommendsList = dao.getPostList();
+    let recommendsList = dao.getPostList({});
     recommendsList.sort((a, b) => {
       if (!a._count || !b._count) {
         if (a.createAt > b.createAt) return -1;
@@ -161,13 +178,10 @@ apiPostsRouter.get(
 
     const dao = new DAO();
     const followingList = dao
-      .getUserList()
-      .filter((u) => u.Followers?.some((f) => f.id === currentUser.id))
-      .map((u) => u.id);
+      .getFollowList({ source: currentUser.id })
+      .map((f) => f.target);
 
-    const filterdList = dao
-      .getPostList()
-      .filter((p) => followingList.includes(p.User.id));
+    const filterdList = dao.getPostList({ followIds: followingList });
     filterdList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
 
     if (cursor && !Number.isNaN(parseInt(cursor))) {
@@ -193,7 +207,7 @@ apiPostsRouter.get(
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id });
+    const findPost = dao.getFullPost(parseInt(id));
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -220,7 +234,7 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id });
+    const findPost = dao.getFullPost(parseInt(id));
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -254,7 +268,7 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id });
+    const findPost = dao.getPost(parseInt(id));
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -264,12 +278,11 @@ apiPostsRouter.post(
       return httpForbiddenResponse(res, 'This post is already liked.');
     }
 
-    const updatedPost = dao.updatePost({
+    const updatedPost = dao.reactionHandler({
+      method: 'post',
+      type: 'Heart',
       postId: findPost.postId,
-      Hearts: [...findPost.Hearts, { id: currentUser.id }],
-      _count: findPost._count
-        ? { ...findPost._count, Hearts: findPost._count.Hearts + 1 }
-        : { Hearts: 1, Reposts: 0, Comments: 0 },
+      userId: currentUser.id,
     });
 
     return httpCreatedResponse(res, updatedPost);
@@ -294,7 +307,7 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id });
+    const findPost = dao.getPost(parseInt(id));
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -304,16 +317,11 @@ apiPostsRouter.delete(
       return httpForbiddenResponse(res, 'This post is already unliked.');
     }
 
-    const updatedPost = dao.updatePost({
+    const updatedPost = dao.reactionHandler({
+      method: 'delete',
+      type: 'Heart',
       postId: findPost.postId,
-      Hearts: findPost.Hearts.filter((u) => u.id !== currentUser.id),
-      _count: findPost._count
-        ? {
-            ...findPost._count,
-            Hearts:
-              findPost._count.Hearts !== 0 ? findPost._count.Hearts - 1 : 0,
-          }
-        : { Hearts: 0, Reposts: 0, Comments: 0 },
+      userId: currentUser.id,
     });
 
     return httpSuccessResponse(res, updatedPost);
@@ -338,39 +346,27 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id });
+    const findPost = dao.getFullPost(parseInt(id));
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    const isRepost = !!dao
-      .getPostList()
-      .find(
-        (p) =>
-          p.Original?.postId ===
-            (findPost.Original ? findPost.Original.postId : findPost.postId) &&
-          p.User.id === currentUser.id
-      );
+    const isRepost = !!findPost.Reposts.find((u) => u.id === currentUser.id);
     if (isRepost) {
-      return httpForbiddenResponse(res, 'This post has already been reposted.');
+      return httpForbiddenResponse(res, 'This post has been reposted.');
     }
 
-    const updatedPost = dao.updatePost({
+    dao.reactionHandler({
+      method: 'post',
+      type: 'Repost',
       postId: findPost.postId,
-      Reposts: [...findPost.Reposts, { id: currentUser.id }],
-      _count: findPost._count
-        ? { ...findPost._count, Reposts: findPost._count.Reposts + 1 }
-        : { Hearts: 0, Reposts: 1, Comments: 0 },
+      userId: currentUser.id,
     });
 
     const newRepost = dao.createPost({
-      user: currentUser,
+      userId: currentUser.id,
       content: 'reposts',
-      Original: updatedPost
-        ? updatedPost.Original
-          ? updatedPost.Original
-          : updatedPost
-        : findPost,
+      OriginalId: findPost.postId,
     });
 
     return httpCreatedResponse(res, newRepost);
@@ -395,33 +391,21 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id, repostUserId: currentUser.id });
-    if (!findPost) {
+    const findPost = dao.getRepostPost({
+      OriginalId: parseInt(id),
+      userId: currentUser.id,
+    });
+    if (!findPost || !findPost.OriginalId) {
       return httpNotFoundResponse(res, 'Post not found');
     }
 
+    dao.reactionHandler({
+      method: 'delete',
+      type: 'Repost',
+      postId: findPost.OriginalId,
+      userId: currentUser.id,
+    });
     dao.deletePost(findPost.postId);
-
-    const originalPost = dao.findPost({ id });
-    if (originalPost) {
-      dao.updatePost({
-        postId: originalPost.postId,
-        Reposts: originalPost.Reposts.filter((u) => u.id !== currentUser.id),
-        _count: originalPost._count
-          ? {
-              ...originalPost._count,
-              Reposts:
-                originalPost._count.Reposts !== 0
-                  ? originalPost._count.Reposts - 1
-                  : 0,
-            }
-          : {
-              Hearts: 0,
-              Reposts: 0,
-              Comments: 0,
-            },
-      });
-    }
 
     return httpNoContentRepsonse(res);
   }
@@ -446,14 +430,12 @@ apiPostsRouter.get(
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id });
+    const findPost = dao.getPost(parseInt(id));
     if (!findPost) {
-      return httpNotFoundResponse(res);
+      return httpNotFoundResponse(res, 'Post not found');
     }
 
-    const commentList = dao
-      .getPostList()
-      .filter((p) => p.Parent?.postId === findPost.postId);
+    const commentList = dao.getPostList({ parentId: findPost.postId });
     commentList.sort((a, b) => (a.createAt > b.createAt ? 1 : -1));
 
     if (cursor && regex.test(cursor)) {
@@ -495,22 +477,25 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id });
+    const findPost = dao.getPost(parseInt(id));
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
-    const newPost = dao.createPost({
-      user: currentUser,
+
+    dao.reactionHandler({
+      method: 'post',
+      type: 'Comment',
+      postId: findPost.postId,
+      userId: currentUser.id,
+    });
+    const newComment = dao.createPost({
+      userId: currentUser.id,
       content,
       files,
-      Parent: {
-        postId: findPost.postId,
-        User: findPost.User,
-        images: findPost.Images,
-      },
+      ParentId: findPost.postId,
     });
 
-    return httpCreatedResponse(res, newPost);
+    return httpCreatedResponse(res, newComment);
   }
 );
 
@@ -529,7 +514,7 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    const findPost = dao.findPost({ id });
+    const findPost = dao.getPost(parseInt(id));
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
