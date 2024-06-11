@@ -1,11 +1,12 @@
 import { SafeUser, User } from './User';
 
 export interface Room {
-  ReceiverId: User['id'];
-  SenderId: User['id'];
+  receiverId: User['id'];
+  senderId: User['id'];
   room: string;
   content: string;
   createdAt: Date;
+  editAt: Date;
 }
 
 export interface AdvancedRoom extends Room {

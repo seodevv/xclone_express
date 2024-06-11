@@ -1,11 +1,12 @@
 {
   "data": [
     {
-      "ReceiverId": "elonmusk",
-      "SenderId": "nextjs",
+      "receiverId": "elonmusk",
+      "senderId": "nextjs",
       "room": "elonmusk-nextjs",
       "content": "안녕하세요?",
-      "createdAt": "2024-05-24T05:00:07.106Z"
+      "createdAt": "2024-05-24T05:00:07.106Z",
+      "editAt": "2024-06-01T05:00:07.106Z"
     }
   ]
 }

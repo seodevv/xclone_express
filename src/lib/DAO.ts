@@ -41,7 +41,11 @@ class DAO {
     );
     this.tagList.push(...tagData.data);
     this.roomList.push(
-      ...roomData.data.map((r) => ({ ...r, createdAt: new Date(r.createdAt) }))
+      ...roomData.data.map((r) => ({
+        ...r,
+        createdAt: new Date(r.createdAt),
+        editAt: new Date(r.editAt),
+      }))
     );
     this.messageList.push(
       ...messageData.data.map((m) => ({
@@ -106,9 +110,9 @@ class DAO {
   getRoomList(userId: User['id']) {
     const roomList: AdvancedRoom[] = [];
     this.roomList.forEach((r) => {
-      if (r.ReceiverId !== userId && r.SenderId !== userId) return;
-      const Receiver = this.getSafeUser(r.ReceiverId);
-      const Sender = this.getSafeUser(r.SenderId);
+      if (r.receiverId !== userId && r.senderId !== userId) return;
+      const Receiver = this.getSafeUser(r.receiverId);
+      const Sender = this.getSafeUser(r.senderId);
       if (!Receiver || !Sender) return;
       roomList.push({
         ...r,
