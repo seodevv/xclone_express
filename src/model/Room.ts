@@ -1,9 +1,9 @@
 import { SafeUser, User } from './User';
 
 export interface Room {
+  room: string;
   ReceiverId: User['id'];
   SenderId: User['id'];
-  room: string;
   content: string;
   createdAt: Date;
 }
