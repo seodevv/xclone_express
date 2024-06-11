@@ -100,7 +100,7 @@ class DAO {
     return postList;
   }
 
-  getTagList() {
+  getTagList(): HashTag[] {
     const tagList = [
       ...this.tagList.sort((a, b) => (a.count > b.count ? -1 : 1)),
     ];
@@ -228,7 +228,7 @@ class DAO {
   }: {
     OriginalId: Post['postId'];
     userId: User['id'];
-  }) {
+  }): Post | undefined {
     const findPost = this.postList.find(
       (p) => p.originalId === OriginalId && p.userId === userId
     );
@@ -318,7 +318,7 @@ class DAO {
     return this.getFullPost(newPost.postId);
   }
 
-  deletePost(postId: number) {
+  deletePost(postId: number): void {
     const targetIndex = this.postList.findIndex((p) => p.postId === postId);
     if (targetIndex > -1) {
       this.postList.splice(targetIndex, 1);
@@ -334,7 +334,7 @@ class DAO {
     type: 'follow' | 'unfollow';
     source: string;
     target: string;
-  }) {
+  }): AdvancedUser | undefined {
     const isFollow = !!this.followList.find(
       (f) => f.source === source && f.target === target
     );
@@ -378,7 +378,7 @@ class DAO {
     method: 'post' | 'delete';
     userId: User['id'];
     postId: Post['postId'];
-  }) {
+  }): AdvancedPost | undefined {
     const isReaction = !!this.reactionList.find(
       (r) => r.type === type && r.userId === userId && r.postId === postId
     );
@@ -403,7 +403,7 @@ class DAO {
     return updatedPost;
   }
 
-  hashtagsAnalysis(content: string) {
+  hashtagsAnalysis(content: string): void {
     if (!content || !content.trim()) return;
 
     const regex = /#[^\s#)\]]+/g;
@@ -442,36 +442,42 @@ class DAO {
       | 'messageList'
       | 'followList'
       | 'reactionList'
-  ) {
+  ): void {
     console.time(type);
-    const dbPath = path.join(__dirname, '../data/');
-    switch (type) {
-      case 'userList':
-        fs.writeJSONSync(dbPath + '/user.json', { data: this.userList });
-        break;
-      case 'postList':
-        fs.writeJSONSync(dbPath + '/post.json', { data: this.postList });
-        break;
-      case 'tagList':
-        fs.writeJSONSync(dbPath + '/hashtag.json', { data: this.tagList });
-        break;
-      case 'roomList':
-        fs.writeJSONSync(dbPath + '/room.json', { data: this.roomList });
-        break;
-      case 'messageList':
-        fs.writeJSONSync(dbPath + '/message.json', { data: this.messageList });
-        break;
-      case 'followList':
-        fs.writeJSONSync(dbPath + '/follow.json', { data: this.followList });
-        break;
-      case 'reactionList':
-        fs.writeJSONSync(dbPath + '/reaction.json', {
-          data: this.reactionList,
-        });
-        break;
+    try {
+      const dbPath = path.join(__dirname, '../data/');
+      switch (type) {
+        case 'userList':
+          fs.writeJSONSync(dbPath + '/user.json', { data: this.userList });
+          break;
+        case 'postList':
+          fs.writeJSONSync(dbPath + '/post.json', { data: this.postList });
+          break;
+        case 'tagList':
+          fs.writeJSONSync(dbPath + '/hashtag.json', { data: this.tagList });
+          break;
+        case 'roomList':
+          fs.writeJSONSync(dbPath + '/room.json', { data: this.roomList });
+          break;
+        case 'messageList':
+          fs.writeJSONSync(dbPath + '/message.json', {
+            data: this.messageList,
+          });
+          break;
+        case 'followList':
+          fs.writeJSONSync(dbPath + '/follow.json', { data: this.followList });
+          break;
+        case 'reactionList':
+          fs.writeJSONSync(dbPath + '/reaction.json', {
+            data: this.reactionList,
+          });
+          break;
 
-      default:
-        throw new Error('The writeDB function received an unexpected type.');
+        default:
+          throw new Error('The writeDB function received an unexpected type.');
+      }
+    } catch (error) {
+      console.error(error);
     }
     console.timeEnd(type);
   }
