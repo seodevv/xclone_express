@@ -23,6 +23,10 @@ apiRouter.use('/users', apiUsersRouter);
 apiRouter.use('/posts', apiPostsRouter);
 apiRouter.use('/hashtags', apiHashtagsRouter);
 
+apiRouter.get('/', (req: Request, res: Response) => {
+  res.send('Hello Express🔆');
+});
+
 // "POST /api/login"
 // 로그인
 apiRouter.post(

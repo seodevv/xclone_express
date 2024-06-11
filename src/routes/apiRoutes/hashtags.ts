@@ -20,10 +20,9 @@ apiHashtagsRouter.get('/trends', (req: Request, res: Response) => {
     res.clearCookie('connect.sid');
     return httpForbiddenResponse(res, 'The token has expired');
   }
-
+ 
   const dao = new DAO();
   const tagList = dao.getTagList();
-  tagList.sort((a, b) => (a.count > b.count ? -1 : 1));
   tagList.splice(10);
 
   return httpSuccessResponse(res, tagList);

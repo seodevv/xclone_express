@@ -1,6 +1,6 @@
 import path from 'path';
 import fs from 'fs-extra';
-import { AdvancedUser, SafeUser, User, UserId } from '@/model/User';
+import { AdvancedUser, SafeUser, User } from '@/model/User';
 import { AdvancedPost, Post } from '@/model/Post';
 import { HashTag } from '@/model/Hashtag';
 import { AdvancedRoom, Room } from '@/model/Room';
@@ -97,7 +97,10 @@ class DAO {
   }
 
   getTagList() {
-    return [...this.tagList];
+    const tagList = [
+      ...this.tagList.sort((a, b) => (a.count > b.count ? -1 : 1)),
+    ];
+    return tagList;
   }
 
   getRoomList(userId: User['id']) {
@@ -413,7 +416,9 @@ class DAO {
         if (findTag) {
           findTag.count++;
         } else {
+          const nextId = Math.max(...this.tagList.map((t) => t.id)) + 1;
           const newTag: HashTag = {
+            id: isFinite(nextId) ? nextId : 1,
             title: tag,
             count: 1,
           };

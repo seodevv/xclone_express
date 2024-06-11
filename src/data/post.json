@@ -92,7 +92,7 @@
     {
       "postId": 9,
       "userId": "robot",
-      "content": "저는 로봇입니다.",
+      "content": "저는 로봇(#Robot)입니다.",
       "Images": [],
       "createAt": "2024-06-10T08:45:45.189Z",
       "ParentId": 1
