@@ -5,7 +5,7 @@ export interface Post {
   postId: number;
   userId: string;
   content: string;
-  Images: PostImage[];
+  images: PostImage[];
   createAt: Date;
   parentId?: Post['postId'];
   originalId?: Post['postId'];

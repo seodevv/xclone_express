@@ -4,14 +4,14 @@
       "postId": 1,
       "userId": "elonmusk",
       "content": "무언가가 충분히 중요하다면 확률이 당신에게 유리하지 않더라도 시작하라.",
-      "Images": [],
+      "images": [],
       "createAt": "2024-05-09T17:41:15.773Z"
     },
     {
       "postId": 2,
       "userId": "elonmusk",
       "content": "아침에 일어났을 때 살고 싶은 이유가 있을 것이다. 당신은 왜 살고 싶은가? 당신에게 중요한 것은 무엇인가? 무엇이 당신에게 영감을 주는가? 어떤 미래를 사랑하는가? 나의 경우, 인류의 미래가 성간비행과 다행성종족화를 포함하지 않는다면 엄청나게 우울하게 느낄 것이다.",
-      "Images": [
+      "images": [
         {
           "imageId": 1,
           "link": "elonmusk.jpg"
@@ -23,7 +23,7 @@
       "postId": 3,
       "userId": "nextjs",
       "content": "동의합니다. #동의합니다만",
-      "Images": [
+      "images": [
         {
           "imageId": 1,
           "link": "nextjsisssrframework.png"
@@ -36,7 +36,7 @@
       "postId": 4,
       "userId": "nextjs",
       "content": "repost",
-      "Images": [],
+      "images": [],
       "createAt": "2024-05-11T22:41:15.773Z",
       "originalId": 1
     }

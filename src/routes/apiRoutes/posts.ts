@@ -519,7 +519,7 @@ apiPostsRouter.get(
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    const image = findPost.Images.find(
+    const image = findPost.images.find(
       (image) => image.imageId === parseInt(imageId)
     );
     if (!image) {

@@ -3,8 +3,8 @@ import { User } from './User';
 
 export interface Message {
   messageId: number;
-  content: string;
-  senderId: User['id'];
   room: Room['room'];
+  senderId: User['id'];
+  content: string;
   createdAt: Date;
 }

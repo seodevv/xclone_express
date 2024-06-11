@@ -245,7 +245,7 @@ class DAO {
         findPost.Parent = {
           postId: Parent.postId,
           User: Parent.User,
-          images: Parent.Images,
+          images: Parent.images,
         };
       }
     }
@@ -302,7 +302,7 @@ class DAO {
       postId: isFinite(nextId) ? nextId : 1,
       userId,
       content,
-      Images: files
+      images: files
         ? Object.values(files).map((v, i) => ({
             link: v.filename,
             imageId: i + 1,
