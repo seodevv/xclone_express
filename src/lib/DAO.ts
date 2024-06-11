@@ -41,7 +41,11 @@ class DAO {
     );
     this.tagList.push(...tagData.data);
     this.roomList.push(
-      ...roomData.data.map((r) => ({ ...r, createdAt: new Date(r.createdAt) }))
+      ...roomData.data.map((r) => ({
+        ...r,
+        createdAt: new Date(r.createdAt),
+        lastAt: r.lastAt ? new Date(r.lastAt) : undefined,
+      }))
     );
     this.messageList.push(
       ...messageData.data.map((m) => ({

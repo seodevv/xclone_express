@@ -4,8 +4,9 @@ export interface Room {
   room: string;
   receiverId: User['id'];
   senderId: User['id'];
-  content: string;
   createdAt: Date;
+  content?: string;
+  lastAt?: Date;
 }
 
 export interface AdvancedRoom extends Room {
