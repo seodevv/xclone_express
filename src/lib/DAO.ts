@@ -106,9 +106,9 @@ class DAO {
   getRoomList(userId: User['id']) {
     const roomList: AdvancedRoom[] = [];
     this.roomList.forEach((r) => {
-      if (r.ReceiverId !== userId && r.SenderId !== userId) return;
-      const Receiver = this.getSafeUser(r.ReceiverId);
-      const Sender = this.getSafeUser(r.SenderId);
+      if (r.receiverId !== userId && r.senderId !== userId) return;
+      const Receiver = this.getSafeUser(r.receiverId);
+      const Sender = this.getSafeUser(r.senderId);
       if (!Receiver || !Sender) return;
       roomList.push({
         ...r,

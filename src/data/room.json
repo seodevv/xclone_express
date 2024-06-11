@@ -2,8 +2,8 @@
   "data": [
     {
       "room": "elonmusk-nextjs",
-      "ReceiverId": "elonmusk",
-      "SenderId": "nextjs",
+      "receiverId": "elonmusk",
+      "senderId": "nextjs",
       "content": "안녕하세요?",
       "createdAt": "2024-05-24T05:00:07.106Z"
     }
