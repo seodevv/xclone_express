@@ -5,7 +5,6 @@ export interface Message {
   messageId: number;
   content: string;
   senderId: User['id'];
-  receiverId: User['id'];
   room: Room['room'];
   createdAt: Date;
 }

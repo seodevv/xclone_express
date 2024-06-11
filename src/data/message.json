@@ -5,7 +5,6 @@
       "room": "elonmusk-nextjs",
       "content": "안녕?",
       "senderId": "elonmusk",
-      "receiverId": "nextjs",
       "createdAt": "2024-05-24T05:00:07.106Z"
     },
     {
@@ -13,7 +12,6 @@
       "room": "elonmusk-nextjs",
       "content": "안녕하세요?",
       "senderId": "nextjs",
-      "receiverId": "elonmusk",
       "createdAt": "2024-05-30T02:12:20.214Z"
     },
     {
@@ -21,7 +19,6 @@
       "room": "elonmusk-nextjs",
       "content": "1",
       "senderId": "elonmusk",
-      "receiverId": "nextjs",
       "createdAt": "2024-06-01T05:00:07.106Z"
     }
   ]
