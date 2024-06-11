@@ -1,12 +1,9 @@
 {
   "data": [
-    { "id": 2, "type": "Heart", "postId": 1, "userId": "elonmusk" },
-    { "id": 3, "type": "Heart", "postId": 2, "userId": "elonmusk" },
-    { "id": 4, "type": "Heart", "postId": 3, "userId": "elonmusk" },
-    { "id": 5, "type": "Heart", "postId": 1, "userId": "robot" },
-    { "id": 6, "type": "Heart", "postId": 2, "userId": "robot" },
-    { "id": 7, "type": "Repost", "postId": 5, "userId": "robot" },
-    { "id": 8, "type": "Comment", "postId": 1, "userId": "robot" },
-    { "id": 9, "type": "Comment", "postId": 9, "userId": "robot" }
+    { "id": 1, "type": "Heart", "postId": 1, "userId": "elonmusk" },
+    { "id": 2, "type": "Heart", "postId": 1, "userId": "nextjs" },
+    { "id": 3, "type": "Heart", "postId": 1, "userId": "kim" },
+    { "id": 4, "type": "Comment", "postId": 1, "userId": "nextjs" },
+    { "id": 5, "type": "Repost", "postId": 1, "userId": "nextjs" }
   ]
 }
