@@ -7,8 +7,8 @@ export interface Post {
   content: string;
   Images: PostImage[];
   createAt: Date;
-  ParentId?: Post['postId'];
-  OriginalId?: Post['postId'];
+  parentId?: Post['postId'];
+  originalId?: Post['postId'];
 }
 
 export interface AdvancedPost extends Post {

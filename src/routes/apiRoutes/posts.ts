@@ -366,7 +366,7 @@ apiPostsRouter.post(
     const newRepost = dao.createPost({
       userId: currentUser.id,
       content: 'reposts',
-      OriginalId: findPost.postId,
+      originalId: findPost.postId,
     });
 
     return httpCreatedResponse(res, newRepost);
@@ -395,14 +395,14 @@ apiPostsRouter.delete(
       OriginalId: parseInt(id),
       userId: currentUser.id,
     });
-    if (!findPost || !findPost.OriginalId) {
+    if (!findPost || !findPost.originalId) {
       return httpNotFoundResponse(res, 'Post not found');
     }
 
     dao.reactionHandler({
       method: 'delete',
       type: 'Repost',
-      postId: findPost.OriginalId,
+      postId: findPost.originalId,
       userId: currentUser.id,
     });
     dao.deletePost(findPost.postId);
@@ -492,7 +492,7 @@ apiPostsRouter.post(
       userId: currentUser.id,
       content,
       files,
-      ParentId: findPost.postId,
+      parentId: findPost.postId,
     });
 
     return httpCreatedResponse(res, newComment);

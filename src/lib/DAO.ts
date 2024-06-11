@@ -87,7 +87,7 @@ class DAO {
       const post = this.getFullPost(p.postId);
       if (!post) return;
       if (userId && post.userId !== userId) return;
-      if (parentId && post.ParentId !== parentId) return;
+      if (parentId && post.parentId !== parentId) return;
       if (followIds && !followIds.includes(post.User.id)) return;
 
       postList.push(post);
@@ -226,7 +226,7 @@ class DAO {
     userId: User['id'];
   }) {
     const findPost = this.postList.find(
-      (p) => p.OriginalId === OriginalId && p.userId === userId
+      (p) => p.originalId === OriginalId && p.userId === userId
     );
     return findPost;
   }
@@ -235,8 +235,8 @@ class DAO {
     const findPost = this.getPost(postId);
     if (!findPost) return;
 
-    if (findPost.ParentId) {
-      const Parent = this.getPost(findPost.ParentId);
+    if (findPost.parentId) {
+      const Parent = this.getPost(findPost.parentId);
       if (Parent) {
         findPost.Parent = {
           postId: Parent.postId,
@@ -246,8 +246,8 @@ class DAO {
       }
     }
 
-    if (findPost.OriginalId) {
-      const Original = this.getPost(findPost.OriginalId);
+    if (findPost.originalId) {
+      const Original = this.getPost(findPost.originalId);
       if (Original) {
         findPost.Original = Original;
       }
@@ -281,16 +281,16 @@ class DAO {
     userId,
     content,
     files,
-    ParentId,
-    OriginalId,
+    parentId,
+    originalId,
   }: {
     userId: User['id'];
     content: Post['content'];
     files?:
       | { [fieldname: string]: Express.Multer.File[] }
       | Express.Multer.File[];
-    ParentId?: Post['postId'];
-    OriginalId?: Post['postId'];
+    parentId?: Post['postId'];
+    originalId?: Post['postId'];
   }): AdvancedPost | undefined {
     this.hashtagsAnalysis(content);
     const nextId = Math.max(...this.postList.map((p) => p.postId)) + 1;
@@ -305,8 +305,8 @@ class DAO {
           }))
         : [],
       createAt: new Date(),
-      ParentId,
-      OriginalId,
+      parentId,
+      originalId,
     };
     this.postList.push(newPost);
     this.writeDatabase('postList');
