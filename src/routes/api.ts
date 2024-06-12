@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import multer from 'multer';
 import fs from 'fs-extra';
 import path from 'path';
@@ -16,6 +16,13 @@ import {
 import { uploadPath } from '../index';
 import { generateUserToken } from '../lib/common';
 import DAO from '@/lib/DAO';
+import {
+  TypedRequestBody,
+  TypedRequestCookies,
+  TypedRequestParams,
+} from '@/model/Request';
+import { TypedResponse } from '@/model/Response';
+import { AdvancedUser } from '@/model/User';
 
 const apiRouter = express.Router();
 
@@ -23,18 +30,14 @@ apiRouter.use('/users', apiUsersRouter);
 apiRouter.use('/posts', apiPostsRouter);
 apiRouter.use('/hashtags', apiHashtagsRouter);
 
-apiRouter.get('/', (req: Request, res: Response) => {
-  res.send('Hello Express🔆');
-});
-
 // "POST /api/login"
 // 로그인
 apiRouter.post(
   '/login',
   multer().none(),
   (
-    req: Request<object, object, { id: string; password: string }>,
-    res: Response
+    req: TypedRequestBody<{ id?: string; password?: string }>,
+    res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { id, password } = req.body;
     // body 가 없을 시
@@ -64,16 +67,22 @@ apiRouter.post(
 
 // "POST /api/logout"
 // 로그아웃
-apiRouter.post('/logout', (req: Request, res: Response) => {
-  res.clearCookie('connect.sid');
-  return httpCreatedResponse(res, undefined, 'Logout successful');
-});
+apiRouter.post(
+  '/logout',
+  (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
+    res.clearCookie('connect.sid');
+    return httpCreatedResponse(res, undefined, 'Logout successful');
+  }
+);
 
 // "GET /api/image/:imageName"
 // 이미지 호스팅
 apiRouter.get(
   '/image/:imageName',
-  (req: Request<{ imageName: string }>, res: Response) => {
+  (
+    req: TypedRequestParams<{ imageName?: string }>,
+    res: TypedResponse<{ message: string }>
+  ) => {
     const { imageName } = req.params;
     if (!imageName) return httpBadRequestResponse(res);
 

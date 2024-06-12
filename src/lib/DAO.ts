@@ -107,7 +107,7 @@ class DAO {
     return tagList;
   }
 
-  getRoomList(userId: User['id']) {
+  getRoomList(userId: User['id']): AdvancedRoom[] {
     const roomList: AdvancedRoom[] = [];
     this.roomList.forEach((r) => {
       if (r.receiverId !== userId && r.senderId !== userId) return;
@@ -188,6 +188,7 @@ class DAO {
         nickname: advancedUser.nickname,
       };
     }
+    return;
   }
 
   getPost(postId: number): AdvancedPost | undefined {
@@ -223,14 +224,14 @@ class DAO {
   }
 
   getRepostPost({
-    OriginalId,
+    originalId,
     userId,
   }: {
-    OriginalId: Post['postId'];
+    originalId: Post['postId'];
     userId: User['id'];
   }): Post | undefined {
     const findPost = this.postList.find(
-      (p) => p.originalId === OriginalId && p.userId === userId
+      (p) => p.originalId === originalId && p.userId === userId
     );
     return findPost;
   }

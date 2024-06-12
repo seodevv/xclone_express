@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
 import multer from 'multer';
 import {
   httpBadRequestResponse,
@@ -12,6 +12,16 @@ import {
 import { uploadPath } from '@/index';
 import { decodingUserToken } from '@/lib/common';
 import DAO from '@/lib/DAO';
+import {
+  TypedRequestBody,
+  TypedRequestBodyParams,
+  TypedRequestParams,
+  TypedRequestQuery,
+  TypedRequestQueryParams,
+} from '@/model/Request';
+import { TypedResponse } from '@/model/Response';
+import { AdvancedPost } from '@/model/Post';
+import { PostImage } from '@/model/PostImage';
 
 const apiPostsRouter = express.Router();
 const storage = multer.diskStorage({
@@ -30,13 +40,13 @@ const upload = multer({ storage });
 apiPostsRouter.get(
   '/',
   (
-    req: Request<
-      Object,
-      Object,
-      Object,
-      { cursor: string; q: string; pf: string; f: string }
-    >,
-    res: Response
+    req: TypedRequestQuery<{
+      cursor?: string;
+      q?: string;
+      pf?: string;
+      f?: string;
+    }>,
+    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
   ) => {
     const { cursor = '', q = '', pf = '', f = '' } = req.query;
     const { ['connect.sid']: token } = req.cookies;
@@ -45,7 +55,7 @@ apiPostsRouter.get(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res, 'The token has expired');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
@@ -81,7 +91,6 @@ apiPostsRouter.get(
           }
           return false;
         }
-
         return false;
       });
     }
@@ -99,8 +108,8 @@ apiPostsRouter.post(
   '/',
   upload.array('images', 4),
   (
-    req: Request<Object, Object, { content: string | undefined }>,
-    res: Response
+    req: TypedRequestBody<{ content?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const { content } = req.body;
     const files = req.files;
@@ -111,7 +120,7 @@ apiPostsRouter.post(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res, 'The token has expired');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
@@ -125,7 +134,10 @@ apiPostsRouter.post(
 // 추천 게시글 조회
 apiPostsRouter.get(
   '/recommends',
-  (req: Request<Object, Object, Object, { cursor: string }>, res: Response) => {
+  (
+    req: TypedRequestQuery<{ cursor?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
+  ) => {
     const { cursor = '' } = req.query;
 
     const dao = new DAO();
@@ -163,8 +175,8 @@ apiPostsRouter.get(
 apiPostsRouter.get(
   '/followings',
   (
-    req: Request<Object, Object, Object, { cursor: string | undefined }>,
-    res: Response
+    req: TypedRequestQuery<{ cursor?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
   ) => {
     const { cursor = '' } = req.query;
     const { ['connect.sid']: token } = req.cookies;
@@ -173,7 +185,7 @@ apiPostsRouter.get(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res);
+      return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
@@ -201,7 +213,10 @@ apiPostsRouter.get(
 // 특정 게시글 조회
 apiPostsRouter.get(
   '/:id',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (
+    req: TypedRequestParams<{ id?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
     const { id } = req.params;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
@@ -220,7 +235,10 @@ apiPostsRouter.get(
 // 특정 게시글 삭제
 apiPostsRouter.delete(
   '/:id',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (
+    req: TypedRequestParams<{ id?: string }>,
+    res: TypedResponse<{ message: string }>
+  ) => {
     const { id } = req.params;
     const { ['connect.sid']: token } = req.cookies;
     const regex = /^[0-9]*$/;
@@ -230,7 +248,7 @@ apiPostsRouter.delete(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res, 'The token has expired');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
@@ -241,7 +259,7 @@ apiPostsRouter.delete(
 
     const isOwner = findPost.User.id === currentUser.id;
     if (!isOwner) {
-      return httpUnAuthorizedResponse(res, 'Permission deny');
+      return httpForbiddenResponse(res, 'Permission deny');
     }
 
     dao.deletePost(findPost.postId);
@@ -254,7 +272,10 @@ apiPostsRouter.delete(
 // 특정 게시글 좋아요
 apiPostsRouter.post(
   '/:id/heart',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (
+    req: TypedRequestParams<{ id?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
     const { id } = req.params;
     const { ['connect.sid']: token } = req.cookies;
     const regex = /^[0-9]*$/;
@@ -264,7 +285,7 @@ apiPostsRouter.post(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res, 'The token has expired');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
@@ -293,7 +314,10 @@ apiPostsRouter.post(
 // 특정 게시글 좋아요 취소
 apiPostsRouter.delete(
   '/:id/heart',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (
+    req: TypedRequestParams<{ id?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
     const { id } = req.params;
     const { ['connect.sid']: token } = req.cookies;
     const regex = /^[0-9]*$/;
@@ -303,7 +327,7 @@ apiPostsRouter.delete(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res, 'The token has expired');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
@@ -332,7 +356,10 @@ apiPostsRouter.delete(
 // 특정 게시글 리포스트
 apiPostsRouter.post(
   '/:id/reposts',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (
+    req: TypedRequestParams<{ id?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
     const { id } = req.params;
     const { ['connect.sid']: token } = req.cookies;
     const regex = /^[0-9]*$/;
@@ -342,7 +369,7 @@ apiPostsRouter.post(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res, 'The token has expired');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
@@ -377,7 +404,10 @@ apiPostsRouter.post(
 // 특정 게시글 리포스트 취소
 apiPostsRouter.delete(
   '/:id/reposts',
-  (req: Request<{ id: string | undefined }>, res: Response) => {
+  (
+    req: TypedRequestParams<{ id?: string }>,
+    res: TypedResponse<{ message: string }>
+  ) => {
     const { id } = req.params;
     const { ['connect.sid']: token } = req.cookies;
     const regex = /^[0-9]*$/;
@@ -387,12 +417,12 @@ apiPostsRouter.delete(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res, 'The token has expired');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
     const findPost = dao.getRepostPost({
-      OriginalId: parseInt(id),
+      originalId: parseInt(id),
       userId: currentUser.id,
     });
     if (!findPost || !findPost.originalId) {
@@ -416,16 +446,11 @@ apiPostsRouter.delete(
 apiPostsRouter.get(
   '/:id/comments',
   (
-    req: Request<
-      { id: string | undefined },
-      Object,
-      Object,
-      { cursor: string | undefined }
-    >,
-    res: Response
+    req: TypedRequestQueryParams<{ cursor?: string }, { id?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
   ) => {
-    const { id } = req.params;
     const { cursor = '' } = req.query;
+    const { id } = req.params;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
 
@@ -458,8 +483,8 @@ apiPostsRouter.post(
   '/:id/comments',
   upload.array('images', 4),
   (
-    req: Request<{ id: string }, Object, { content: string | undefined }>,
-    res: Response
+    req: TypedRequestBodyParams<{ content?: string }, { id?: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const { id } = req.params;
     const { content } = req.body;
@@ -473,7 +498,7 @@ apiPostsRouter.post(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      return httpForbiddenResponse(res, 'The token has expired');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
@@ -504,8 +529,8 @@ apiPostsRouter.post(
 apiPostsRouter.get(
   '/:id/photos/:imageId',
   (
-    req: Request<{ id: string | undefined; imageId: string | undefined }>,
-    res: Response
+    req: TypedRequestParams<{ id?: string; imageId?: string }>,
+    res: TypedResponse<{ data?: PostImage; message: string }>
   ) => {
     const { id, imageId } = req.params;
     const regex = /^[0-9]*$/;
