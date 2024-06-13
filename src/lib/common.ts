@@ -1,8 +1,20 @@
 import jwt from 'jsonwebtoken';
-import { AdvancedUser, SafeUser } from '../model/User';
+import multer from 'multer';
 import DAO from './DAO';
+import { uploadPath } from '@/index';
+import { AdvancedUser, SafeUser } from '@/model/User';
 
-export const generateUserToken = (user: AdvancedUser) => {
+export const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const fileName = `${Date.now()}_${file.originalname}`;
+    cb(null, fileName);
+  },
+});
+
+export const generateUserToken = (user: AdvancedUser): string | undefined => {
   try {
     const secret = process.env.JWT_SECRET || 'secret';
     const options: jwt.SignOptions = {};
@@ -19,7 +31,7 @@ export const generateUserToken = (user: AdvancedUser) => {
   }
 };
 
-export const decodingUserToken = (token: string) => {
+export const decodingUserToken = (token: string): AdvancedUser | undefined => {
   try {
     const secret = process.env.JWT_SECRET || 'secret';
     const options: jwt.VerifyOptions = {};

@@ -11,10 +11,9 @@ import {
   httpSuccessResponse,
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
-import { generateUserToken, decodingUserToken } from '@/lib/common';
+import { generateUserToken, decodingUserToken, storage } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
-  TypedRequest,
   TypedRequestBody,
   TypedRequestCookies,
   TypedRequestParams,
@@ -27,16 +26,6 @@ import { AdvancedRoom } from '@/model/Room';
 import { Message } from '@/model/Message';
 
 const apiUsersRouter = express.Router();
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const fileName = `${Date.now()}_${file.originalname}`;
-    req.body.image = fileName;
-    cb(null, fileName);
-  },
-});
 const upload = multer({ storage });
 
 // "GET /api/users"
@@ -76,6 +65,7 @@ apiUsersRouter.post(
     const { id, password, nickname } = req.body;
     const file = req.file;
     if (!id || !password || !nickname || !file) {
+      file && fs.removeSync(uploadPath + '/' + file.filename);
       return httpBadRequestResponse(res);
     }
 
@@ -123,11 +113,15 @@ apiUsersRouter.get(
       a._count.Followers > b._count.Followers ? -1 : 1
     );
 
-    if (!token) return httpSuccessResponse(res, recommendsList);
+    if (!token) {
+      recommendsList.splice(3);
+      return httpSuccessResponse(res, recommendsList);
+    }
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
+      recommendsList.splice(3);
       return httpSuccessResponse(res, recommendsList);
     }
 
@@ -141,6 +135,7 @@ apiUsersRouter.get(
         recommendsList.splice(index, 1);
       }
     });
+    recommendsList.splice(3);
 
     return httpSuccessResponse(res, recommendsList);
   }

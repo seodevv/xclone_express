@@ -3,4 +3,5 @@ import { Send } from 'express-serve-static-core';
 
 export interface TypedResponse<ResBody> extends Response {
   json: Send<ResBody, this>;
+  send: Send<ResBody, this>;
 }

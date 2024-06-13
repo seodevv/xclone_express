@@ -1,5 +1,6 @@
 import express from 'express';
 import multer from 'multer';
+import fs from 'fs-extra';
 import {
   httpBadRequestResponse,
   httpCreatedResponse,
@@ -9,8 +10,7 @@ import {
   httpSuccessResponse,
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
-import { uploadPath } from '@/index';
-import { decodingUserToken } from '@/lib/common';
+import { decodingUserToken, storage } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
@@ -22,17 +22,9 @@ import {
 import { TypedResponse } from '@/model/Response';
 import { AdvancedPost } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
+import { uploadPath } from '@/index';
 
 const apiPostsRouter = express.Router();
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const fileName = `${Date.now()}_${file.originalname}`;
-    cb(null, fileName);
-  },
-});
 const upload = multer({ storage });
 
 // "GET /api/posts"
@@ -114,11 +106,20 @@ apiPostsRouter.post(
     const { content } = req.body;
     const files = req.files;
     const { ['connect.sid']: token } = req.cookies;
-    if (!content || !files) return httpBadRequestResponse(res);
+    if (!content || !files) {
+      files &&
+        Object.values(files).forEach((v: Express.Multer.File) => {
+          fs.removeSync(uploadPath + '/' + v.filename);
+        });
+      return httpBadRequestResponse(res);
+    }
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
+      Object.values(files).forEach((v: Express.Multer.File) => {
+        fs.removeSync(uploadPath + '/' + v.filename);
+      });
       res.clearCookie('connect.sid');
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
@@ -143,18 +144,12 @@ apiPostsRouter.get(
     const dao = new DAO();
     let recommendsList = dao.getPostList({});
     recommendsList.sort((a, b) => {
-      if (!a._count || !b._count) {
-        if (a.createAt > b.createAt) return -1;
-        return 1;
-      }
-
       if (a._count.Hearts > b._count.Hearts) {
         return -1;
       } else if (a._count.Hearts === b._count.Hearts) {
         if (a.createAt > b.createAt) return -1;
         return 1;
       }
-
       return 1;
     });
 
@@ -491,12 +486,20 @@ apiPostsRouter.post(
     const files = req.files;
     const { ['connect.sid']: token } = req.cookies;
     const regex = /^[0-9]*$/;
-    if (!id || !content || !files || !regex.test(id))
+    if (!id || !content || !files || !regex.test(id)) {
+      files &&
+        Object.values(files).forEach((v: Express.Multer.File) => {
+          fs.removeSync(uploadPath + '/' + v.filename);
+        });
       return httpBadRequestResponse(res);
+    }
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
+      Object.values(files).forEach((v: Express.Multer.File) => {
+        fs.removeSync(uploadPath + '/' + v.filename);
+      });
       res.clearCookie('connect.sid');
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
@@ -504,6 +507,9 @@ apiPostsRouter.post(
     const dao = new DAO();
     const findPost = dao.getPost(parseInt(id));
     if (!findPost) {
+      Object.values(files).forEach((v: Express.Multer.File) => {
+        fs.removeSync(uploadPath + '/' + v.filename);
+      });
       return httpNotFoundResponse(res, 'Post not found');
     }
 

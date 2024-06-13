@@ -41,9 +41,9 @@ export interface TypedRequestBodyParams<
 }
 
 export interface TypedRequest<
-  ReqQuery extends Query = any,
-  ReqBody = any,
-  ReqParams extends ParamsDictionary = any
+  ReqQuery extends Query,
+  ReqBody,
+  ReqParams extends ParamsDictionary
 > extends TypedRequestCookies {
   query: ReqQuery;
   body: ReqBody;

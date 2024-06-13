@@ -7,11 +7,10 @@ import apiUsersRouter from './apiRoutes/users';
 import apiHashtagsRouter from './apiRoutes/hashtags';
 import {
   httpBadRequestResponse,
-  httpCreatedResponse,
+  httpForbiddenResponse,
   httpInternalServerErrorResponse,
   httpNotFoundResponse,
   httpSuccessResponse,
-  httpUnAuthorizedResponse,
 } from '../lib/responsesHandlers';
 import { uploadPath } from '../index';
 import { generateUserToken } from '../lib/common';
@@ -61,7 +60,7 @@ apiRouter.post(
     }
 
     // 로그인 실패 시
-    return httpUnAuthorizedResponse(res, 'ID, Password is incorrect.');
+    return httpForbiddenResponse(res, 'ID, Password is incorrect.');
   }
 );
 
@@ -71,7 +70,7 @@ apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
     res.clearCookie('connect.sid');
-    return httpCreatedResponse(res, undefined, 'Logout successful');
+    return httpSuccessResponse(res, undefined, 'Logout successful');
   }
 );
 
