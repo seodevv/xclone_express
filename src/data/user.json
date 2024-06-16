@@ -17,6 +17,12 @@
       "password": "kim",
       "nickname": "kim🔥",
       "image": "betman.png"
+    },
+    {
+      "id": "robot",
+      "password": "robot",
+      "nickname": "Iam Robot💪🏻",
+      "image": "1718537394020_6134346.png"
     }
   ]
 }

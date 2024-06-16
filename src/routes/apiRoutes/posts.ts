@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import fs from 'fs-extra';
+import path from 'path';
 import {
   httpBadRequestResponse,
   httpCreatedResponse,
@@ -257,6 +258,16 @@ apiPostsRouter.delete(
       return httpForbiddenResponse(res, 'Permission deny');
     }
 
+    if (findPost.images.length) {
+      try {
+        findPost.images.forEach((image) => {
+          const imagePath = path.join(uploadPath, '/', image.link);
+          fs.removeSync(imagePath);
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    }
     dao.deletePost(findPost.postId);
 
     return httpNoContentRepsonse(res);
