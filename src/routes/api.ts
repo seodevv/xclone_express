@@ -11,9 +11,9 @@ import {
   httpInternalServerErrorResponse,
   httpNotFoundResponse,
   httpSuccessResponse,
-} from '../lib/responsesHandlers';
-import { uploadPath } from '../app';
-import { generateUserToken } from '../lib/common';
+} from '@/lib/responsesHandlers';
+import { uploadPath } from '@/app';
+import { generateUserToken } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
