@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import DAO from './DAO';
-import { uploadPath } from '@/index';
+import { uploadPath } from '@/app';
 import { AdvancedUser, SafeUser } from '@/model/User';
 
 export const storage = multer.diskStorage({

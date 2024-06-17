@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import fs from 'fs-extra';
-import { uploadPath } from '@/index';
+import { uploadPath } from '@/app';
 import {
   httpBadRequestResponse,
   httpCreatedResponse,

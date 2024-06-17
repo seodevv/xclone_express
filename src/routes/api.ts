@@ -12,7 +12,7 @@ import {
   httpNotFoundResponse,
   httpSuccessResponse,
 } from '../lib/responsesHandlers';
-import { uploadPath } from '../index';
+import { uploadPath } from '../app';
 import { generateUserToken } from '../lib/common';
 import DAO from '@/lib/DAO';
 import {

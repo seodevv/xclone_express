@@ -23,7 +23,7 @@ import {
 import { TypedResponse } from '@/model/Response';
 import { AdvancedPost } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
-import { uploadPath } from '@/index';
+import { uploadPath } from '@/app';
 
 const apiPostsRouter = express.Router();
 const upload = multer({ storage });
