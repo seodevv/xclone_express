@@ -114,7 +114,12 @@ apiPostsRouter.post(
         });
       return httpBadRequestResponse(res);
     }
-    if (!token) return httpUnAuthorizedResponse(res);
+    if (!token) {
+      Object.values(files).forEach((v: Express.Multer.File) => {
+        fs.removeSync(uploadPath + '/' + v.filename);
+      });
+      return httpUnAuthorizedResponse(res);
+    }
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
