@@ -13,7 +13,7 @@ import {
   httpSuccessResponse,
 } from '@/lib/responsesHandlers';
 import { uploadPath } from '@/app';
-import { generateUserToken } from '@/lib/common';
+import { delay, generateUserToken } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
@@ -34,10 +34,11 @@ apiRouter.use('/hashtags', apiHashtagsRouter);
 apiRouter.post(
   '/login',
   multer().none(),
-  (
+  async (
     req: TypedRequestBody<{ id?: string; password?: string }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
+    await delay(2000);
     const { id, password } = req.body;
     // body 가 없을 시
     if (!id || !password) return httpBadRequestResponse(res);
@@ -52,7 +53,7 @@ apiRouter.post(
         return httpInternalServerErrorResponse(res);
       }
       res.cookie('connect.sid', userToken, {
-        maxAge: 1000 * 60 * 60 * 24,
+        maxAge: 1000 * 60 * 60 * 24 * 30,
         httpOnly: true,
         path: '/',
       });
@@ -61,6 +62,38 @@ apiRouter.post(
 
     // 로그인 실패 시
     return httpForbiddenResponse(res, 'ID, Password is incorrect.');
+  }
+);
+
+// "POST /api/login/google"
+// Google 로그인
+apiRouter.post(
+  '/login/google',
+  multer().none(),
+  (
+    req: TypedRequestBody<{ id?: string; nickname?: string; image?: string }>,
+    res: TypedResponse<{ message: string }>
+  ) => {
+    const { id, nickname, image } = req.body;
+    if (!id || !nickname || !image) return httpBadRequestResponse(res);
+
+    const dao = new DAO();
+    let user = dao.getUser(id);
+    if (!user) {
+      user = dao.createUser({ id, password: '', nickname, image });
+    }
+
+    const userToken = generateUserToken(user);
+    if (!userToken) {
+      return httpInternalServerErrorResponse(res);
+    }
+
+    res.cookie('connect.sid', userToken, {
+      maxAge: 1000 * 60 * 60 * 24 * 30,
+      httpOnly: true,
+      path: '/',
+    });
+    return httpSuccessResponse(res, user);
   }
 );
 

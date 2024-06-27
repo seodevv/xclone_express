@@ -11,7 +11,12 @@ import {
   httpSuccessResponse,
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
-import { generateUserToken, decodingUserToken, storage } from '@/lib/common';
+import {
+  generateUserToken,
+  decodingUserToken,
+  storage,
+  delay,
+} from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
@@ -54,7 +59,7 @@ apiUsersRouter.get(
 apiUsersRouter.post(
   '/',
   upload.single('image'),
-  (
+  async (
     req: TypedRequestBody<{
       id?: string;
       password?: string;
@@ -62,6 +67,7 @@ apiUsersRouter.post(
     }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
+    await delay(2000);
     const { id, password, nickname } = req.body;
     const file = req.file;
     if (!id || !password || !nickname || !file) {
@@ -88,7 +94,7 @@ apiUsersRouter.post(
       return httpInternalServerErrorResponse(res);
     }
     res.cookie('connect.sid', userToken, {
-      maxAge: 1000 * 60 * 60 * 24,
+      maxAge: 1000 * 60 * 60 * 24 * 30,
       httpOnly: true,
       path: '/',
     });

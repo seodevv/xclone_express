@@ -46,3 +46,9 @@ export const decodingUserToken = (token: string): AdvancedUser | undefined => {
     return;
   }
 };
+
+export const delay = (ms: number) => {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+};

@@ -23,6 +23,18 @@
       "password": "robot",
       "nickname": "Iam Robot💪🏻",
       "image": "1718537394020_6134346.png"
+    },
+    {
+      "id": "dog",
+      "password": "dog",
+      "nickname": "Hi there🔆",
+      "image": "1718819565446_KakaoTalk_20230829_142432851.jpg"
+    },
+    {
+      "id": "blackahwin@gmail.com",
+      "password": "",
+      "nickname": "dv S",
+      "image": "https://lh3.googleusercontent.com/a/ACg8ocIsrfY6_tEvQ0Kz2A0zDvMp4WzogQizT12K1wZ3__3QNTAspWpteg=s96-c"
     }
   ]
 }
