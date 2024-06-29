@@ -3,6 +3,15 @@ import multer from 'multer';
 import DAO from './DAO';
 import { uploadPath } from '@/app';
 import { AdvancedUser, SafeUser } from '@/model/User';
+import { CookieOptions } from 'express';
+
+export const COOKIE_OPTIONS: CookieOptions = {
+  maxAge: 1000 * 60 * 60 * 24 * 30,
+  httpOnly: true,
+  path: '/',
+  sameSite: 'none',
+  secure: true,
+};
 
 export const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -41,6 +50,18 @@ export const decodingUserToken = (token: string): AdvancedUser | undefined => {
     const user = dao.getUser(decode.id);
 
     return user;
+  } catch (error) {
+    console.error(error);
+    return;
+  }
+};
+
+export const encodingString = (string: string) => {
+  try {
+    const secret = process.env.JWT_SECRET || 'secret';
+    const options: jwt.SignOptions = {};
+    const encoded = jwt.sign(string, secret, options);
+    return encoded;
   } catch (error) {
     console.error(error);
     return;

@@ -16,6 +16,7 @@ import {
   decodingUserToken,
   storage,
   delay,
+  COOKIE_OPTIONS,
 } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
@@ -93,11 +94,7 @@ apiUsersRouter.post(
     if (!userToken) {
       return httpInternalServerErrorResponse(res);
     }
-    res.cookie('connect.sid', userToken, {
-      maxAge: 1000 * 60 * 60 * 24 * 30,
-      httpOnly: true,
-      path: '/',
-    });
+    res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
 
     return httpCreatedResponse(res, newUser);
   }

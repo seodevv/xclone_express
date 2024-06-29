@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { CookieOptions } from 'express';
 import multer from 'multer';
 import fs from 'fs-extra';
 import path from 'path';
@@ -13,7 +13,12 @@ import {
   httpSuccessResponse,
 } from '@/lib/responsesHandlers';
 import { uploadPath } from '@/app';
-import { delay, generateUserToken } from '@/lib/common';
+import {
+  COOKIE_OPTIONS,
+  delay,
+  encodingString,
+  generateUserToken,
+} from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
@@ -52,11 +57,7 @@ apiRouter.post(
       if (!userToken) {
         return httpInternalServerErrorResponse(res);
       }
-      res.cookie('connect.sid', userToken, {
-        maxAge: 1000 * 60 * 60 * 24 * 30,
-        httpOnly: true,
-        path: '/',
-      });
+      res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
       return httpSuccessResponse(res, findUser);
     }
 
@@ -80,7 +81,12 @@ apiRouter.post(
     const dao = new DAO();
     let user = dao.getUser(id);
     if (!user) {
-      user = dao.createUser({ id, password: '', nickname, image });
+      user = dao.createUser({
+        id,
+        password: encodingString(id) as string,
+        nickname,
+        image,
+      });
     }
 
     const userToken = generateUserToken(user);
@@ -88,11 +94,7 @@ apiRouter.post(
       return httpInternalServerErrorResponse(res);
     }
 
-    res.cookie('connect.sid', userToken, {
-      maxAge: 1000 * 60 * 60 * 24 * 30,
-      httpOnly: true,
-      path: '/',
-    });
+    res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
     return httpSuccessResponse(res, user);
   }
 );
@@ -102,7 +104,13 @@ apiRouter.post(
 apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
-    res.clearCookie('connect.sid');
+    res.cookie('connect.sid', '', {
+      maxAge: 0,
+      httpOnly: true,
+      path: '/',
+      sameSite: 'none',
+      secure: true,
+    });
     return httpSuccessResponse(res, undefined, 'Logout successful');
   }
 );
