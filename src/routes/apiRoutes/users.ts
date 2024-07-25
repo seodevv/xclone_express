@@ -51,7 +51,7 @@ apiUsersRouter.get(
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
-    return httpSuccessResponse(res, currentUser);
+    return httpSuccessResponse(res, { data: currentUser });
   }
 );
 
@@ -96,7 +96,7 @@ apiUsersRouter.post(
     }
     res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
 
-    return httpCreatedResponse(res, newUser);
+    return httpCreatedResponse(res, { data: newUser });
   }
 );
 
@@ -118,29 +118,32 @@ apiUsersRouter.get(
 
     if (!token) {
       recommendsList.splice(3);
-      return httpSuccessResponse(res, recommendsList);
+      return httpSuccessResponse(res, { data: recommendsList });
     }
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
       recommendsList.splice(3);
-      return httpSuccessResponse(res, recommendsList);
+      return httpSuccessResponse(res, { data: recommendsList });
     }
 
     const currentUserIndex = recommendsList.findIndex(
       (u) => u.id === currentUser.id
     );
     recommendsList.splice(currentUserIndex, 1);
-    currentUser.Followers.forEach((f) => {
-      const index = recommendsList.findIndex((u) => u.id === f.id);
+
+    const followist = dao.getFollowList({ source: currentUser.id });
+
+    followist.forEach((f) => {
+      const index = recommendsList.findIndex((u) => u.id === f.target);
       if (index >= 0) {
         recommendsList.splice(index, 1);
       }
     });
     recommendsList.splice(3);
 
-    return httpSuccessResponse(res, recommendsList);
+    return httpSuccessResponse(res, { data: recommendsList });
   }
 );
 
@@ -161,7 +164,7 @@ apiUsersRouter.get(
       return httpNotFoundResponse(res, 'User not found');
     }
 
-    return httpSuccessResponse(res, findUser);
+    return httpSuccessResponse(res, { data: findUser });
   }
 );
 
@@ -169,10 +172,62 @@ apiUsersRouter.get(
 // 특정 유저의 게시물 조회
 apiUsersRouter.get(
   '/:id/posts',
-  (
-    req: TypedRequestParams<{ id?: string }>,
+  async (
+    req: TypedRequestQueryParams<
+      { cursor?: string; filter?: 'all' | 'reply' | 'media' | 'like' },
+      { id?: string }
+    >,
     res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
   ) => {
+    const { cursor, filter = 'all' } = req.query;
+    const { id } = req.params;
+    if (!id) return httpBadRequestResponse(res);
+
+    const dao = new DAO();
+    const findUser = dao.getUser(id);
+    if (!findUser) {
+      return httpNotFoundResponse(res, 'User not found');
+    }
+
+    let userPostList = dao.getPostList({ userId: findUser.id });
+    userPostList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+
+    if (filter === 'reply') {
+      userPostList = userPostList.filter((p) => !!p.parentId);
+    } else if (filter === 'media') {
+      userPostList = userPostList.filter(
+        (u) => !u.parentId && !u.originalId && u.images.length
+      );
+    }
+
+    const regex = /^[0-9]+$/;
+    if (cursor && regex.test(cursor)) {
+      const index = userPostList.findIndex(
+        (p) => p.postId === parseInt(cursor)
+      );
+      if (index > -1) {
+        userPostList.splice(0, index + 1);
+      }
+    }
+    userPostList.splice(10);
+
+    return httpSuccessResponse(res, {
+      data: userPostList,
+      nextCursor:
+        userPostList.length === 10 ? userPostList.at(-1)?.postId : undefined,
+    });
+  }
+);
+
+// "GET /api/users/:id/posts/count"
+// 특정 유저의 전체 게시물 카운트 조회
+apiUsersRouter.get(
+  '/:id/posts/count',
+  (
+    req: TypedRequestQueryParams<{ filter?: 'all' | 'media' }, { id?: string }>,
+    res: TypedResponse<{ data?: number; message: string }>
+  ) => {
+    const { filter = 'all' } = req.query;
     const { id } = req.params;
     if (!id) return httpBadRequestResponse(res);
 
@@ -183,9 +238,13 @@ apiUsersRouter.get(
     }
 
     const userPostList = dao.getPostList({ userId: findUser.id });
-    userPostList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
-
-    return httpSuccessResponse(res, userPostList);
+    let count = userPostList.length;
+    if (filter === 'media') {
+      count = userPostList.filter(
+        (p) => !p.parentId && !p.originalId && !p.images.length
+      ).length;
+    }
+    return httpSuccessResponse(res, { data: count });
   }
 );
 
@@ -231,7 +290,7 @@ apiUsersRouter.post(
       target: targetUser.id,
     });
 
-    return httpSuccessResponse(res, followedUser);
+    return httpSuccessResponse(res, { data: followedUser });
   }
 );
 
@@ -280,7 +339,7 @@ apiUsersRouter.delete(
       target: targetUser.id,
     });
 
-    return httpSuccessResponse(res, unFollowedUser);
+    return httpSuccessResponse(res, { data: unFollowedUser });
   }
 );
 
@@ -307,7 +366,7 @@ apiUsersRouter.get(
 
     const dao = new DAO();
     const roomList = dao.getRoomList(currentUser.id);
-    return httpSuccessResponse(res, roomList);
+    return httpSuccessResponse(res, { data: roomList });
   }
 );
 
@@ -352,7 +411,7 @@ apiUsersRouter.get(
     }
     messageList.splice(0, messageList.length - 10);
 
-    return httpSuccessResponse(res, messageList);
+    return httpSuccessResponse(res, { data: messageList });
   }
 );
 

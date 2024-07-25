@@ -3,8 +3,27 @@
     { "id": 1, "type": "Heart", "postId": 1, "userId": "elonmusk" },
     { "id": 2, "type": "Heart", "postId": 1, "userId": "nextjs" },
     { "id": 3, "type": "Heart", "postId": 1, "userId": "kim" },
-    { "id": 4, "type": "Comment", "postId": 1, "userId": "nextjs" },
+    {
+      "id": 4,
+      "type": "Comment",
+      "postId": 1,
+      "commentId": 3,
+      "userId": "nextjs"
+    },
     { "id": 5, "type": "Repost", "postId": 1, "userId": "nextjs" },
-    { "id": 6, "type": "Comment", "postId": 1, "userId": "robot" }
+    {
+      "id": 6,
+      "type": "Comment",
+      "postId": 1,
+      "commentId": 5,
+      "userId": "robot"
+    },
+    {
+      "id": 7,
+      "type": "Comment",
+      "postId": 1,
+      "commentId": 7,
+      "userId": "nextjs"
+    }
   ]
 }

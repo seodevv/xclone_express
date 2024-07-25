@@ -32,7 +32,7 @@ apiHashtagsRouter.get(
     const tagList = dao.getTagList();
     tagList.splice(10);
 
-    return httpSuccessResponse(res, tagList);
+    return httpSuccessResponse(res, { data: tagList });
   }
 );
 

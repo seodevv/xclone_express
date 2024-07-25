@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
+import fs from 'fs-extra';
 import DAO from './DAO';
 import { uploadPath } from '@/app';
 import { AdvancedUser, SafeUser } from '@/model/User';
@@ -72,4 +73,14 @@ export const delay = (ms: number) => {
   return new Promise((resolve) => {
     setTimeout(resolve, ms);
   });
+};
+
+export const removingFiles = (
+  files?: { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[]
+) => {
+  if (files) {
+    Object.values(files).forEach((v: Express.Multer.File) => {
+      fs.removeSync(uploadPath + '/' + v.filename);
+    });
+  }
 };

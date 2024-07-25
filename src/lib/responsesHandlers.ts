@@ -4,20 +4,23 @@ import { Response } from 'express';
 // HTTP Status Code 20x
 // 200 ok
 export function httpSuccessResponse<ResBody>(
-  res: TypedResponse<{ data?: ResBody; message: string }>,
-  data?: ResBody,
-  message: string = 'ok'
-): TypedResponse<{ data?: ResBody; message: string }> {
-  return res.status(200).json({ data, message });
+  res: TypedResponse<{ data?: ResBody; nextCursor?: number; message: string }>,
+  {
+    data,
+    message = 'ok',
+    nextCursor,
+    ...rest
+  }: { data?: ResBody; nextCursor?: number; message?: string }
+): TypedResponse<{ data?: ResBody; nextcursor?: number; message: string }> {
+  return res.status(200).json({ data, nextCursor, message, ...rest });
 }
 
 // 201 Created
 export function httpCreatedResponse<ResBody>(
   res: TypedResponse<{ data?: ResBody; message: string }>,
-  data?: ResBody,
-  message: string = 'Created'
+  { data, message = 'Created', ...rest }: { data?: ResBody; message?: string }
 ): TypedResponse<{ data?: ResBody; message: string }> {
-  return res.status(201).json({ data, message });
+  return res.status(201).json({ data, message, ...rest });
 }
 
 // 204 No Content

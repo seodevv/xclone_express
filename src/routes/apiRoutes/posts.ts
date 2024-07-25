@@ -11,7 +11,7 @@ import {
   httpSuccessResponse,
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
-import { decodingUserToken, storage } from '@/lib/common';
+import { decodingUserToken, delay, removingFiles, storage } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
@@ -21,7 +21,7 @@ import {
   TypedRequestQueryParams,
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
-import { AdvancedPost } from '@/model/Post';
+import { AdvancedPost, GifType, ImageType } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
 import { uploadPath } from '@/app';
 
@@ -91,7 +91,7 @@ apiPostsRouter.get(
     searchList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
     searchList.splice(10);
 
-    return httpSuccessResponse(res, searchList);
+    return httpSuccessResponse(res, { data: searchList });
   }
 );
 
@@ -101,39 +101,42 @@ apiPostsRouter.post(
   '/',
   upload.array('images', 4),
   (
-    req: TypedRequestBody<{ content?: string }>,
+    req: TypedRequestBody<{
+      content?: string;
+      mediaInfo?: string;
+    }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
-    const { content } = req.body;
+    const { content, mediaInfo } = req.body;
     const files = req.files;
     const { ['connect.sid']: token } = req.cookies;
-    if (!content || !files) {
-      files &&
-        Object.values(files).forEach((v: Express.Multer.File) => {
-          fs.removeSync(uploadPath + '/' + v.filename);
-        });
-      return httpBadRequestResponse(res);
-    }
+
+    if (!files) return httpBadRequestResponse(res);
+    if (!content && files.length === 0) return httpBadRequestResponse(res);
     if (!token) {
-      Object.values(files).forEach((v: Express.Multer.File) => {
-        fs.removeSync(uploadPath + '/' + v.filename);
-      });
+      removingFiles(files);
       return httpUnAuthorizedResponse(res);
     }
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      Object.values(files).forEach((v: Express.Multer.File) => {
-        fs.removeSync(uploadPath + '/' + v.filename);
-      });
+      removingFiles(files);
       res.clearCookie('connect.sid');
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const newPost = dao.createPost({ userId: currentUser.id, content, files });
+    const media = mediaInfo
+      ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
+      : undefined;
+    const newPost = dao.createPost({
+      userId: currentUser.id,
+      content,
+      files,
+      media,
+    });
 
-    return httpCreatedResponse(res, newPost);
+    return httpCreatedResponse(res, { data: newPost });
   }
 );
 
@@ -159,15 +162,24 @@ apiPostsRouter.get(
       return 1;
     });
 
-    if (cursor && !Number.isNaN(parseInt(cursor))) {
+    const regex = /^[0-9]+$/;
+    if (cursor && regex.test(cursor)) {
       const findIndex = recommendsList.findIndex(
         (p) => p.postId === parseInt(cursor)
       );
-      recommendsList.splice(0, findIndex + 1);
+      if (findIndex > -1) {
+        recommendsList.splice(0, findIndex + 1);
+      }
     }
     recommendsList.splice(10);
 
-    return httpSuccessResponse(res, recommendsList);
+    return httpSuccessResponse(res, {
+      data: recommendsList,
+      nextCursor:
+        recommendsList.length === 10
+          ? recommendsList.at(-1)?.postId
+          : undefined,
+    });
   }
 );
 
@@ -181,6 +193,7 @@ apiPostsRouter.get(
   ) => {
     const { cursor = '' } = req.query;
     const { ['connect.sid']: token } = req.cookies;
+
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
@@ -206,7 +219,11 @@ apiPostsRouter.get(
 
     filterdList.splice(10);
 
-    return httpSuccessResponse(res, filterdList);
+    return httpSuccessResponse(res, {
+      data: filterdList,
+      nextCursor:
+        filterdList.length === 10 ? filterdList.at(-1)?.postId : undefined,
+    });
   }
 );
 
@@ -228,7 +245,7 @@ apiPostsRouter.get(
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    return httpSuccessResponse(res, findPost);
+    return httpSuccessResponse(res, { data: findPost });
   }
 );
 
@@ -317,7 +334,7 @@ apiPostsRouter.post(
       userId: currentUser.id,
     });
 
-    return httpCreatedResponse(res, updatedPost);
+    return httpCreatedResponse(res, { data: updatedPost });
   }
 );
 
@@ -359,7 +376,7 @@ apiPostsRouter.delete(
       userId: currentUser.id,
     });
 
-    return httpSuccessResponse(res, updatedPost);
+    return httpSuccessResponse(res, { data: updatedPost });
   }
 );
 
@@ -407,7 +424,7 @@ apiPostsRouter.post(
       originalId: findPost.postId,
     });
 
-    return httpCreatedResponse(res, newRepost);
+    return httpCreatedResponse(res, { data: newRepost });
   }
 );
 
@@ -460,7 +477,7 @@ apiPostsRouter.get(
     req: TypedRequestQueryParams<{ cursor?: string }, { id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
   ) => {
-    const { cursor = '' } = req.query;
+    const { cursor } = req.query;
     const { id } = req.params;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
@@ -484,7 +501,11 @@ apiPostsRouter.get(
     }
     commentList.splice(10);
 
-    return httpSuccessResponse(res, commentList);
+    return httpSuccessResponse(res, {
+      data: commentList,
+      nextCursor:
+        commentList.length === 10 ? commentList.at(-1)?.postId : undefined,
+    });
   }
 );
 
@@ -494,28 +515,32 @@ apiPostsRouter.post(
   '/:id/comments',
   upload.array('images', 4),
   (
-    req: TypedRequestBodyParams<{ content?: string }, { id?: string }>,
+    req: TypedRequestBodyParams<
+      { content?: string; mediaInfo?: string },
+      { id?: string }
+    >,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const { id } = req.params;
-    const { content } = req.body;
+    const { content, mediaInfo } = req.body;
     const files = req.files;
     const { ['connect.sid']: token } = req.cookies;
     const regex = /^[0-9]*$/;
-    if (!id || !content || !files || !regex.test(id)) {
-      files &&
-        Object.values(files).forEach((v: Express.Multer.File) => {
-          fs.removeSync(uploadPath + '/' + v.filename);
-        });
+    const media = mediaInfo
+      ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
+      : undefined;
+
+    if (!id || !regex.test(id) || !files) {
+      removingFiles(files);
       return httpBadRequestResponse(res);
     }
+    if (!content && files.length === 0 && !media)
+      return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      Object.values(files).forEach((v: Express.Multer.File) => {
-        fs.removeSync(uploadPath + '/' + v.filename);
-      });
+      removingFiles(files);
       res.clearCookie('connect.sid');
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
@@ -523,26 +548,26 @@ apiPostsRouter.post(
     const dao = new DAO();
     const findPost = dao.getPost(parseInt(id));
     if (!findPost) {
-      Object.values(files).forEach((v: Express.Multer.File) => {
-        fs.removeSync(uploadPath + '/' + v.filename);
-      });
+      removingFiles(files);
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    dao.reactionHandler({
-      method: 'post',
-      type: 'Comment',
-      postId: findPost.postId,
-      userId: currentUser.id,
-    });
     const newComment = dao.createPost({
       userId: currentUser.id,
       content,
       files,
+      media,
       parentId: findPost.postId,
     });
+    const updatedComment = dao.reactionHandler({
+      method: 'post',
+      type: 'Comment',
+      userId: currentUser.id,
+      postId: findPost.postId,
+      commentId: newComment?.postId,
+    });
 
-    return httpCreatedResponse(res, newComment);
+    return httpCreatedResponse(res, { data: updatedComment });
   }
 );
 
@@ -573,7 +598,7 @@ apiPostsRouter.get(
       return httpNotFoundResponse(res, 'Image not found');
     }
 
-    return httpSuccessResponse(res, image);
+    return httpSuccessResponse(res, { data: image });
   }
 );
 

@@ -3,7 +3,8 @@ import { User } from './User';
 
 export interface Reactions {
   id: number;
-  postId: Post['postId'];
   type: string;
+  postId: Post['postId'];
+  commentId?: Post['postId'];
   userId: User['id'];
 }

@@ -4,7 +4,9 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import path from 'path';
 import fs from 'fs-extra';
+import https from 'https';
 import apiRouter from '@/routes/api';
+import morgan from 'morgan';
 
 const app = express();
 const host = process.env.SERVER_HOST || '0.0.0.0';
@@ -23,9 +25,22 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+app.use(
+  morgan(':method :url :status :res[content-length] - :response-time ms')
+);
 
 app.use('/api', apiRouter);
 
-app.listen(port, host, () =>
-  console.log(`server is running on : http://${host}:${port}`)
-);
+const options: https.ServerOptions = {
+  key: fs.readFileSync('./localhost-key.pem'),
+  cert: fs.readFileSync('./localhost.pem'),
+};
+
+const server = https.createServer(options, app);
+server.listen(port, host, () => {
+  console.log(`server is running on : https://${host}:${port}`);
+});
+
+// app.listen(port, host, () =>
+//   console.log(`server is running on : http://${host}:${port}`)
+// );

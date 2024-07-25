@@ -4,31 +4,53 @@
       "id": "elonmusk",
       "password": "elonmusk",
       "nickname": "Elon Musk",
-      "image": "X.jpg"
+      "image": "X.jpg",
+      "banner": "elonmusk.jpg",
+      "desc": "안녕하세요. 저는 @elonmusk입니다.\n잘 부탁드립니다.",
+      "refer": "https://github.com/seodevv",
+      "regist": "2024-05-09T17:41:15.773Z"
     },
     {
       "id": "nextjs",
       "password": "nextjs",
       "nickname": "next.js🔆",
-      "image": "nextjs.png"
+      "image": "nextjs.png",
+      "regist": "2024-05-10T17:41:15.773Z"
     },
     {
       "id": "kim",
       "password": "kim",
       "nickname": "kim🔥",
-      "image": "betman.png"
+      "image": "betman.png",
+      "regist": "2024-05-11T17:41:15.773Z"
     },
     {
       "id": "robot",
       "password": "robot",
       "nickname": "Iam Robot💪🏻",
-      "image": "1718537394020_6134346.png"
+      "image": "1718537394020_6134346.png",
+      "regist": "2024-05-12T17:41:15.773Z"
     },
     {
       "id": "dog",
       "password": "dog",
       "nickname": "Hi there🔆",
-      "image": "1718819565446_KakaoTalk_20230829_142432851.jpg"
+      "image": "1718819565446_KakaoTalk_20230829_142432851.jpg",
+      "regist": "2024-05-13T17:41:15.773Z"
+    },
+    {
+      "id": "118283142000627328981",
+      "password": "eyJhbGciOiJIUzI1NiJ9.MTE4MjgzMTQyMDAwNjI3MzI4OTgx.IkI072rmqp0iwAIcMUiBl7iVeWgScngpaAVuUziz9KQ",
+      "nickname": "dv S",
+      "image": "https://lh3.googleusercontent.com/a/ACg8ocIsrfY6_tEvQ0Kz2A0zDvMp4WzogQizT12K1wZ3__3QNTAspWpteg=s96-c",
+      "regist": "2024-05-14T17:41:15.773Z"
+    },
+    {
+      "id": "104405313",
+      "password": "eyJhbGciOiJIUzI1NiJ9.MTA0NDA1MzEz.KjCRGvGQotnSbz1X2V_L9iVlCmY0faXpAbsvvLZ9ul4",
+      "nickname": "seodev",
+      "image": "https://avatars.githubusercontent.com/u/104405313?v=4",
+      "regist": "2024-05-15T17:41:15.773Z"
     }
   ]
 }

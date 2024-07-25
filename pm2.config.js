@@ -14,7 +14,7 @@ module.exports = {
         'dist/data',
         'dist/uploads',
       ],
-      max_memory_restart: '100M',
+      max_memory_restart: '200M',
       env: {
         NODE_ENV: 'production',
         SERVER_HOST: 'localhost',

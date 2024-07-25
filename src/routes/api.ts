@@ -1,4 +1,4 @@
-import express, { CookieOptions } from 'express';
+import express from 'express';
 import multer from 'multer';
 import fs from 'fs-extra';
 import path from 'path';
@@ -58,7 +58,7 @@ apiRouter.post(
         return httpInternalServerErrorResponse(res);
       }
       res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
-      return httpSuccessResponse(res, findUser);
+      return httpSuccessResponse(res, { data: findUser });
     }
 
     // 로그인 실패 시
@@ -66,10 +66,10 @@ apiRouter.post(
   }
 );
 
-// "POST /api/login/google"
-// Google 로그인
+// "POST /api/login/oauth"
+// OAuth 로그인
 apiRouter.post(
-  '/login/google',
+  '/login/oauth',
   multer().none(),
   (
     req: TypedRequestBody<{ id?: string; nickname?: string; image?: string }>,
@@ -95,7 +95,7 @@ apiRouter.post(
     }
 
     res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
-    return httpSuccessResponse(res, user);
+    return httpSuccessResponse(res, { data: user });
   }
 );
 
@@ -104,14 +104,8 @@ apiRouter.post(
 apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
-    res.cookie('connect.sid', '', {
-      maxAge: 0,
-      httpOnly: true,
-      path: '/',
-      sameSite: 'none',
-      secure: true,
-    });
-    return httpSuccessResponse(res, undefined, 'Logout successful');
+    res.cookie('connect.sid', '', COOKIE_OPTIONS);
+    return httpSuccessResponse(res, { message: 'Logout successful' });
   }
 );
 

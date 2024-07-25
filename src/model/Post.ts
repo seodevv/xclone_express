@@ -28,3 +28,17 @@ export interface AdvancedPost extends Post {
   };
   Original?: AdvancedPost;
 }
+
+export interface GifType {
+  type: 'gif';
+  link: string;
+  width: number;
+  height: number;
+}
+
+export interface ImageType {
+  type: 'image';
+  fileName: string;
+  width: number;
+  height: number;
+}

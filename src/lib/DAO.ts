@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs-extra';
 import { AdvancedUser, SafeUser, User } from '@/model/User';
-import { AdvancedPost, Post } from '@/model/Post';
+import { AdvancedPost, GifType, ImageType, Post } from '@/model/Post';
 import { HashTag } from '@/model/Hashtag';
 import { AdvancedRoom, Room } from '@/model/Room';
 import { Message } from '@/model/Message';
@@ -14,6 +14,7 @@ import roomData from '@/data/room.json';
 import messageData from '@/data/message.json';
 import followData from '@/data/follow.json';
 import reactionsData from '@/data/reaction.json';
+import { PostImage } from '@/model/PostImage';
 
 let instance: DAO | null;
 
@@ -32,7 +33,12 @@ class DAO {
     }
 
     console.time('Data Load');
-    this.userList.push(...userData.data);
+    this.userList.push(
+      ...userData.data.map((u) => ({
+        ...u,
+        regist: new Date(u.regist),
+      }))
+    );
     this.postList.push(
       ...postData.data.map((p) => ({
         ...p,
@@ -66,6 +72,10 @@ class DAO {
       id: u.id,
       nickname: u.nickname,
       image: u.image,
+      banner: u.banner,
+      desc: u.desc,
+      refer: u.refer,
+      regist: u.regist,
       Followers: this.getFollowList({ target: u.id }).map((f) => ({
         id: f.source,
       })),
@@ -164,6 +174,10 @@ class DAO {
         id: findUser.id,
         nickname: findUser.nickname,
         image: findUser.image,
+        banner: findUser.banner,
+        desc: findUser.desc,
+        refer: findUser.refer,
+        regist: findUser.regist,
         Followers: this.followList
           .filter((f) => f.target === findUser.id)
           .map((u) => ({ id: u.source })),
@@ -204,9 +218,13 @@ class DAO {
     const Reposts = this.reactionList
       .filter((r) => r.type === 'Repost' && r.postId === findPost.postId)
       .map((r) => ({ id: r.userId }));
-    const Comments = this.reactionList
+    const totalComments = this.reactionList
       .filter((r) => r.type === 'Comment' && r.postId === findPost.postId)
       .map((r) => ({ id: r.userId }));
+    const Comments = [...new Set(totalComments.map((v) => v.id))].map((v) => ({
+      id: v,
+    }));
+
     const advancedPost: AdvancedPost = {
       ...findPost,
       User: user,
@@ -216,7 +234,7 @@ class DAO {
       _count: {
         Hearts: Hearts.length,
         Reposts: Reposts.length,
-        Comments: Comments.length,
+        Comments: totalComments.length,
       },
     };
 
@@ -261,12 +279,19 @@ class DAO {
     return findPost;
   }
 
-  createUser({ id, password, nickname, image }: User): AdvancedUser {
+  createUser({
+    id,
+    password,
+    nickname,
+    image,
+  }: Pick<User, 'id' | 'password' | 'nickname' | 'image'>): AdvancedUser {
+    const regist = new Date();
     const newUser: User = {
       id,
       password,
       nickname,
       image,
+      regist,
     };
     this.userList.push(newUser);
     this.writeDatabase('userList');
@@ -279,36 +304,57 @@ class DAO {
         Followers: 0,
         Followings: 0,
       },
+      regist,
     };
   }
 
   createPost({
     userId,
-    content,
+    content = '',
     files,
+    media,
     parentId,
     originalId,
   }: {
     userId: User['id'];
-    content: Post['content'];
+    content?: Post['content'];
     files?:
       | { [fieldname: string]: Express.Multer.File[] }
       | Express.Multer.File[];
+    media?: (GifType | ImageType)[];
     parentId?: Post['postId'];
     originalId?: Post['postId'];
   }): AdvancedPost | undefined {
     this.hashtagsAnalysis(content);
     const nextId = Math.max(...this.postList.map((p) => p.postId)) + 1;
+    const images: PostImage[] = media
+      ? media.map((m, i) => {
+          if (m.type === 'gif') {
+            return {
+              link: m.link,
+              imageId: i + 1,
+              width: m.width,
+              height: m.height,
+            };
+          }
+          const file = files
+            ? (Object.values(files).find(
+                (v: Express.Multer.File) => v.originalname === m.fileName
+              ) as Express.Multer.File)
+            : undefined;
+          return {
+            link: file ? file.filename : '',
+            imageId: i + 1,
+            width: m.width,
+            height: m.height,
+          };
+        })
+      : [];
     const newPost: Post = {
       postId: isFinite(nextId) ? nextId : 1,
       userId,
       content,
-      images: files
-        ? Object.values(files).map((v, i) => ({
-            link: v.filename,
-            imageId: i + 1,
-          }))
-        : [],
+      images,
       createAt: new Date(),
       parentId,
       originalId,
@@ -374,15 +420,25 @@ class DAO {
     method,
     userId,
     postId,
+    commentId,
   }: {
     type: 'Heart' | 'Repost' | 'Comment';
     method: 'post' | 'delete';
     userId: User['id'];
     postId: Post['postId'];
+    commentId?: Post['postId'];
   }): AdvancedPost | undefined {
-    const isReaction = !!this.reactionList.find(
-      (r) => r.type === type && r.userId === userId && r.postId === postId
-    );
+    const isReaction = !!this.reactionList.find((r) => {
+      if (type === 'Comment') {
+        return (
+          r.type === type &&
+          r.userId === userId &&
+          r.postId === postId &&
+          r.commentId === commentId
+        );
+      }
+      return r.type === type && r.userId === userId && r.postId === postId;
+    });
 
     if (method === 'post' && !isReaction) {
       const nextId = Math.max(...this.reactionList.map((r) => r.id)) + 1;
@@ -391,6 +447,7 @@ class DAO {
         type,
         postId,
         userId,
+        commentId: type === 'Comment' ? commentId : undefined,
       };
       this.reactionList.push(newReaction);
     } else if (method === 'delete' && isReaction) {
