@@ -32,16 +32,18 @@ const upload = multer({ storage });
 // 검색 결과 페이지 조회
 apiPostsRouter.get(
   '/',
-  (
+  async (
     req: TypedRequestQuery<{
       cursor?: string;
       q?: string;
-      pf?: string;
-      f?: string;
+      pf?: 'on';
+      lf?: 'on';
+      f?: 'live' | 'user' | 'media' | 'lists';
     }>,
     res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
   ) => {
-    const { cursor = '', q = '', pf = '', f = '' } = req.query;
+    await delay(1000);
+    const { cursor, q, pf, lf, f } = req.query;
     const { ['connect.sid']: token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
@@ -52,15 +54,14 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    let searchList = dao.getPostList({});
-    const regex = /^[0-9]*$/;
-    if (cursor && regex.test(cursor)) {
-      searchList = searchList.filter((p) => p.postId < parseInt(cursor));
-    }
+    let searchPostList = dao.getPostList({});
 
-    if (q && q.trim()) {
-      searchList = searchList.filter((p) => {
-        const regex = new RegExp(`${q.toLowerCase()}`);
+    if (q) {
+      const decode = decodeURIComponent(q);
+      const regex = new RegExp(
+        `${decode.toLowerCase().replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&')}`
+      );
+      searchPostList = searchPostList.filter((p) => {
         if (!p.Original) {
           if (
             regex.test(p.content.toLowerCase()) ||
@@ -88,10 +89,34 @@ apiPostsRouter.get(
       });
     }
 
-    searchList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
-    searchList.splice(10);
+    const regex = /^[0-9]*$/;
+    if (cursor && regex.test(cursor)) {
+      const findIndex = searchPostList.findIndex(
+        (p) => p.postId === parseInt(cursor)
+      );
+      searchPostList.splice(0, findIndex + 1);
+    }
 
-    return httpSuccessResponse(res, { data: searchList });
+    if (!f) {
+      searchPostList.sort((a, b) =>
+        a._count.Hearts > b._count.Hearts ? -1 : 1
+      );
+    } else if (f === 'live') {
+      searchPostList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+    } else if (f === 'media') {
+      searchPostList = searchPostList.filter(
+        (p) => !p.Original && !p.Parent && p.images.length !== 0
+      );
+    }
+    searchPostList.splice(10);
+
+    return httpSuccessResponse(res, {
+      data: searchPostList,
+      nextCursor:
+        searchPostList.length === 10
+          ? searchPostList.at(-1)?.postId
+          : undefined,
+    });
   }
 );
 
@@ -559,7 +584,7 @@ apiPostsRouter.post(
       media,
       parentId: findPost.postId,
     });
-    const updatedComment = dao.reactionHandler({
+    dao.reactionHandler({
       method: 'post',
       type: 'Comment',
       userId: currentUser.id,
@@ -567,7 +592,7 @@ apiPostsRouter.post(
       commentId: newComment?.postId,
     });
 
-    return httpCreatedResponse(res, { data: updatedComment });
+    return httpCreatedResponse(res, { data: newComment });
   }
 );
 

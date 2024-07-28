@@ -23,6 +23,7 @@ import {
   TypedRequestBody,
   TypedRequestCookies,
   TypedRequestParams,
+  TypedRequestQuery,
   TypedRequestQueryParams,
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
@@ -97,6 +98,60 @@ apiUsersRouter.post(
     res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
 
     return httpCreatedResponse(res, { data: newUser });
+  }
+);
+
+// "GET /api/users/search"
+// 유저 검색
+apiUsersRouter.get(
+  '/search',
+  (
+    req: TypedRequestQuery<{
+      cursor?: string;
+      q?: string;
+      pf?: 'on';
+      lf?: 'on';
+      f?: 'live' | 'user' | 'media' | 'lists';
+    }>,
+    res: TypedResponse<{ data?: AdvancedUser[]; message: string }>
+  ) => {
+    const { cursor, q, pf, lf, f } = req.query;
+    const { ['connect.sid']: token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.clearCookie('connect.sid');
+      return httpUnAuthorizedResponse(res, 'The token has expired');
+    }
+
+    const dao = new DAO();
+    let searchUserList = dao.getUserList();
+    if (q) {
+      const decode = decodeURIComponent(q);
+      const regex = new RegExp(
+        `${decode.toLowerCase().replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&')}`
+      );
+      searchUserList = searchUserList.filter(
+        (u) => regex.test(u.id) || regex.test(u.nickname)
+      );
+    }
+
+    if (cursor) {
+      const findIndex = searchUserList.findIndex((u) => u.id === cursor);
+      searchUserList.splice(0, findIndex + 1);
+    }
+
+    searchUserList.sort((a, b) =>
+      a._count.Followers > b._count.Followers ? -1 : 1
+    );
+    searchUserList.splice(10);
+
+    return httpSuccessResponse(res, {
+      data: searchUserList,
+      nextCursor:
+        searchUserList.length === 10 ? searchUserList.at(-1)?.id : undefined,
+    });
   }
 );
 

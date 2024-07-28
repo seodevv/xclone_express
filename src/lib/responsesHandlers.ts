@@ -4,13 +4,17 @@ import { Response } from 'express';
 // HTTP Status Code 20x
 // 200 ok
 export function httpSuccessResponse<ResBody>(
-  res: TypedResponse<{ data?: ResBody; nextCursor?: number; message: string }>,
+  res: TypedResponse<{
+    data?: ResBody;
+    nextCursor?: number | string;
+    message: string;
+  }>,
   {
     data,
     message = 'ok',
     nextCursor,
     ...rest
-  }: { data?: ResBody; nextCursor?: number; message?: string }
+  }: { data?: ResBody; nextCursor?: number | string; message?: string }
 ): TypedResponse<{ data?: ResBody; nextcursor?: number; message: string }> {
   return res.status(200).json({ data, nextCursor, message, ...rest });
 }

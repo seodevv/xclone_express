@@ -68,6 +68,36 @@
       "images": [],
       "createAt": "2024-07-23T11:55:50.375Z",
       "parentId": 1
+    },
+    {
+      "postId": 8,
+      "userId": "kim",
+      "content": "화성 갈끄니까~~~",
+      "images": [
+        {
+          "link": "https://media.tenor.com/oFO9mCbbj98AAAAC/rocket-lift-off.gif",
+          "imageId": 1,
+          "width": 498,
+          "height": 456
+        }
+      ],
+      "createAt": "2024-07-25T07:11:48.481Z",
+      "parentId": 6
+    },
+    {
+      "postId": 9,
+      "userId": "kim",
+      "content": "가즈아🚀",
+      "images": [
+        {
+          "link": "https://media.tenor.com/UwLDxWBS8moAAAAC/to-the-moon-taking-off.gif",
+          "imageId": 1,
+          "width": 498,
+          "height": 371
+        }
+      ],
+      "createAt": "2024-07-25T07:13:08.467Z",
+      "parentId": 6
     }
   ]
 }

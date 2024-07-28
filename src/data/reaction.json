@@ -24,6 +24,14 @@
       "postId": 1,
       "commentId": 7,
       "userId": "nextjs"
-    }
+    },
+    {
+      "id": 8,
+      "type": "Comment",
+      "postId": 6,
+      "userId": "kim",
+      "commentId": 8
+    },
+    { "id": 9, "type": "Comment", "postId": 6, "userId": "kim", "commentId": 9 }
   ]
 }
