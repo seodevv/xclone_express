@@ -32,6 +32,75 @@
       "userId": "kim",
       "commentId": 8
     },
-    { "id": 9, "type": "Comment", "postId": 6, "userId": "kim", "commentId": 9 }
+    {
+      "id": 9,
+      "type": "Comment",
+      "postId": 6,
+      "userId": "kim",
+      "commentId": 9
+    },
+    {
+      "id": 10,
+      "type": "Comment",
+      "postId": 10,
+      "userId": "102099463083570853581",
+      "commentId": 12
+    },
+    {
+      "id": 11,
+      "type": "Comment",
+      "postId": 10,
+      "userId": "104405313",
+      "commentId": 16
+    },
+    {
+      "id": 12,
+      "type": "Comment",
+      "postId": 11,
+      "userId": "104405313",
+      "commentId": 18
+    },
+    {
+      "id": 13,
+      "type": "Comment",
+      "postId": 3,
+      "userId": "kim",
+      "commentId": 28
+    },
+    {
+      "id": 14,
+      "type": "Comment",
+      "postId": 26,
+      "userId": "kim",
+      "commentId": 29
+    },
+    {
+      "id": 15,
+      "type": "Comment",
+      "postId": 24,
+      "userId": "kim",
+      "commentId": 30
+    },
+    {
+      "id": 16,
+      "type": "Comment",
+      "postId": 27,
+      "userId": "kim",
+      "commentId": 31
+    },
+    {
+      "id": 17,
+      "type": "Comment",
+      "postId": 32,
+      "userId": "dog",
+      "commentId": 33
+    },
+    {
+      "id": 18,
+      "type": "Comment",
+      "postId": 32,
+      "userId": "dog",
+      "commentId": 34
+    }
   ]
 }

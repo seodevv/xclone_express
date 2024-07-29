@@ -108,6 +108,16 @@ apiPostsRouter.get(
         (p) => !p.Original && !p.Parent && p.images.length !== 0
       );
     }
+
+    if (pf) {
+      const followingList = dao
+        .getFollowList({ source: currentUser.id })
+        .map((f) => f.target);
+      searchPostList = searchPostList.filter((p) => {
+        if (followingList.includes(p.User.id)) return true;
+        return false;
+      });
+    }
     searchPostList.splice(10);
 
     return httpSuccessResponse(res, {
@@ -135,9 +145,13 @@ apiPostsRouter.post(
     const { content, mediaInfo } = req.body;
     const files = req.files;
     const { ['connect.sid']: token } = req.cookies;
+    const media = mediaInfo
+      ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
+      : undefined;
 
     if (!files) return httpBadRequestResponse(res);
-    if (!content && files.length === 0) return httpBadRequestResponse(res);
+    if (!content && files.length === 0 && !media)
+      return httpBadRequestResponse(res);
     if (!token) {
       removingFiles(files);
       return httpUnAuthorizedResponse(res);
@@ -151,9 +165,6 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const media = mediaInfo
-      ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
-      : undefined;
     const newPost = dao.createPost({
       userId: currentUser.id,
       content,

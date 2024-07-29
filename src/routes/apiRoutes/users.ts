@@ -142,6 +142,19 @@ apiUsersRouter.get(
       searchUserList.splice(0, findIndex + 1);
     }
 
+    if (pf) {
+      const followList = dao
+        .getFollowList({ target: currentUser.id })
+        .map((u) => u.source);
+      const followingList = dao
+        .getFollowList({ source: currentUser.id })
+        .map((u) => u.target);
+
+      searchUserList = searchUserList.filter(
+        (u) => followList.includes(u.id) || followingList.includes(u.id)
+      );
+    }
+
     searchUserList.sort((a, b) =>
       a._count.Followers > b._count.Followers ? -1 : 1
     );

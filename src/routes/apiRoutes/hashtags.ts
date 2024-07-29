@@ -7,7 +7,7 @@ import { decodingUserToken } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import { TypedRequestCookies } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
-import { HashTag } from '@/model/Hashtag';
+import { Tags } from '@/model/Hashtag';
 
 const apiHashtagsRouter = express.Router();
 
@@ -17,7 +17,7 @@ apiHashtagsRouter.get(
   '/trends',
   (
     req: TypedRequestCookies,
-    res: TypedResponse<{ data?: HashTag[]; message: string }>
+    res: TypedResponse<{ data?: Tags[]; message: string }>
   ) => {
     const { ['connect.sid']: token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);

@@ -1,12 +1,5 @@
 import path from 'path';
 import fs from 'fs-extra';
-import { AdvancedUser, SafeUser, User } from '@/model/User';
-import { AdvancedPost, GifType, ImageType, Post } from '@/model/Post';
-import { HashTag } from '@/model/Hashtag';
-import { AdvancedRoom, Room } from '@/model/Room';
-import { Message } from '@/model/Message';
-import { Follow } from '@/model/Follow';
-import { Reactions } from '@/model/Reaction';
 import userData from '@/data/user.json';
 import postData from '@/data/post.json';
 import tagData from '@/data/hashtag.json';
@@ -14,14 +7,22 @@ import roomData from '@/data/room.json';
 import messageData from '@/data/message.json';
 import followData from '@/data/follow.json';
 import reactionsData from '@/data/reaction.json';
+import { AdvancedUser, SafeUser, User } from '@/model/User';
+import { AdvancedPost, GifType, ImageType, Post } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
+import { Follow } from '@/model/Follow';
+import { Reactions } from '@/model/Reaction';
+import { isTag, isWord, Tag, Tags, Word } from '@/model/Hashtag';
+import { AdvancedRoom, Room } from '@/model/Room';
+import { Message } from '@/model/Message';
+import { Morpheme } from '@/model/Morpheme';
 
 let instance: DAO | null;
 
 class DAO {
   private userList: User[] = [];
   private postList: Post[] = [];
-  private tagList: HashTag[] = [];
+  private tagList: Tags[] = [];
   private roomList: Room[] = [];
   private messageList: Message[] = [];
   private followList: Follow[] = [];
@@ -45,7 +46,12 @@ class DAO {
         createAt: new Date(p.createAt),
       }))
     );
-    this.tagList.push(...tagData.data);
+    this.tagList.push(
+      ...tagData.data.map((t) => {
+        if (isWord(t)) return t;
+        return isTag(t);
+      })
+    );
     this.roomList.push(
       ...roomData.data.map((r) => ({
         ...r,
@@ -110,7 +116,7 @@ class DAO {
     return postList;
   }
 
-  getTagList(): HashTag[] {
+  getTagList(): Tags[] {
     const tagList = [
       ...this.tagList.sort((a, b) => (a.count > b.count ? -1 : 1)),
     ];
@@ -326,6 +332,7 @@ class DAO {
     originalId?: Post['postId'];
   }): AdvancedPost | undefined {
     this.hashtagsAnalysis(content);
+    this.morphemeAnalysis(content);
     const nextId = Math.max(...this.postList.map((p) => p.postId)) + 1;
     const images: PostImage[] = media
       ? media.map((m, i) => {
@@ -479,8 +486,9 @@ class DAO {
           findTag.count++;
         } else {
           const nextId = Math.max(...this.tagList.map((t) => t.id)) + 1;
-          const newTag: HashTag = {
+          const newTag: Tag = {
             id: isFinite(nextId) ? nextId : 1,
+            type: 'tag',
             title: tag,
             count: 1,
           };
@@ -488,6 +496,59 @@ class DAO {
         }
       });
       this.writeDatabase('tagList');
+    }
+  }
+
+  async morphemeAnalysis(content: string): Promise<void> {
+    const API_KEY = process.env.AI_OPEN_ETRI_API_KEY;
+    if (!content || !content.trim() || !API_KEY) return;
+
+    try {
+      const requestUrl = 'http://aiopen.etri.re.kr:8000/WiseNLU_spoken';
+      const body = {
+        argument: {
+          analysis_code: 'morp',
+          text: content,
+        },
+      };
+      const requestOptions: RequestInit = {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: API_KEY,
+        },
+      };
+
+      const response = await fetch(requestUrl, requestOptions);
+      const data: Morpheme = await response.json();
+
+      data.return_object.sentence.forEach((sentence) => {
+        sentence.morp.forEach((morp) => {
+          const findWord = this.tagList.find(
+            (t) =>
+              t.type === 'word' &&
+              t.title.toLowerCase() === morp.lemma.toLowerCase()
+          );
+          if (findWord) {
+            findWord.count++;
+          } else {
+            const nextId = Math.max(...this.tagList.map((t) => t.id)) + 1;
+            const newWord: Word = {
+              id: isFinite(nextId) ? nextId : 1,
+              type: 'word',
+              title: morp.lemma,
+              count: 1,
+              position: morp.position,
+              weight: morp.weight,
+            };
+            this.tagList.push(newWord);
+          }
+        });
+      });
+      this.writeDatabase('tagList');
+    } catch (error) {
+      console.error(error);
     }
   }
 
