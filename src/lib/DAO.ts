@@ -104,7 +104,7 @@ class DAO {
   }): AdvancedPost[] {
     const postList: AdvancedPost[] = [];
     this.postList.forEach((p) => {
-      const post = this.getFullPost(p.postId);
+      const post = this.getFullPost({ postId: p.postId });
       if (!post) return;
       if (userId && post.userId !== userId) return;
       if (parentId && post.parentId !== parentId) return;
@@ -162,6 +162,12 @@ class DAO {
     );
   }
 
+  getLikeList({ userId }: { userId: User['id'] }): Reactions[] {
+    return this.reactionList.filter(
+      (r) => r.type === 'Heart' && r.userId === userId
+    );
+  }
+
   getUser(
     id: User['id'],
     password?: User['password']
@@ -211,8 +217,19 @@ class DAO {
     return;
   }
 
-  getPost(postId: number): AdvancedPost | undefined {
-    const findPost = this.postList.find((p) => p.postId === postId);
+  getPost({
+    userId,
+    postId,
+  }: {
+    userId?: string;
+    postId: number;
+  }): AdvancedPost | undefined {
+    const findPost = this.postList.find((p) => {
+      if (userId) {
+        return p.postId === postId && p.userId === userId;
+      }
+      return p.postId === postId;
+    });
     if (!findPost) return;
 
     const user = this.getSafeUser(findPost.userId);
@@ -260,12 +277,18 @@ class DAO {
     return findPost;
   }
 
-  getFullPost(postId: number): AdvancedPost | undefined {
-    const findPost = this.getPost(postId);
+  getFullPost({
+    userId,
+    postId,
+  }: {
+    userId?: string;
+    postId: number;
+  }): AdvancedPost | undefined {
+    const findPost = this.getPost({ userId: userId, postId: postId });
     if (!findPost) return;
 
     if (findPost.parentId) {
-      const Parent = this.getPost(findPost.parentId);
+      const Parent = this.getPost({ postId: findPost.parentId });
       if (Parent) {
         findPost.Parent = {
           postId: Parent.postId,
@@ -276,7 +299,7 @@ class DAO {
     }
 
     if (findPost.originalId) {
-      const Original = this.getPost(findPost.originalId);
+      const Original = this.getPost({ postId: findPost.originalId });
       if (Original) {
         findPost.Original = Original;
       }
@@ -332,7 +355,7 @@ class DAO {
     originalId?: Post['postId'];
   }): AdvancedPost | undefined {
     this.hashtagsAnalysis(content);
-    this.morphemeAnalysis(content);
+    this.morphologyAnalysis(content);
     const nextId = Math.max(...this.postList.map((p) => p.postId)) + 1;
     const images: PostImage[] = media
       ? media.map((m, i) => {
@@ -369,7 +392,7 @@ class DAO {
     this.postList.push(newPost);
     this.writeDatabase('postList');
 
-    return this.getFullPost(newPost.postId);
+    return this.getFullPost({ postId: newPost.postId });
   }
 
   deletePost(postId: number): void {
@@ -464,7 +487,7 @@ class DAO {
     }
     this.writeDatabase('reactionList');
 
-    const updatedPost = this.getFullPost(postId);
+    const updatedPost = this.getFullPost({ postId: postId });
     return updatedPost;
   }
 
@@ -474,9 +497,11 @@ class DAO {
     const regex = /#[^\s#)\]]+/g;
     const hashtags = content.match(regex);
     if (hashtags) {
+      const already: string[] = [];
       hashtags.forEach((t) => {
         const tag = t.replace(/#/, '');
         if (tag === '') return;
+        if (already.includes(t)) return;
 
         const findTag = this.tagList.find(
           (t) => t.title.toLowerCase() === tag.toLowerCase()
@@ -494,12 +519,13 @@ class DAO {
           };
           this.tagList.push(newTag);
         }
+        already.push(t);
       });
       this.writeDatabase('tagList');
     }
   }
 
-  async morphemeAnalysis(content: string): Promise<void> {
+  async morphologyAnalysis(content: string): Promise<void> {
     const API_KEY = process.env.AI_OPEN_ETRI_API_KEY;
     if (!content || !content.trim() || !API_KEY) return;
 
@@ -523,13 +549,17 @@ class DAO {
       const response = await fetch(requestUrl, requestOptions);
       const data: Morpheme = await response.json();
 
+      const already: string[] = [];
       data.return_object.sentence.forEach((sentence) => {
         sentence.morp.forEach((morp) => {
+          if (!['NNG', 'NNP', 'NNB', 'SL'].includes(morp.type)) return;
+          if (already.includes(morp.lemma.toLowerCase())) return;
           const findWord = this.tagList.find(
             (t) =>
               t.type === 'word' &&
               t.title.toLowerCase() === morp.lemma.toLowerCase()
           );
+          console.log(findWord, morp.lemma.toLowerCase(), already);
           if (findWord) {
             findWord.count++;
           } else {
@@ -539,11 +569,11 @@ class DAO {
               type: 'word',
               title: morp.lemma,
               count: 1,
-              position: morp.position,
               weight: morp.weight,
             };
             this.tagList.push(newWord);
           }
+          already.push(morp.lemma.toLowerCase());
         });
       });
       this.writeDatabase('tagList');

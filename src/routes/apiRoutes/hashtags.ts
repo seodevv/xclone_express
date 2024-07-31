@@ -19,7 +19,7 @@ apiHashtagsRouter.get(
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: Tags[]; message: string }>
   ) => {
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);

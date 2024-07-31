@@ -43,7 +43,7 @@ apiUsersRouter.get(
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res, 'please login first');
 
     const currentUser = decodingUserToken(token);
@@ -113,10 +113,14 @@ apiUsersRouter.get(
       lf?: 'on';
       f?: 'live' | 'user' | 'media' | 'lists';
     }>,
-    res: TypedResponse<{ data?: AdvancedUser[]; message: string }>
+    res: TypedResponse<{
+      data?: AdvancedUser[];
+      nextCursor?: string;
+      message: string;
+    }>
   ) => {
     const { cursor, q, pf, lf, f } = req.query;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
@@ -176,7 +180,7 @@ apiUsersRouter.get(
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: AdvancedUser[]; message: string }>
   ) => {
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
 
     const dao = new DAO();
     const recommendsList = dao.getUserList();
@@ -245,7 +249,11 @@ apiUsersRouter.get(
       { cursor?: string; filter?: 'all' | 'reply' | 'media' | 'like' },
       { id?: string }
     >,
-    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
+    res: TypedResponse<{
+      data?: AdvancedPost[];
+      nextCursor?: number;
+      message: string;
+    }>
   ) => {
     const { cursor, filter = 'all' } = req.query;
     const { id } = req.params;
@@ -325,7 +333,7 @@ apiUsersRouter.post(
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { id } = req.params;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     if (!id) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res, 'please login first');
 
@@ -371,7 +379,7 @@ apiUsersRouter.delete(
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { id } = req.params;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     if (!id) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
@@ -420,7 +428,7 @@ apiUsersRouter.get(
     res: TypedResponse<{ data?: AdvancedRoom[]; message: string }>
   ) => {
     const { id } = req.params;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     if (!id) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
@@ -452,7 +460,7 @@ apiUsersRouter.get(
   ) => {
     const { id, roomId } = req.params;
     const { cursor } = req.query;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     if (!id || !roomId) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 

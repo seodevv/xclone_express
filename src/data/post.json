@@ -372,6 +372,36 @@
       "images": [],
       "createAt": "2024-07-29T06:44:35.812Z",
       "parentId": 32
+    },
+    {
+      "postId": 35,
+      "userId": "dog",
+      "content": "한국어 '강아지'는 '개'에 어린 짐승을 뜻하는 '아지'가 붙은 말이다.\r\n경상북도 사투리로는 강생이라고도 한다.\r\n각 언어마다 강아지에 대한 별도의 명칭이 있는데,\r\n영어로는 강아지를 'Puppy'(퍼피)라 부르며,\r\n일본어로는 '小犬(코이누)'라 하며,\r\n중국어로는 '小狗(샤오거우)' 혹은 '幼犬(유추안)'이라 한다.\r\n#강아지 #개 #dog #puppy #小犬 #小狗 #幼犬",
+      "images": [
+        {
+          "link": "https://media.tenor.com/p9PtldNkT_IAAAAC/happy-smile.gif",
+          "imageId": 1,
+          "width": 250,
+          "height": 250
+        }
+      ],
+      "createAt": "2024-07-30T02:57:26.437Z"
+    },
+    {
+      "postId": 36,
+      "userId": "dog",
+      "content": "#dog #dog #dog",
+      "images": [],
+      "createAt": "2024-07-30T02:57:54.669Z",
+      "parentId": 35
+    },
+    {
+      "postId": 37,
+      "userId": "dog",
+      "content": "#dog #dog #dog",
+      "images": [],
+      "createAt": "2024-07-30T02:58:33.232Z",
+      "parentId": 35
     }
   ]
 }

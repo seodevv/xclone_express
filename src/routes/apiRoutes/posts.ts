@@ -11,7 +11,13 @@ import {
   httpSuccessResponse,
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
-import { decodingUserToken, delay, removingFiles, storage } from '@/lib/common';
+import {
+  COOKIE_OPTIONS,
+  decodingUserToken,
+  delay,
+  removingFiles,
+  storage,
+} from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
@@ -40,11 +46,15 @@ apiPostsRouter.get(
       lf?: 'on';
       f?: 'live' | 'user' | 'media' | 'lists';
     }>,
-    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
+    res: TypedResponse<{
+      data?: AdvancedPost[];
+      nextCursor?: number;
+      message: string;
+    }>
   ) => {
     await delay(1000);
     const { cursor, q, pf, lf, f } = req.query;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
@@ -89,14 +99,6 @@ apiPostsRouter.get(
       });
     }
 
-    const regex = /^[0-9]*$/;
-    if (cursor && regex.test(cursor)) {
-      const findIndex = searchPostList.findIndex(
-        (p) => p.postId === parseInt(cursor)
-      );
-      searchPostList.splice(0, findIndex + 1);
-    }
-
     if (!f) {
       searchPostList.sort((a, b) =>
         a._count.Hearts > b._count.Hearts ? -1 : 1
@@ -118,6 +120,13 @@ apiPostsRouter.get(
         return false;
       });
     }
+
+    const regex = /^[0-9]*$/;
+    if (cursor && regex.test(cursor)) {
+      const findIndex = searchPostList.findIndex((p) => p.postId === ~~cursor);
+      searchPostList.splice(0, findIndex + 1);
+    }
+
     searchPostList.splice(10);
 
     return httpSuccessResponse(res, {
@@ -144,7 +153,7 @@ apiPostsRouter.post(
   ) => {
     const { content, mediaInfo } = req.body;
     const files = req.files;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     const media = mediaInfo
       ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
       : undefined;
@@ -180,10 +189,15 @@ apiPostsRouter.post(
 // 추천 게시글 조회
 apiPostsRouter.get(
   '/recommends',
-  (
+  async (
     req: TypedRequestQuery<{ cursor?: string }>,
-    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
+    res: TypedResponse<{
+      data?: AdvancedPost[];
+      nextCursor?: number;
+      message: string;
+    }>
   ) => {
+    await delay(1000);
     const { cursor = '' } = req.query;
 
     const dao = new DAO();
@@ -225,10 +239,14 @@ apiPostsRouter.get(
   '/followings',
   (
     req: TypedRequestQuery<{ cursor?: string }>,
-    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
+    res: TypedResponse<{
+      data?: AdvancedPost[];
+      nextCursor?: number;
+      message: string;
+    }>
   ) => {
     const { cursor = '' } = req.query;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
 
     if (!token) return httpUnAuthorizedResponse(res);
 
@@ -263,20 +281,65 @@ apiPostsRouter.get(
   }
 );
 
+// "GET /api/posts/likes"
+// 좋아요를 한 게시글 조회
+apiPostsRouter.get(
+  '/likes',
+  (
+    req: TypedRequestQuery<{ cursor?: string }>,
+    res: TypedResponse<{
+      data?: AdvancedPost[];
+      nextCursor?: number;
+      message: string;
+    }>
+  ) => {
+    const { cursor } = req.query;
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const findUser = decodingUserToken(token);
+    if (!findUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpNotFoundResponse(res);
+    }
+
+    const dao = new DAO();
+    let postList = dao.getPostList({});
+    let likeList = dao
+      .getLikeList({ userId: findUser.id })
+      .map((l) => l.postId);
+
+    postList = postList.filter((p) => likeList.includes(p.postId));
+
+    const regex = /^[0-9]+$/;
+    if (cursor && regex.test(cursor)) {
+      const findIndex = postList.findIndex((p) => p.postId === ~~cursor);
+      postList.splice(0, findIndex + 1);
+    }
+    postList.splice(10);
+
+    return httpSuccessResponse(res, {
+      data: postList,
+      nextCursor: postList.length === 10 ? postList.at(-1)?.postId : undefined,
+    });
+  }
+);
+
 // "GET /api/posts/:id"
 // 특정 게시글 조회
 apiPostsRouter.get(
   '/:id',
   (
-    req: TypedRequestParams<{ id?: string }>,
+    req: TypedRequestQueryParams<{ userId?: string }, { id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
+    const { userId } = req.query;
     const { id } = req.params;
     const regex = /^[0-9]*$/;
-    if (!id || !regex.test(id)) return httpBadRequestResponse(res);
+    if (!id || !regex.test(id) || !userId) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findPost = dao.getFullPost(parseInt(id));
+    const findPost = dao.getFullPost({ userId, postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -294,7 +357,7 @@ apiPostsRouter.delete(
     res: TypedResponse<{ message: string }>
   ) => {
     const { id } = req.params;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
@@ -306,7 +369,7 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.getFullPost(parseInt(id));
+    const findPost = dao.getFullPost({ postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -341,7 +404,7 @@ apiPostsRouter.post(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const { id } = req.params;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
@@ -353,7 +416,7 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost(parseInt(id));
+    const findPost = dao.getPost({ postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -383,7 +446,7 @@ apiPostsRouter.delete(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const { id } = req.params;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
@@ -395,7 +458,7 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost(parseInt(id));
+    const findPost = dao.getPost({ postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -425,7 +488,7 @@ apiPostsRouter.post(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const { id } = req.params;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
@@ -437,7 +500,7 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getFullPost(parseInt(id));
+    const findPost = dao.getFullPost({ postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -473,7 +536,7 @@ apiPostsRouter.delete(
     res: TypedResponse<{ message: string }>
   ) => {
     const { id } = req.params;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
@@ -510,16 +573,23 @@ apiPostsRouter.delete(
 apiPostsRouter.get(
   '/:id/comments',
   (
-    req: TypedRequestQueryParams<{ cursor?: string }, { id?: string }>,
-    res: TypedResponse<{ data?: AdvancedPost[]; message: string }>
+    req: TypedRequestQueryParams<
+      { cursor?: string; userId?: string },
+      { id?: string }
+    >,
+    res: TypedResponse<{
+      data?: AdvancedPost[];
+      nextCursor?: number;
+      message: string;
+    }>
   ) => {
-    const { cursor } = req.query;
+    const { cursor, userId } = req.query;
     const { id } = req.params;
     const regex = /^[0-9]*$/;
-    if (!id || !regex.test(id)) return httpBadRequestResponse(res);
+    if (!id || !regex.test(id) || !userId) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findPost = dao.getPost(parseInt(id));
+    const findPost = dao.getPost({ userId, postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -560,7 +630,7 @@ apiPostsRouter.post(
     const { id } = req.params;
     const { content, mediaInfo } = req.body;
     const files = req.files;
-    const { ['connect.sid']: token } = req.cookies;
+    const { 'connect.sid': token } = req.cookies;
     const regex = /^[0-9]*$/;
     const media = mediaInfo
       ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
@@ -582,7 +652,7 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost(parseInt(id));
+    const findPost = dao.getPost({ postId: ~~id });
     if (!findPost) {
       removingFiles(files);
       return httpNotFoundResponse(res, 'Post not found');
@@ -622,7 +692,7 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost(parseInt(id));
+    const findPost = dao.getPost({ postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }

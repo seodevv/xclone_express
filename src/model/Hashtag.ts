@@ -14,7 +14,6 @@ export interface Tag extends Default {
 
 export interface Word extends Default {
   type: 'word';
-  position: number;
   weight: number;
 }
 

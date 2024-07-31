@@ -101,6 +101,20 @@
       "postId": 32,
       "userId": "dog",
       "commentId": 34
+    },
+    {
+      "id": 19,
+      "type": "Comment",
+      "postId": 35,
+      "userId": "dog",
+      "commentId": 36
+    },
+    {
+      "id": 20,
+      "type": "Comment",
+      "postId": 35,
+      "userId": "dog",
+      "commentId": 37
     }
   ]
 }
