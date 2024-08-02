@@ -83,6 +83,7 @@ class DAO {
       desc: u.desc,
       refer: u.refer,
       regist: u.regist,
+      verified: u.verified,
       Followers: this.getFollowList({ target: u.id }).map((f) => ({
         id: f.source,
       })),
