@@ -7,7 +7,7 @@ import roomData from '@/data/room.json';
 import messageData from '@/data/message.json';
 import followData from '@/data/follow.json';
 import reactionsData from '@/data/reaction.json';
-import { AdvancedUser, SafeUser, User } from '@/model/User';
+import { AdvancedUser, isVerified, SafeUser, User } from '@/model/User';
 import { AdvancedPost, GifType, ImageType, Post } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
 import { Follow } from '@/model/Follow';
@@ -37,6 +37,7 @@ class DAO {
     this.userList.push(
       ...userData.data.map((u) => ({
         ...u,
+        verified: u.verified ? isVerified(u.verified) : undefined,
         regist: new Date(u.regist),
       }))
     );
@@ -190,6 +191,7 @@ class DAO {
         desc: findUser.desc,
         refer: findUser.refer,
         regist: findUser.regist,
+        verified: findUser.verified,
         Followers: this.followList
           .filter((f) => f.target === findUser.id)
           .map((u) => ({ id: u.source })),

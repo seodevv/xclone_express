@@ -2,6 +2,11 @@ export interface UserId {
   id: User['id'];
 }
 
+interface Verified {
+  type: 'blue' | 'gold' | 'gray';
+  date: Date;
+}
+
 export interface User {
   id: string;
   password: string;
@@ -10,6 +15,7 @@ export interface User {
   banner?: string;
   desc?: string;
   refer?: string;
+  verified?: Verified;
   regist: Date;
 }
 
@@ -20,4 +26,16 @@ export interface AdvancedUser extends Omit<User, 'password'> {
     Followers: number;
     Followings: number;
   };
+}
+
+export function isVerified(obj: {
+  type: string;
+  date: string;
+}): Verified | undefined {
+  if (obj.type === 'blue' || obj.type === 'gold' || obj.type === 'gray') {
+    return {
+      type: obj.type,
+      date: new Date(obj.date),
+    };
+  }
 }

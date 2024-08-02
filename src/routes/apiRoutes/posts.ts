@@ -55,6 +55,7 @@ apiPostsRouter.get(
     await delay(1000);
     const { cursor, q, pf, lf, f } = req.query;
     const { 'connect.sid': token } = req.cookies;
+    const pageSize = f === 'media' ? 12 : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
@@ -127,14 +128,13 @@ apiPostsRouter.get(
       searchPostList.splice(0, findIndex + 1);
     }
 
-    searchPostList.splice(10);
+    const prevLength = searchPostList.length;
+    searchPostList.splice(pageSize);
 
     return httpSuccessResponse(res, {
       data: searchPostList,
       nextCursor:
-        searchPostList.length === 10
-          ? searchPostList.at(-1)?.postId
-          : undefined,
+        prevLength > pageSize ? searchPostList.at(-1)?.postId : undefined,
     });
   }
 );
@@ -199,6 +199,7 @@ apiPostsRouter.get(
   ) => {
     await delay(1000);
     const { cursor = '' } = req.query;
+    const pageSize = 10;
 
     const dao = new DAO();
     let recommendsList = dao.getPostList({});
@@ -221,14 +222,14 @@ apiPostsRouter.get(
         recommendsList.splice(0, findIndex + 1);
       }
     }
-    recommendsList.splice(10);
+
+    const prevLength = recommendsList.length;
+    recommendsList.splice(pageSize);
 
     return httpSuccessResponse(res, {
       data: recommendsList,
       nextCursor:
-        recommendsList.length === 10
-          ? recommendsList.at(-1)?.postId
-          : undefined,
+        prevLength > pageSize ? recommendsList.at(-1)?.postId : undefined,
     });
   }
 );
@@ -247,7 +248,7 @@ apiPostsRouter.get(
   ) => {
     const { cursor = '' } = req.query;
     const { 'connect.sid': token } = req.cookies;
-
+    const pageSize = 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
@@ -271,12 +272,13 @@ apiPostsRouter.get(
       filterdList.splice(0, findIndex + 1);
     }
 
-    filterdList.splice(10);
+    const prevLength = filterdList.length;
+    filterdList.splice(pageSize);
 
     return httpSuccessResponse(res, {
       data: filterdList,
       nextCursor:
-        filterdList.length === 10 ? filterdList.at(-1)?.postId : undefined,
+        prevLength > pageSize ? filterdList.at(-1)?.postId : undefined,
     });
   }
 );
@@ -295,6 +297,7 @@ apiPostsRouter.get(
   ) => {
     const { cursor } = req.query;
     const { 'connect.sid': token } = req.cookies;
+    const pageSize = 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const findUser = decodingUserToken(token);
@@ -316,11 +319,13 @@ apiPostsRouter.get(
       const findIndex = postList.findIndex((p) => p.postId === ~~cursor);
       postList.splice(0, findIndex + 1);
     }
-    postList.splice(10);
+
+    const prevLength = postList.length;
+    postList.splice(pageSize);
 
     return httpSuccessResponse(res, {
       data: postList,
-      nextCursor: postList.length === 10 ? postList.at(-1)?.postId : undefined,
+      nextCursor: prevLength > pageSize ? postList.at(-1)?.postId : undefined,
     });
   }
 );
@@ -586,6 +591,7 @@ apiPostsRouter.get(
     const { cursor, userId } = req.query;
     const { id } = req.params;
     const regex = /^[0-9]*$/;
+    const pageSize = 10;
     if (!id || !regex.test(id) || !userId) return httpBadRequestResponse(res);
 
     const dao = new DAO();
@@ -605,12 +611,14 @@ apiPostsRouter.get(
         commentList.splice(0, findIndex + 1);
       }
     }
-    commentList.splice(10);
+
+    const prevLength = commentList.length;
+    commentList.splice(pageSize);
 
     return httpSuccessResponse(res, {
       data: commentList,
       nextCursor:
-        commentList.length === 10 ? commentList.at(-1)?.postId : undefined,
+        prevLength > pageSize ? commentList.at(-1)?.postId : undefined,
     });
   }
 );

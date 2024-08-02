@@ -177,9 +177,16 @@ apiUsersRouter.get(
 apiUsersRouter.get(
   '/followRecommends',
   (
-    req: TypedRequestCookies,
-    res: TypedResponse<{ data?: AdvancedUser[]; message: string }>
+    req: TypedRequestQuery<{ cursor?: string; size?: string }>,
+    res: TypedResponse<{
+      data?: AdvancedUser[];
+      nextCursor?: string;
+      message: string;
+    }>
   ) => {
+    const cursor = req.query.cursor;
+    const pageSize =
+      req.query.size && ~~req.query.size !== 0 ? ~~req.query.size : 10;
     const { 'connect.sid': token } = req.cookies;
 
     const dao = new DAO();
@@ -189,33 +196,47 @@ apiUsersRouter.get(
     );
 
     if (!token) {
-      recommendsList.splice(3);
+      recommendsList.splice(pageSize);
       return httpSuccessResponse(res, { data: recommendsList });
     }
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       res.clearCookie('connect.sid');
-      recommendsList.splice(3);
+      recommendsList.splice(pageSize);
       return httpSuccessResponse(res, { data: recommendsList });
     }
 
     const currentUserIndex = recommendsList.findIndex(
       (u) => u.id === currentUser.id
     );
-    recommendsList.splice(currentUserIndex, 1);
+    if (currentUserIndex > -1) {
+      recommendsList.splice(currentUserIndex, 1);
+    }
 
     const followist = dao.getFollowList({ source: currentUser.id });
-
     followist.forEach((f) => {
       const index = recommendsList.findIndex((u) => u.id === f.target);
-      if (index >= 0) {
+      if (index > -1) {
         recommendsList.splice(index, 1);
       }
     });
-    recommendsList.splice(3);
 
-    return httpSuccessResponse(res, { data: recommendsList });
+    const regex = /^[0-9]+$/;
+    if (cursor && regex.test(cursor)) {
+      const index = recommendsList.findIndex((r) => (r.id = cursor));
+      if (index > -1) {
+        recommendsList.splice(0, index + 1);
+      }
+    }
+
+    const prevLength = recommendsList.length;
+    recommendsList.splice(pageSize);
+
+    return httpSuccessResponse(res, {
+      data: recommendsList,
+      nextCursor: prevLength > pageSize ? recommendsList.at(-1)?.id : undefined,
+    });
   }
 );
 
@@ -257,6 +278,7 @@ apiUsersRouter.get(
   ) => {
     const { cursor, filter = 'all' } = req.query;
     const { id } = req.params;
+    const pageSize = filter === 'media' ? 12 : 10;
     if (!id) return httpBadRequestResponse(res);
 
     const dao = new DAO();
@@ -285,12 +307,13 @@ apiUsersRouter.get(
         userPostList.splice(0, index + 1);
       }
     }
-    userPostList.splice(10);
+    const prevLength = userPostList.length;
+    userPostList.splice(pageSize);
 
     return httpSuccessResponse(res, {
       data: userPostList,
       nextCursor:
-        userPostList.length === 10 ? userPostList.at(-1)?.postId : undefined,
+        prevLength > pageSize ? userPostList.at(-1)?.postId : undefined,
     });
   }
 );
@@ -300,7 +323,10 @@ apiUsersRouter.get(
 apiUsersRouter.get(
   '/:id/posts/count',
   (
-    req: TypedRequestQueryParams<{ filter?: 'all' | 'media' }, { id?: string }>,
+    req: TypedRequestQueryParams<
+      { filter?: 'all' | 'media' | 'likes' },
+      { id?: string }
+    >,
     res: TypedResponse<{ data?: number; message: string }>
   ) => {
     const { filter = 'all' } = req.query;
@@ -313,14 +339,75 @@ apiUsersRouter.get(
       return httpNotFoundResponse(res, 'User not found');
     }
 
+    if (filter === 'likes') {
+      const heartList = dao.getLikeList({ userId: findUser.id });
+      return httpSuccessResponse(res, { data: heartList.length });
+    }
+
     const userPostList = dao.getPostList({ userId: findUser.id });
     let count = userPostList.length;
     if (filter === 'media') {
       count = userPostList.filter(
-        (p) => !p.parentId && !p.originalId && !p.images.length
+        (p) => !p.parentId && !p.originalId && p.images.length !== 0
       ).length;
     }
+
     return httpSuccessResponse(res, { data: count });
+  }
+);
+
+// "GET /api/users/:id/follow"
+// 특정 유저 팔로우 정보
+apiUsersRouter.get(
+  '/:id/follow',
+  (
+    req: TypedRequestQuery<{
+      cursor?: string;
+      type?: 'follow' | 'following';
+      size?: string;
+    }>,
+    res: TypedResponse<{
+      data?: AdvancedUser[];
+      nextCursor?: string;
+      message: string;
+    }>
+  ) => {
+    const { cursor, type } = req.query;
+    const pageSize =
+      req.query.size && ~~req.query.size !== 0 ? ~~req.query.size : 10;
+    const { id } = req.params;
+    const { 'connect.sid': token } = req.cookies;
+    if (!type || !['follow', 'following'].includes(type)) {
+      return httpBadRequestResponse(res);
+    }
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const dao = new DAO();
+    const findUser = dao.getUser(id);
+    if (!findUser) {
+      return httpNotFoundResponse(res);
+    }
+
+    const followList = dao
+      .getFollowList(
+        type === 'follow' ? { target: findUser.id } : { source: findUser.id }
+      )
+      .map((f) => (type === 'follow' ? f.source : f.target));
+    const userList = dao.getUserList().filter((u) => followList.includes(u.id));
+
+    if (cursor) {
+      const index = userList.findIndex((u) => u.id === cursor);
+      if (index > -1) {
+        userList.splice(0, index + 1);
+      }
+    }
+
+    const prevLength = userList.length;
+    userList.splice(pageSize);
+    return httpSuccessResponse(res, {
+      data: userList,
+      nextCursor: prevLength > pageSize ? userList.at(-1)?.id : undefined,
+    });
   }
 );
 
