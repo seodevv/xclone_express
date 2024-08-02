@@ -363,7 +363,7 @@ apiUsersRouter.get(
   (
     req: TypedRequestQuery<{
       cursor?: string;
-      type?: 'follow' | 'following';
+      type?: 'verified_followers' | 'follow' | 'following';
       size?: string;
     }>,
     res: TypedResponse<{
@@ -377,7 +377,10 @@ apiUsersRouter.get(
       req.query.size && ~~req.query.size !== 0 ? ~~req.query.size : 10;
     const { id } = req.params;
     const { 'connect.sid': token } = req.cookies;
-    if (!type || !['follow', 'following'].includes(type)) {
+    if (
+      !type ||
+      !['verified_followers', 'follow', 'following'].includes(type)
+    ) {
       return httpBadRequestResponse(res);
     }
     if (!token) return httpUnAuthorizedResponse(res);
@@ -390,10 +393,18 @@ apiUsersRouter.get(
 
     const followList = dao
       .getFollowList(
-        type === 'follow' ? { target: findUser.id } : { source: findUser.id }
+        ['follow', 'verified_followers'].includes(type)
+          ? { target: findUser.id }
+          : { source: findUser.id }
       )
-      .map((f) => (type === 'follow' ? f.source : f.target));
-    const userList = dao.getUserList().filter((u) => followList.includes(u.id));
+      .map((f) =>
+        ['follow', 'verified_followers'].includes(type) ? f.source : f.target
+      );
+    let userList = dao.getUserList().filter((u) => followList.includes(u.id));
+
+    if (type === 'verified_followers') {
+      userList = userList.filter((u) => u.verified);
+    }
 
     if (cursor) {
       const index = userList.findIndex((u) => u.id === cursor);
