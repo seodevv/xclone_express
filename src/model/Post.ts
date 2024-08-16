@@ -16,10 +16,12 @@ export interface AdvancedPost extends Post {
   Hearts: UserId[];
   Reposts: UserId[];
   Comments: UserId[];
+  Bookmarks: UserId[];
   _count: {
     Hearts: number;
     Reposts: number;
     Comments: number;
+    Views: number;
   };
   Parent?: {
     postId: Post['postId'];

@@ -8,10 +8,7 @@
             "banner": "elonmusk.jpg",
             "desc": "안녕하세요. 저는 @elonmusk입니다.\n잘 부탁드립니다.",
             "refer": "https://github.com/seodevv",
-            "verified": {
-                "type": "blue",
-                "date": "2024-05-09T17:41:15.773Z"
-            },
+            "verified": { "type": "blue", "date": "2024-05-09T17:41:15.773Z" },
             "regist": "2024-05-09T17:41:15.773Z"
         },
         {
@@ -19,10 +16,7 @@
             "password": "nextjs",
             "nickname": "next.js🔆",
             "image": "nextjs.png",
-            "verified": {
-                "type": "gold",
-                "date": "2024-05-10T17:41:15.773Z"
-            },
+            "verified": { "type": "gold", "date": "2024-05-10T17:41:15.773Z" },
             "regist": "2024-05-10T17:41:15.773Z"
         },
         {
@@ -116,6 +110,62 @@
             "nickname": "Aria👄",
             "image": "1722189157347_nat.webp",
             "regist": "2024-07-28T17:52:39.354Z"
+        },
+        {
+            "id": "johnwick",
+            "password": "johnwick",
+            "nickname": "John",
+            "image": "1722660570969_johnwick.jpg",
+            "regist": "2024-08-03T04:49:32.987Z"
+        },
+        {
+            "id": "human",
+            "password": "human",
+            "nickname": "not-robot",
+            "image": "1722660780806_human.webp",
+            "regist": "2024-08-03T04:53:02.808Z"
+        },
+        {
+            "id": "fox",
+            "password": "fox",
+            "nickname": "fox",
+            "image": "1723280719180_fox.jpg",
+            "regist": "2024-08-10T09:05:21.187Z"
+        },
+        {
+            "id": "cherry",
+            "password": "cherry",
+            "nickname": "🍒",
+            "image": "1723281390986_wisdom.jpg",
+            "regist": "2024-08-10T09:16:33.000Z"
+        },
+        {
+            "id": "nerd",
+            "password": "nerd",
+            "nickname": "Nerd",
+            "image": "1723345885862_2ecd3323e3a8923251a3a333fe5334be.jpg",
+            "regist": "2024-08-11T03:11:27.883Z"
+        },
+        {
+            "id": "alice",
+            "password": "alice",
+            "nickname": "Alice",
+            "image": "1723357830987_wm.jpg",
+            "regist": "2024-08-11T06:30:33.003Z"
+        },
+        {
+            "id": "normal",
+            "password": "normal",
+            "nickname": "normal",
+            "image": "1723370343657_wallpaper_ironman_13.jpg",
+            "regist": "2024-08-11T09:59:05.673Z"
+        },
+        {
+            "id": "aoi",
+            "password": "aoi",
+            "nickname": "Aoi",
+            "image": "1723558151127_374879.png",
+            "regist": "2024-08-13T14:09:13.158Z"
         }
     ]
 }

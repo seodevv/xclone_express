@@ -48,7 +48,7 @@ export const decodingUserToken = (token: string): AdvancedUser | undefined => {
     const decode = jwt.verify(token, secret, options) as SafeUser;
 
     const dao = new DAO();
-    const user = dao.getUser(decode.id);
+    const user = dao.getUser({ id: decode.id });
 
     return user;
   } catch (error) {

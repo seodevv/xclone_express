@@ -3,7 +3,7 @@ import {
   httpSuccessResponse,
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
-import { decodingUserToken } from '@/lib/common';
+import { COOKIE_OPTIONS, decodingUserToken } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import { TypedRequestCookies } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
@@ -24,7 +24,7 @@ apiHashtagsRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 

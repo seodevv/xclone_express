@@ -7,6 +7,7 @@ import roomData from '@/data/room.json';
 import messageData from '@/data/message.json';
 import followData from '@/data/follow.json';
 import reactionsData from '@/data/reaction.json';
+import viewsData from '@/data/views.json';
 import { AdvancedUser, isVerified, SafeUser, User } from '@/model/User';
 import { AdvancedPost, GifType, ImageType, Post } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
@@ -16,6 +17,7 @@ import { isTag, isWord, Tag, Tags, Word } from '@/model/Hashtag';
 import { AdvancedRoom, Room } from '@/model/Room';
 import { Message } from '@/model/Message';
 import { Morpheme } from '@/model/Morpheme';
+import { Views } from '@/model/Views';
 
 let instance: DAO | null;
 
@@ -27,6 +29,7 @@ class DAO {
   private messageList: Message[] = [];
   private followList: Follow[] = [];
   private reactionList: Reactions[] = [];
+  private viewList: Views[] = [];
 
   constructor() {
     if (instance) {
@@ -70,6 +73,7 @@ class DAO {
       ...followData.data.map((f) => ({ ...f, createAt: new Date(f.createAt) }))
     );
     this.reactionList.push(...reactionsData.data);
+    this.viewList.push(...viewsData.data);
     instance = this;
     console.timeEnd('Data Load');
   }
@@ -170,17 +174,27 @@ class DAO {
     );
   }
 
-  getUser(
-    id: User['id'],
-    password?: User['password']
-  ): AdvancedUser | undefined {
+  getUser({
+    id,
+    password,
+    nickname,
+  }: {
+    id: User['id'];
+    password?: User['password'];
+    nickname?: User['nickname'];
+  }): AdvancedUser | undefined {
     let findUser: User | undefined;
     if (password) {
       findUser = this.userList.find(
-        (u) => u.id === id && u.password === password
+        (u) =>
+          u.id.toLowerCase() === id.toLowerCase() && u.password === password
       );
     } else {
-      findUser = this.userList.find((u) => u.id === id);
+      findUser = this.userList.find(
+        (u) =>
+          u.id.toLowerCase() === id.toLowerCase() ||
+          u.nickname.toLowerCase() === nickname?.toLowerCase()
+      );
     }
 
     if (findUser) {
@@ -209,7 +223,7 @@ class DAO {
   }
 
   getSafeUser(id: User['id']): SafeUser | undefined {
-    const advancedUser = this.getUser(id);
+    const advancedUser = this.getUser({ id });
     if (advancedUser) {
       return {
         id: advancedUser.id,
@@ -250,6 +264,10 @@ class DAO {
     const Comments = [...new Set(totalComments.map((v) => v.id))].map((v) => ({
       id: v,
     }));
+    const Bookmarks = this.reactionList
+      .filter((r) => r.type === 'Bookmark' && r.postId === findPost.postId)
+      .map((r) => ({ id: r.userId }));
+    const Views = this.getView({ postId })?.impressions || 0;
 
     const advancedPost: AdvancedPost = {
       ...findPost,
@@ -257,10 +275,12 @@ class DAO {
       Hearts,
       Reposts,
       Comments,
+      Bookmarks,
       _count: {
         Hearts: Hearts.length,
         Reposts: Reposts.length,
         Comments: totalComments.length,
+        Views,
       },
     };
 
@@ -309,6 +329,10 @@ class DAO {
     }
 
     return findPost;
+  }
+
+  getView({ postId }: { postId: Post['postId'] }) {
+    return this.viewList.find((v) => v.postId === postId);
   }
 
   createUser({
@@ -393,6 +417,7 @@ class DAO {
       originalId,
     };
     this.postList.push(newPost);
+    this.viewsHandler({ postId: newPost.postId, create: true });
     this.writeDatabase('postList');
 
     return this.getFullPost({ postId: newPost.postId });
@@ -444,7 +469,7 @@ class DAO {
     }
     this.writeDatabase('followList');
 
-    const updatedUser = this.getUser(target);
+    const updatedUser = this.getUser({ id: target });
     return updatedUser;
   }
 
@@ -455,7 +480,7 @@ class DAO {
     postId,
     commentId,
   }: {
-    type: 'Heart' | 'Repost' | 'Comment';
+    type: 'Heart' | 'Repost' | 'Comment' | 'Bookmark';
     method: 'post' | 'delete';
     userId: User['id'];
     postId: Post['postId'];
@@ -483,14 +508,44 @@ class DAO {
         commentId: type === 'Comment' ? commentId : undefined,
       };
       this.reactionList.push(newReaction);
+      this.writeDatabase('reactionList');
     } else if (method === 'delete' && isReaction) {
       this.reactionList = this.reactionList.filter(
         (r) => r.type !== type || r.postId !== postId || r.userId !== userId
       );
+      this.writeDatabase('reactionList');
     }
-    this.writeDatabase('reactionList');
 
     const updatedPost = this.getFullPost({ postId: postId });
+    return updatedPost;
+  }
+
+  viewsHandler({
+    key = 'impressions',
+    postId,
+    create,
+  }: {
+    key?: keyof Omit<Views, 'postId'>;
+    postId: Post['postId'];
+    create?: boolean;
+  }) {
+    const findViewIndex = this.viewList.findIndex((v) => v.postId === postId);
+    if (findViewIndex > -1) {
+      this.viewList[findViewIndex][key]++;
+    } else {
+      const newView: Views = {
+        postId,
+        impressions: create ? 0 : 1,
+        engagements: 0,
+        detailExpands: 0,
+        newFollowers: 0,
+        profileVisit: 0,
+      };
+      this.viewList.push(newView);
+    }
+    this.writeDatabase('viewList');
+
+    const updatedPost = this.getFullPost({ postId });
     return updatedPost;
   }
 
@@ -529,6 +584,8 @@ class DAO {
   }
 
   async morphologyAnalysis(content: string): Promise<void> {
+    if (!content) return;
+
     const API_KEY = process.env.AI_OPEN_ETRI_API_KEY;
     if (!content || !content.trim() || !API_KEY) return;
 
@@ -562,7 +619,6 @@ class DAO {
               t.type === 'word' &&
               t.title.toLowerCase() === morp.lemma.toLowerCase()
           );
-          console.log(findWord, morp.lemma.toLowerCase(), already);
           if (findWord) {
             findWord.count++;
           } else {
@@ -594,6 +650,7 @@ class DAO {
       | 'messageList'
       | 'followList'
       | 'reactionList'
+      | 'viewList'
   ): void {
     console.time(type);
     try {
@@ -624,7 +681,11 @@ class DAO {
             data: this.reactionList,
           });
           break;
-
+        case 'viewList':
+          fs.writeJsonSync(dbPath + '/views.json', {
+            data: this.viewList,
+          });
+          break;
         default:
           throw new Error('The writeDB function received an unexpected type.');
       }

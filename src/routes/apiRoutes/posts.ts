@@ -30,6 +30,8 @@ import { TypedResponse } from '@/model/Response';
 import { AdvancedPost, GifType, ImageType } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
 import { uploadPath } from '@/app';
+import { Views } from '@/model/Views';
+import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 
 const apiPostsRouter = express.Router();
 const upload = multer({ storage });
@@ -60,7 +62,7 @@ apiPostsRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -144,13 +146,14 @@ apiPostsRouter.get(
 apiPostsRouter.post(
   '/',
   upload.array('images', 4),
-  (
+  async (
     req: TypedRequestBody<{
       content?: string;
       mediaInfo?: string;
     }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
+    await delay(3000);
     const { content, mediaInfo } = req.body;
     const files = req.files;
     const { 'connect.sid': token } = req.cookies;
@@ -169,7 +172,7 @@ apiPostsRouter.post(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -203,15 +206,7 @@ apiPostsRouter.get(
 
     const dao = new DAO();
     let recommendsList = dao.getPostList({});
-    recommendsList.sort((a, b) => {
-      if (a._count.Hearts > b._count.Hearts) {
-        return -1;
-      } else if (a._count.Hearts === b._count.Hearts) {
-        if (a.createAt > b.createAt) return -1;
-        return 1;
-      }
-      return 1;
-    });
+    recommendsList.sort((a, b) => (a.createAt < b.createAt ? 1 : -1));
 
     const regex = /^[0-9]+$/;
     if (cursor && regex.test(cursor)) {
@@ -253,7 +248,7 @@ apiPostsRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -330,6 +325,55 @@ apiPostsRouter.get(
   }
 );
 
+// "GET /api/posts/bookmarks"
+// 북마크한 게시글 조회
+apiPostsRouter.get(
+  '/bookmarks',
+  async (
+    req: TypedRequestQuery<{ cursor?: string }>,
+    res: TypedResponse<{
+      data?: AdvancedPost[];
+      nextCursor?: number;
+      message: string;
+    }>
+  ) => {
+    await delay(1000);
+    const cursor = req.query.cursor;
+    const { 'connect.sid': token } = req.cookies;
+    const pageSize = 10;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    let postList = dao
+      .getPostList({})
+      .filter((p) => p.Bookmarks.some((u) => u.id === currentUser.id))
+      .sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+
+    if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
+      const findIndex = postList.findIndex((p) => p.postId === ~~cursor);
+      if (findIndex > -1) {
+        postList.splice(0, findIndex + 1);
+      }
+    }
+
+    const isOver = postList.length > pageSize;
+    if (isOver) {
+      postList.splice(pageSize);
+    }
+
+    return httpSuccessResponse(res, {
+      data: postList,
+      nextCursor: isOver ? postList.at(-1)?.postId : undefined,
+    });
+  }
+);
+
 // "GET /api/posts/:id"
 // 특정 게시글 조회
 apiPostsRouter.get(
@@ -369,7 +413,7 @@ apiPostsRouter.delete(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -400,10 +444,10 @@ apiPostsRouter.delete(
   }
 );
 
-// "POST /api/posts/:id/heart"
+// "POST /api/posts/:id/hearts"
 // 특정 게시글 좋아요
 apiPostsRouter.post(
-  '/:id/heart',
+  '/:id/hearts',
   (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
@@ -416,7 +460,7 @@ apiPostsRouter.post(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -442,10 +486,10 @@ apiPostsRouter.post(
   }
 );
 
-// "DELETE /api/posts/:id/heart"
+// "DELETE /api/posts/:id/hearts"
 // 특정 게시글 좋아요 취소
 apiPostsRouter.delete(
-  '/:id/heart',
+  '/:id/hearts',
   (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
@@ -458,7 +502,7 @@ apiPostsRouter.delete(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -500,7 +544,7 @@ apiPostsRouter.post(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -524,7 +568,7 @@ apiPostsRouter.post(
 
     const newRepost = dao.createPost({
       userId: currentUser.id,
-      content: 'reposts',
+      content: '',
       originalId: findPost.postId,
     });
 
@@ -548,7 +592,7 @@ apiPostsRouter.delete(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -655,7 +699,7 @@ apiPostsRouter.post(
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -682,6 +726,179 @@ apiPostsRouter.post(
     });
 
     return httpCreatedResponse(res, { data: newComment });
+  }
+);
+
+// "GET /api/posts/:id/views"
+// 특정 게시물 view 조회
+apiPostsRouter.get(
+  '/:id/views',
+  (
+    req: TypedRequestParams<{ id: string }>,
+    res: TypedResponse<{ data?: Views; message: string }>
+  ) => {
+    const id = req.params.id;
+    const regex = /^[0-9]+$/;
+    const { 'connect.sid': token } = req.cookies;
+    if (!regex.test(id)) return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token has expired');
+    }
+
+    const dao = new DAO();
+    const findPost = dao.getPost({ postId: ~~id });
+    if (!findPost) {
+      return httpNotFoundResponse(res);
+    }
+
+    if (findPost.userId !== currentUser.id) {
+      return httpForbiddenResponse(res);
+    }
+
+    let findView = dao.getView({ postId: ~~id });
+    if (!findView) {
+      dao.viewsHandler({ postId: findPost.postId, create: true });
+      findView = dao.getView({ postId: findPost.postId });
+    }
+
+    return httpSuccessResponse(res, { data: findView });
+  }
+);
+
+// "POST /api/posts/:id/views"
+// 특정 게시물 view 카운트 추가
+apiPostsRouter.post(
+  '/:id/views',
+  (
+    req: TypedRequestBodyParams<
+      { userId?: string; type?: string },
+      { id: string }
+    >,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
+    const id = req.params.id;
+    const { userId, type = '' } = req.body;
+    const { 'connect.sid': token } = req.cookies;
+    const regex = /^[0-9]+$/;
+    if (!userId || !regex.test(id)) return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token has expired');
+    }
+
+    const dao = new DAO();
+    const findPost = dao.getPost({ postId: ~~id, userId });
+    if (!findPost) {
+      return httpNotFoundResponse(res, 'Post not found');
+    }
+
+    const isViews = (type: string): type is keyof Omit<Views, 'postId'> => {
+      return [
+        'impressions',
+        'engagements',
+        'detailExpands',
+        'newFollowers',
+        'profileVisit',
+      ].includes(type);
+    };
+    const key = isViews(type) ? type : 'impressions';
+
+    const updatedPost = dao.viewsHandler({
+      key,
+      postId: ~~id,
+    });
+
+    return httpCreatedResponse(res, { data: updatedPost });
+  }
+);
+
+// "POST /api/posts/:id/bookmarks"
+// 특정 게시물 bookmark 추가
+apiPostsRouter.post(
+  '/:id/bookmarks',
+  (
+    req: TypedRequestParams<{ id: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
+    const id = req.params.id;
+    const regex = /^[0-9]+$/;
+    const { 'connect.sid': token } = req.cookies;
+    if (!regex.test(id)) return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const findPost = dao.getPost({ postId: ~~id });
+    if (!findPost) {
+      return httpNotFoundResponse(res);
+    }
+
+    const isBookmark = findPost.Bookmarks.some((u) => u.id === currentUser.id);
+    if (isBookmark) {
+      return httpForbiddenResponse(res, 'Already bookmarked');
+    }
+
+    const updatedPost = dao.reactionHandler({
+      type: 'Bookmark',
+      method: 'post',
+      userId: currentUser.id,
+      postId: ~~id,
+    });
+
+    return httpCreatedResponse(res, { data: updatedPost });
+  }
+);
+
+// "DELETE /api/posts/:id/bookmarks"
+// 특정 게시물 bookmark 제거
+apiPostsRouter.delete(
+  '/:id/bookmarks',
+  (
+    req: TypedRequestParams<{ id: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
+    const id = req.params.id;
+    const { 'connect.sid': token } = req.cookies;
+    const regex = /^[0-9]+$/;
+    if (!regex.test(id)) return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const findPost = dao.getPost({ postId: ~~id });
+    if (!findPost) {
+      return httpNotFoundResponse(res);
+    }
+
+    const isBookmark = findPost.Bookmarks.some((u) => u.id === currentUser.id);
+    if (!isBookmark) {
+      return httpForbiddenResponse(res, 'Not already bookmarked');
+    }
+
+    const updatedPost = dao.reactionHandler({
+      type: 'Bookmark',
+      method: 'delete',
+      userId: currentUser.id,
+      postId: ~~id,
+    });
+    return httpSuccessResponse(res, { data: updatedPost });
   }
 );
 

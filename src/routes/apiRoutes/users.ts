@@ -31,6 +31,7 @@ import { AdvancedUser } from '@/model/User';
 import { AdvancedPost } from '@/model/Post';
 import { AdvancedRoom } from '@/model/Room';
 import { Message } from '@/model/Message';
+import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 
 const apiUsersRouter = express.Router();
 const upload = multer({ storage });
@@ -48,7 +49,7 @@ apiUsersRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -64,13 +65,14 @@ apiUsersRouter.post(
   async (
     req: TypedRequestBody<{
       id?: string;
-      password?: string;
       nickname?: string;
+      birth?: string;
+      password?: string;
     }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     await delay(2000);
-    const { id, password, nickname } = req.body;
+    const { id, nickname, birth, password } = req.body;
     const file = req.file;
     if (!id || !password || !nickname || !file) {
       file && fs.removeSync(uploadPath + '/' + file.filename);
@@ -78,7 +80,7 @@ apiUsersRouter.post(
     }
 
     const dao = new DAO();
-    const findUser = dao.getUser(id);
+    const findUser = dao.getUser({ id });
     if (findUser) {
       fs.removeSync(uploadPath + '/' + file.filename);
       return httpForbiddenResponse(res, 'This ID already exists.');
@@ -125,7 +127,7 @@ apiUsersRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -202,7 +204,7 @@ apiUsersRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       recommendsList.splice(pageSize);
       return httpSuccessResponse(res, { data: recommendsList });
     }
@@ -252,7 +254,7 @@ apiUsersRouter.get(
     if (!id) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findUser = dao.getUser(id);
+    const findUser = dao.getUser({ id });
     if (!findUser) {
       return httpNotFoundResponse(res, 'User not found');
     }
@@ -282,7 +284,7 @@ apiUsersRouter.get(
     if (!id) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findUser = dao.getUser(id);
+    const findUser = dao.getUser({ id });
     if (!findUser) {
       return httpNotFoundResponse(res, 'User not found');
     }
@@ -334,7 +336,7 @@ apiUsersRouter.get(
     if (!id) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findUser = dao.getUser(id);
+    const findUser = dao.getUser({ id });
     if (!findUser) {
       return httpNotFoundResponse(res, 'User not found');
     }
@@ -360,7 +362,7 @@ apiUsersRouter.get(
 // 특정 유저 팔로우 정보
 apiUsersRouter.get(
   '/:id/follow',
-  (
+  async (
     req: TypedRequestQuery<{
       cursor?: string;
       type?: 'verified_followers' | 'follow' | 'following';
@@ -386,7 +388,7 @@ apiUsersRouter.get(
     if (!token) return httpUnAuthorizedResponse(res);
 
     const dao = new DAO();
-    const findUser = dao.getUser(id);
+    const findUser = dao.getUser({ id });
     if (!findUser) {
       return httpNotFoundResponse(res);
     }
@@ -437,12 +439,12 @@ apiUsersRouter.post(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const targetUser = dao.getUser(id);
+    const targetUser = dao.getUser({ id });
     if (!targetUser) {
       return httpNotFoundResponse(res, 'User not found');
     }
@@ -483,12 +485,12 @@ apiUsersRouter.delete(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const targetUser = dao.getUser(id);
+    const targetUser = dao.getUser({ id });
     if (!targetUser) {
       return httpNotFoundResponse(res, 'User not found');
     }
@@ -532,7 +534,7 @@ apiUsersRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -564,7 +566,7 @@ apiUsersRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.clearCookie('connect.sid');
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
     if (id !== currentUser.id) return httpForbiddenResponse(res);

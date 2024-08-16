@@ -24,6 +24,7 @@ import {
   TypedRequestBody,
   TypedRequestCookies,
   TypedRequestParams,
+  TypedRequestQuery,
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
 import { AdvancedUser } from '@/model/User';
@@ -34,6 +35,39 @@ apiRouter.use('/users', apiUsersRouter);
 apiRouter.use('/posts', apiPostsRouter);
 apiRouter.use('/hashtags', apiHashtagsRouter);
 
+// "GET" /api/login"
+// 로그인 아이디 확인
+apiRouter.get(
+  '/login',
+  async (
+    req: TypedRequestQuery<{
+      type?: string;
+      id?: string;
+      nickname?: string;
+    }>,
+    res: TypedResponse<{ message: string }>
+  ) => {
+    await delay(1000);
+    const { type = 'login', id, nickname } = req.query;
+    if (!id) return httpBadRequestResponse(res);
+
+    const dao = new DAO();
+    const findUser = dao.getUser({ id, nickname });
+    switch (type) {
+      case 'login':
+        return findUser
+          ? httpSuccessResponse(res, { message: 'ok' })
+          : httpNotFoundResponse(res);
+      case 'signup':
+        return !findUser
+          ? httpSuccessResponse(res, { message: 'ok' })
+          : httpForbiddenResponse(res, findUser.id === id ? 'id' : 'nickname');
+      default:
+        return httpBadRequestResponse(res);
+    }
+  }
+);
+
 // "POST /api/login"
 // 로그인
 apiRouter.post(
@@ -43,13 +77,13 @@ apiRouter.post(
     req: TypedRequestBody<{ id?: string; password?: string }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    await delay(2000);
+    await delay(1000);
     const { id, password } = req.body;
     // body 가 없을 시
     if (!id || !password) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findUser = dao.getUser(id, password);
+    const findUser = dao.getUser({ id, password });
 
     // 로그인 성공 시
     if (findUser) {
@@ -79,7 +113,7 @@ apiRouter.post(
     if (!id || !nickname || !image) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    let user = dao.getUser(id);
+    let user = dao.getUser({ id });
     if (!user) {
       user = dao.createUser({
         id,

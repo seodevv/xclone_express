@@ -32,14 +32,6 @@
             "parentId": 1
         },
         {
-            "postId": 4,
-            "userId": "nextjs",
-            "content": "repost",
-            "images": [],
-            "createAt": "2024-05-11T22:41:15.773Z",
-            "originalId": 1
-        },
-        {
             "postId": 5,
             "userId": "robot",
             "content": "elonmusk님의 게시글에 댓글을 남겨보자.",
@@ -486,6 +478,125 @@
             "images": [],
             "createAt": "2024-08-01T04:38:13.726Z",
             "parentId": 38
+        },
+        {
+            "postId": 47,
+            "userId": "normal",
+            "content": "안녕하세요😆😆😆!",
+            "images": [],
+            "createAt": "2024-08-12T13:47:26.065Z"
+        },
+        {
+            "postId": 48,
+            "userId": "normal",
+            "content": "이게 뭔지 싶죠 ?",
+            "images": [
+                {
+                    "link": "1723470506991_wallpaper_ironman_13.jpg",
+                    "imageId": 1,
+                    "width": 1920,
+                    "height": 1080
+                }
+            ],
+            "createAt": "2024-08-12T13:48:26.995Z"
+        },
+        {
+            "postId": 49,
+            "userId": "normal",
+            "content": "",
+            "images": [
+                {
+                    "link": "1723470562657_wallpaper_ironman_14.jpg",
+                    "imageId": 1,
+                    "width": 1920,
+                    "height": 1080
+                },
+                {
+                    "link": "https://media.tenor.com/eYaW9-gsx5kAAAAC/iron-man-i-love-you3000.gif",
+                    "imageId": 2,
+                    "width": 400,
+                    "height": 400
+                }
+            ],
+            "createAt": "2024-08-12T13:49:22.666Z"
+        },
+        {
+            "postId": 50,
+            "userId": "normal",
+            "content": "",
+            "images": [
+                {
+                    "link": "https://media.tenor.com/i_3US0c8WpwAAAAC/iron-man.gif",
+                    "imageId": 1,
+                    "width": 399,
+                    "height": 498
+                }
+            ],
+            "createAt": "2024-08-12T14:38:43.089Z",
+            "parentId": 49
+        },
+        {
+            "postId": 51,
+            "userId": "nextjs",
+            "content": "#nextjs",
+            "images": [
+                {
+                    "link": "https://media.tenor.com/mbGkiZknhX4AAAAC/next-another-one-faisalfaisalfaisal.gif",
+                    "imageId": 1,
+                    "width": 498,
+                    "height": 280
+                }
+            ],
+            "createAt": "2024-08-13T13:18:15.461Z"
+        },
+        {
+            "postId": 52,
+            "userId": "nextjs",
+            "content": "haaaaaaaaaaaaaaaaaa",
+            "images": [
+                {
+                    "link": "https://media.tenor.com/4B2b5wGSVpUAAAAC/logisz-plugand-play.gif",
+                    "imageId": 1,
+                    "width": 466,
+                    "height": 498
+                }
+            ],
+            "createAt": "2024-08-13T14:06:53.879Z"
+        },
+        {
+            "postId": 53,
+            "userId": "aoi",
+            "content": "Hi😆\r\nThis is my profile😳\r\ni look forward to😘",
+            "images": [
+                {
+                    "link": "1723558271555_374879.png",
+                    "imageId": 1,
+                    "width": 1024,
+                    "height": 1024
+                }
+            ],
+            "createAt": "2024-08-13T14:11:14.600Z"
+        },
+        {
+            "postId": 54,
+            "userId": "robot",
+            "content": "ㅁㅜㅓ야",
+            "images": [
+                {
+                    "link": "https://media.tenor.com/LMRq3j0I8OoAAAAC/chinese-robot-syncope.gif",
+                    "imageId": 1,
+                    "width": 281,
+                    "height": 498
+                }
+            ],
+            "createAt": "2024-08-13T15:36:07.438Z"
+        },
+        {
+            "postId": 55,
+            "userId": "robot",
+            "content": "asdf",
+            "images": [],
+            "createAt": "2024-08-14T17:26:16.299Z"
         }
     ]
 }
