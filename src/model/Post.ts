@@ -9,6 +9,7 @@ export interface Post {
   createAt: Date;
   parentId?: Post['postId'];
   originalId?: Post['postId'];
+  quote?: boolean;
 }
 
 export interface AdvancedPost extends Post {
@@ -21,6 +22,7 @@ export interface AdvancedPost extends Post {
     Hearts: number;
     Reposts: number;
     Comments: number;
+    Bookmarks: number;
     Views: number;
   };
   Parent?: {

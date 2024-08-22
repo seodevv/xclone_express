@@ -29,7 +29,12 @@ export const generateUserToken = (user: AdvancedUser): string | undefined => {
     const secret = process.env.JWT_SECRET || 'secret';
     const options: jwt.SignOptions = {};
     const token = jwt.sign(
-      { id: user.id, nickname: user.nickname, image: user.image },
+      {
+        id: user.id,
+        nickname: user.nickname,
+        image: user.image,
+        verified: user.verified,
+      },
       secret,
       options
     );

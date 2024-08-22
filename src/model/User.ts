@@ -19,7 +19,8 @@ export interface User {
   regist: Date;
 }
 
-export interface SafeUser extends Pick<User, 'id' | 'nickname' | 'image'> {}
+export interface SafeUser
+  extends Pick<User, 'id' | 'nickname' | 'image' | 'verified'> {}
 export interface AdvancedUser extends Omit<User, 'password'> {
   Followers: UserId[];
   _count: {

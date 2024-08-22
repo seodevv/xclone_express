@@ -5,6 +5,8 @@ module.exports = {
       script: './dist/app.js',
       instances: 1,
       exec_mode: 'fork',
+      // instances: 4,
+      // exec_mode: 'cluster',
       watch: ['dist'],
       ignore_watch: [
         'node_modules',

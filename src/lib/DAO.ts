@@ -102,11 +102,15 @@ class DAO {
   getPostList({
     userId,
     parentId,
+    originalId,
     followIds,
+    quote,
   }: {
     userId?: User['id'];
     parentId?: Post['postId'];
+    originalId?: Post['postId'];
     followIds?: User['id'][];
+    quote?: boolean;
   }): AdvancedPost[] {
     const postList: AdvancedPost[] = [];
     this.postList.forEach((p) => {
@@ -114,7 +118,9 @@ class DAO {
       if (!post) return;
       if (userId && post.userId !== userId) return;
       if (parentId && post.parentId !== parentId) return;
+      if (originalId && post.originalId !== originalId) return;
       if (followIds && !followIds.includes(post.User.id)) return;
+      if (typeof quote !== 'undefined' && post.quote !== quote) return;
 
       postList.push(post);
     });
@@ -168,9 +174,24 @@ class DAO {
     );
   }
 
-  getLikeList({ userId }: { userId: User['id'] }): Reactions[] {
+  getLikeList({
+    userId,
+    postId,
+  }: {
+    userId?: User['id'];
+    postId?: Post['postId'];
+  }): Reactions[] {
     return this.reactionList.filter(
-      (r) => r.type === 'Heart' && r.userId === userId
+      (r) =>
+        r.type === 'Heart' &&
+        (userId ? r.userId === userId : true) &&
+        (postId ? r.postId === postId : true)
+    );
+  }
+
+  getRepostList({ postId }: { postId: Post['postId'] }): Reactions[] {
+    return this.reactionList.filter(
+      (r) => r.type === 'Repost' && r.postId === postId
     );
   }
 
@@ -229,6 +250,7 @@ class DAO {
         id: advancedUser.id,
         image: advancedUser.image,
         nickname: advancedUser.nickname,
+        verified: advancedUser.verified,
       };
     }
     return;
@@ -255,8 +277,11 @@ class DAO {
     const Hearts = this.reactionList
       .filter((r) => r.type === 'Heart' && r.postId === findPost.postId)
       .map((r) => ({ id: r.userId }));
-    const Reposts = this.reactionList
-      .filter((r) => r.type === 'Repost' && r.postId === findPost.postId)
+    const totalReposts = this.reactionList.filter(
+      (r) => r.type === 'Repost' && r.postId === findPost.postId
+    );
+    const Reposts = totalReposts
+      .filter((r) => !r.quote)
       .map((r) => ({ id: r.userId }));
     const totalComments = this.reactionList
       .filter((r) => r.type === 'Comment' && r.postId === findPost.postId)
@@ -278,8 +303,9 @@ class DAO {
       Bookmarks,
       _count: {
         Hearts: Hearts.length,
-        Reposts: Reposts.length,
+        Reposts: totalReposts.length,
         Comments: totalComments.length,
+        Bookmarks: Bookmarks.length,
         Views,
       },
     };
@@ -290,12 +316,17 @@ class DAO {
   getRepostPost({
     originalId,
     userId,
+    quote,
   }: {
     originalId: Post['postId'];
     userId: User['id'];
+    quote?: boolean;
   }): Post | undefined {
     const findPost = this.postList.find(
-      (p) => p.originalId === originalId && p.userId === userId
+      (p) =>
+        p.originalId === originalId &&
+        p.userId === userId &&
+        !!p.quote === !!quote
     );
     return findPost;
   }
@@ -371,6 +402,7 @@ class DAO {
     media,
     parentId,
     originalId,
+    quote,
   }: {
     userId: User['id'];
     content?: Post['content'];
@@ -380,6 +412,7 @@ class DAO {
     media?: (GifType | ImageType)[];
     parentId?: Post['postId'];
     originalId?: Post['postId'];
+    quote?: boolean;
   }): AdvancedPost | undefined {
     this.hashtagsAnalysis(content);
     this.morphologyAnalysis(content);
@@ -415,6 +448,7 @@ class DAO {
       createAt: new Date(),
       parentId,
       originalId,
+      quote,
     };
     this.postList.push(newPost);
     this.viewsHandler({ postId: newPost.postId, create: true });
@@ -423,8 +457,10 @@ class DAO {
     return this.getFullPost({ postId: newPost.postId });
   }
 
-  deletePost(postId: number): void {
-    const targetIndex = this.postList.findIndex((p) => p.postId === postId);
+  deletePost({ postId }: { postId: number }): void {
+    const targetIndex = this.postList.findIndex((p) => {
+      return p.postId === postId;
+    });
     if (targetIndex > -1) {
       this.postList.splice(targetIndex, 1);
       this.writeDatabase('postList');
@@ -479,23 +515,24 @@ class DAO {
     userId,
     postId,
     commentId,
+    quote,
   }: {
     type: 'Heart' | 'Repost' | 'Comment' | 'Bookmark';
     method: 'post' | 'delete';
     userId: User['id'];
     postId: Post['postId'];
     commentId?: Post['postId'];
+    quote?: boolean;
   }): AdvancedPost | undefined {
     const isReaction = !!this.reactionList.find((r) => {
-      if (type === 'Comment') {
-        return (
-          r.type === type &&
-          r.userId === userId &&
-          r.postId === postId &&
-          r.commentId === commentId
-        );
-      }
-      return r.type === type && r.userId === userId && r.postId === postId;
+      const condition =
+        r.type === type && r.userId === userId && r.postId === postId;
+      if (type === 'Comment') return condition && r.commentId === commentId;
+      if (type === 'Repost' && quote) return condition && r.quote;
+      if (type === 'Repost' && !quote)
+        return condition && typeof r.quote === 'undefined';
+
+      return condition;
     });
 
     if (method === 'post' && !isReaction) {
@@ -506,12 +543,17 @@ class DAO {
         postId,
         userId,
         commentId: type === 'Comment' ? commentId : undefined,
+        quote,
       };
       this.reactionList.push(newReaction);
       this.writeDatabase('reactionList');
     } else if (method === 'delete' && isReaction) {
       this.reactionList = this.reactionList.filter(
-        (r) => r.type !== type || r.postId !== postId || r.userId !== userId
+        (r) =>
+          r.type !== type ||
+          r.postId !== postId ||
+          r.userId !== userId ||
+          r.quote !== quote
       );
       this.writeDatabase('reactionList');
     }

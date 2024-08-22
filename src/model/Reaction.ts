@@ -7,4 +7,5 @@ export interface Reactions {
   postId: Post['postId'];
   commentId?: Post['postId'];
   userId: User['id'];
+  quote?: boolean;
 }

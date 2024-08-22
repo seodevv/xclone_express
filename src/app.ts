@@ -26,7 +26,9 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 app.use(
-  morgan(':method :url :status :res[content-length] - :response-time ms')
+  morgan(
+    ':remote-addr :method :url :status :res[content-length] - :response-time ms'
+  )
 );
 
 app.use('/api', apiRouter);

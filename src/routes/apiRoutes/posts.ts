@@ -32,6 +32,7 @@ import { PostImage } from '@/model/PostImage';
 import { uploadPath } from '@/app';
 import { Views } from '@/model/Views';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
+import { AdvancedUser } from '@/model/User';
 
 const apiPostsRouter = express.Router();
 const upload = multer({ storage });
@@ -150,11 +151,12 @@ apiPostsRouter.post(
     req: TypedRequestBody<{
       content?: string;
       mediaInfo?: string;
+      repostId?: string;
     }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     await delay(3000);
-    const { content, mediaInfo } = req.body;
+    const { content, mediaInfo, repostId } = req.body;
     const files = req.files;
     const { 'connect.sid': token } = req.cookies;
     const media = mediaInfo
@@ -177,12 +179,25 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
+    if (repostId) {
+      dao.reactionHandler({
+        method: 'post',
+        type: 'Repost',
+        postId: ~~repostId,
+        userId: currentUser.id,
+        quote: true,
+      });
+    }
     const newPost = dao.createPost({
       userId: currentUser.id,
       content,
       files,
       media,
+      originalId: repostId ? ~~repostId : undefined,
+      quote: !!repostId,
     });
+
+    console.log(newPost);
 
     return httpCreatedResponse(res, { data: newPost });
   }
@@ -438,7 +453,7 @@ apiPostsRouter.delete(
         console.error(error);
       }
     }
-    dao.deletePost(findPost.postId);
+    dao.deletePost({ postId: findPost.postId });
 
     return httpNoContentRepsonse(res);
   }
@@ -533,10 +548,10 @@ apiPostsRouter.delete(
 apiPostsRouter.post(
   '/:id/reposts',
   (
-    req: TypedRequestParams<{ id?: string }>,
+    req: TypedRequestQueryParams<{ quote?: string }, { id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
-    const { id } = req.params;
+    const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
@@ -611,7 +626,7 @@ apiPostsRouter.delete(
       postId: findPost.originalId,
       userId: currentUser.id,
     });
-    dao.deletePost(findPost.postId);
+    dao.deletePost({ postId: findPost.postId });
 
     return httpNoContentRepsonse(res);
   }
@@ -672,13 +687,14 @@ apiPostsRouter.get(
 apiPostsRouter.post(
   '/:id/comments',
   upload.array('images', 4),
-  (
+  async (
     req: TypedRequestBodyParams<
       { content?: string; mediaInfo?: string },
       { id?: string }
     >,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
+    await delay(3000);
     const { id } = req.params;
     const { content, mediaInfo } = req.body;
     const files = req.files;
@@ -899,6 +915,121 @@ apiPostsRouter.delete(
       postId: ~~id,
     });
     return httpSuccessResponse(res, { data: updatedPost });
+  }
+);
+
+// "GET /api/posts/:id/engagements"
+// 특정 게시물 engagements 조회
+apiPostsRouter.get(
+  '/:id/engagements',
+  async (
+    req: TypedRequestQueryParams<
+      { userId?: string; cursor?: string; filter?: string },
+      { id: string }
+    >,
+    res: TypedResponse<{
+      data?: AdvancedPost[] | AdvancedUser[];
+      nextCursor?: number | string;
+      message: string;
+    }>
+  ) => {
+    await delay(1000);
+    const { userId, filter, cursor } = req.query;
+    const id = req.params.id;
+    const { 'connect.sid': token } = req.cookies;
+    const pageSize = 10;
+    if (
+      !userId ||
+      !REGEX_NUMBER_ONLY.test(id) ||
+      (filter !== 'quotes' && filter !== 'retweets' && filter !== 'likes')
+    ) {
+      return httpBadRequestResponse(res);
+    }
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const findPost = dao.getPost({ userId, postId: ~~id });
+    if (!findPost) {
+      return httpNotFoundResponse(res);
+    }
+
+    switch (filter) {
+      case 'quotes': {
+        const postList = dao
+          .getPostList({
+            originalId: findPost.postId,
+            quote: true,
+          })
+          .sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+        if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
+          const findIndex = postList.findIndex((p) => p.postId === ~~cursor);
+          if (findIndex > -1) {
+            postList.splice(0, findIndex + 1);
+          }
+        }
+        const isOver = postList.length > pageSize;
+        if (isOver) {
+          postList.splice(pageSize);
+        }
+
+        return httpSuccessResponse(res, {
+          data: postList,
+          nextCursor: isOver ? postList.at(-1)?.postId : undefined,
+        });
+      }
+      case 'retweets': {
+        const repostList = dao
+          .getRepostList({ postId: ~~id })
+          .map((r) => r.userId);
+        const userList = dao
+          .getUserList()
+          .filter((u) => repostList.includes(u.id));
+        if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
+          const findIndex = userList.findIndex((u) => u.id === cursor);
+          if (findIndex > -1) {
+            userList.splice(0, findIndex + 1);
+          }
+        }
+        const isOver = userList.length > pageSize;
+        if (isOver) {
+          userList.splice(pageSize);
+        }
+
+        return httpSuccessResponse(res, {
+          data: userList,
+          nextCursor: isOver ? userList.at(-1)?.id : undefined,
+        });
+      }
+      case 'likes': {
+        const likeList = dao.getLikeList({ postId: ~~id }).map((r) => r.userId);
+        const userList = dao
+          .getUserList()
+          .filter((u) => likeList.includes(u.id));
+        if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
+          const findIndex = userList.findIndex((u) => u.id === cursor);
+          if (findIndex > -1) {
+            userList.splice(0, findIndex + 1);
+          }
+        }
+        const isOver = userList.length > pageSize;
+        if (isOver) {
+          userList.splice(pageSize);
+        }
+
+        return httpSuccessResponse(res, {
+          data: userList,
+          nextCursor: isOver ? userList.at(-1)?.id : undefined,
+        });
+      }
+      default:
+        return httpBadRequestResponse(res);
+    }
   }
 );
 
