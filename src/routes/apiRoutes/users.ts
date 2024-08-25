@@ -31,7 +31,6 @@ import { AdvancedUser } from '@/model/User';
 import { AdvancedPost } from '@/model/Post';
 import { AdvancedRoom } from '@/model/Room';
 import { Message } from '@/model/Message';
-import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 
 const apiUsersRouter = express.Router();
 const upload = multer({ storage });
@@ -290,7 +289,16 @@ apiUsersRouter.get(
     }
 
     let userPostList = dao.getPostList({ userId: findUser.id });
-    userPostList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+    userPostList.sort((a, b) => {
+      return a.createAt > b.createAt ? -1 : 1;
+    });
+    if (filter === 'all') {
+      userPostList.sort((a, b) => {
+        if (a.pinned && !b.pinned) return -1;
+        if (b.pinned && !a.pinned) return 1;
+        return a.createAt > b.createAt ? -1 : 1;
+      });
+    }
 
     if (filter === 'reply') {
       userPostList = userPostList.filter((p) => !!p.parentId);

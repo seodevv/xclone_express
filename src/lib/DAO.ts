@@ -9,7 +9,7 @@ import followData from '@/data/follow.json';
 import reactionsData from '@/data/reaction.json';
 import viewsData from '@/data/views.json';
 import { AdvancedUser, isVerified, SafeUser, User } from '@/model/User';
-import { AdvancedPost, GifType, ImageType, Post } from '@/model/Post';
+import { AdvancedPost, GifType, ImageType, isScope, Post } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
 import { Follow } from '@/model/Follow';
 import { Reactions } from '@/model/Reaction';
@@ -48,6 +48,7 @@ class DAO {
       ...postData.data.map((p) => ({
         ...p,
         createAt: new Date(p.createAt),
+        scope: isScope(p.scope),
       }))
     );
     this.tagList.push(
@@ -455,6 +456,43 @@ class DAO {
     this.writeDatabase('postList');
 
     return this.getFullPost({ postId: newPost.postId });
+  }
+
+  updatePost({
+    userId,
+    postId,
+    content,
+    images,
+    pinned,
+    scope,
+  }: {
+    postId: Post['postId'];
+    userId: User['id'];
+    content?: Post['content'];
+    images?: PostImage[];
+    pinned?: Post['pinned'];
+    scope?: Post['scope'];
+  }): AdvancedPost | undefined {
+    const findPostRaw = this.postList.find(
+      (p) => p.userId === userId && p.postId === postId
+    );
+    if (!findPostRaw) return;
+
+    const updatedPostRaw: Post = {
+      ...findPostRaw,
+      content: typeof content !== 'undefined' ? content : findPostRaw.content,
+      images: typeof images !== 'undefined' ? images : findPostRaw.images,
+      pinned: !!pinned,
+      scope: typeof scope !== 'undefined' ? scope : findPostRaw.scope,
+    };
+
+    const index = this.postList.findIndex((p) => p === findPostRaw);
+    if (index > -1) {
+      this.postList[index] = updatedPostRaw;
+      this.writeDatabase('postList');
+    }
+
+    return this.getPost({ userId, postId });
   }
 
   deletePost({ postId }: { postId: number }): void {

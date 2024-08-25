@@ -10,6 +10,8 @@ export interface Post {
   parentId?: Post['postId'];
   originalId?: Post['postId'];
   quote?: boolean;
+  pinned?: boolean;
+  scope?: 'every' | 'follow' | 'verified' | 'only';
 }
 
 export interface AdvancedPost extends Post {
@@ -46,3 +48,15 @@ export interface ImageType {
   width: number;
   height: number;
 }
+
+export const isScope = (str?: string): Post['scope'] | undefined => {
+  if (
+    str === 'every' ||
+    str === 'follow' ||
+    str === 'verified' ||
+    str === 'only'
+  ) {
+    return str;
+  }
+  return undefined;
+};

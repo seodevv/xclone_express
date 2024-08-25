@@ -1033,6 +1033,134 @@ apiPostsRouter.get(
   }
 );
 
+// "POST /api/posts/:id/pinned"
+// 특정 게시물 pinned 추가
+apiPostsRouter.post(
+  '/:id/pinned',
+  (
+    req: TypedRequestParams<{ id: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
+    const id = req.params.id;
+    const { 'connect.sid': token } = req.cookies;
+    if (!REGEX_NUMBER_ONLY.test(id)) return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const findPost = dao.getPost({ userId: currentUser.id, postId: ~~id });
+    if (!findPost) {
+      return httpNotFoundResponse(res, 'post not found');
+    }
+    if (findPost.pinned) {
+      return httpForbiddenResponse(res, 'already pinned');
+    }
+
+    const updatedPost = dao.updatePost({
+      userId: currentUser.id,
+      postId: ~~id,
+      pinned: true,
+    });
+
+    return httpSuccessResponse(res, { data: updatedPost });
+  }
+);
+
+// "DELETE /api/posts/:id/pinned"
+// 특정 게시물 pinned 추가
+apiPostsRouter.delete(
+  '/:id/pinned',
+  (
+    req: TypedRequestParams<{ id: string }>,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
+    const id = req.params.id;
+    const { 'connect.sid': token } = req.cookies;
+    if (!REGEX_NUMBER_ONLY.test(id)) return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const findPost = dao.getPost({ userId: currentUser.id, postId: ~~id });
+    if (!findPost) {
+      return httpNotFoundResponse(res, 'post not found');
+    }
+    if (!findPost.pinned) {
+      return httpForbiddenResponse(res, 'already unPinned');
+    }
+
+    const updatedPost = dao.updatePost({
+      userId: currentUser.id,
+      postId: ~~id,
+      pinned: false,
+    });
+
+    return httpSuccessResponse(res, { data: updatedPost });
+  }
+);
+
+// "POST /api/posts/:id/scope"
+// 특정 게시물 scope 설정
+apiPostsRouter.post(
+  '/:id/scope',
+  (
+    req: TypedRequestBodyParams<
+      { userId?: string; scope?: string },
+      { id: string }
+    >,
+    res: TypedResponse<{ data?: AdvancedPost; message: string }>
+  ) => {
+    const { userId, scope } = req.body;
+    const id = req.params.id;
+    const { 'connect.sid': token } = req.cookies;
+    if (
+      !userId ||
+      !REGEX_NUMBER_ONLY.test(id) ||
+      typeof scope === 'undefined' ||
+      (scope !== 'every' &&
+        scope !== 'follow' &&
+        scope !== 'verified' &&
+        scope !== 'only')
+    )
+      return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser || currentUser.id !== userId) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const findPost = dao.getPost({ userId, postId: ~~id });
+    if (!findPost) {
+      return httpNotFoundResponse(res);
+    }
+
+    if (findPost.scope === scope) {
+      return httpForbiddenResponse(res, 'already set up');
+    }
+
+    const updatedPost = dao.updatePost({
+      userId,
+      postId: ~~id,
+      scope,
+    });
+
+    return httpSuccessResponse(res, { data: updatedPost });
+  }
+);
+
 // "GET /api/posts/:id/photos/:imagesId"
 // 특정 게시글 이미지 조회
 apiPostsRouter.get(
