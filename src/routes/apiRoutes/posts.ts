@@ -197,8 +197,6 @@ apiPostsRouter.post(
       quote: !!repostId,
     });
 
-    console.log(newPost);
-
     return httpCreatedResponse(res, { data: newPost });
   }
 );
@@ -433,14 +431,9 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.getFullPost({ postId: ~~id });
+    const findPost = dao.getFullPost({ userId: currentUser.id, postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
-    }
-
-    const isOwner = findPost.User.id === currentUser.id;
-    if (!isOwner) {
-      return httpForbiddenResponse(res, 'Permission deny');
     }
 
     if (findPost.images.length) {
@@ -454,6 +447,20 @@ apiPostsRouter.delete(
       }
     }
     dao.deletePost({ postId: findPost.postId });
+    dao.deleteReaction({ postId: findPost.postId });
+    dao.deleteView({ postId: findPost.postId });
+
+    const repostList = dao
+      .getPostList({
+        originalId: findPost.postId,
+      })
+      .filter((p) => !p.quote);
+    if (repostList.length !== 0) {
+      repostList.forEach((p) => {
+        dao.deletePost({ postId: p.postId });
+        dao.deleteView({ postId: p.postId });
+      });
+    }
 
     return httpNoContentRepsonse(res);
   }
@@ -613,8 +620,9 @@ apiPostsRouter.delete(
 
     const dao = new DAO();
     const findPost = dao.getRepostPost({
-      originalId: parseInt(id),
+      originalId: ~~id,
       userId: currentUser.id,
+      quote: false,
     });
     if (!findPost || !findPost.originalId) {
       return httpNotFoundResponse(res, 'Post not found');
@@ -627,6 +635,7 @@ apiPostsRouter.delete(
       userId: currentUser.id,
     });
     dao.deletePost({ postId: findPost.postId });
+    dao.deleteView({ postId: findPost.postId });
 
     return httpNoContentRepsonse(res);
   }
@@ -1114,17 +1123,13 @@ apiPostsRouter.delete(
 apiPostsRouter.post(
   '/:id/scope',
   (
-    req: TypedRequestBodyParams<
-      { userId?: string; scope?: string },
-      { id: string }
-    >,
+    req: TypedRequestBodyParams<{ scope?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
-    const { userId, scope } = req.body;
+    const { scope } = req.body;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
     if (
-      !userId ||
       !REGEX_NUMBER_ONLY.test(id) ||
       typeof scope === 'undefined' ||
       (scope !== 'every' &&
@@ -1136,13 +1141,13 @@ apiPostsRouter.post(
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
-    if (!currentUser || currentUser.id !== userId) {
+    if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userId, postId: ~~id });
+    const findPost = dao.getPost({ userId: currentUser.id, postId: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res);
     }
@@ -1152,7 +1157,7 @@ apiPostsRouter.post(
     }
 
     const updatedPost = dao.updatePost({
-      userId,
+      userId: currentUser.id,
       postId: ~~id,
       scope,
     });

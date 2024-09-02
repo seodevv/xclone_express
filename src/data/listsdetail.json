@@ -1,0 +1,1 @@
+{ "data": [{ "id": 3, "listId": 1, "type": "member", "userId": "student" }, { "id": 4, "listId": 1, "type": "follower", "userId": "student" }, { "id": 5, "listId": 1, "type": "member", "userId": "cherry" }, { "id": 6, "listId": 1, "type": "post", "userId": "cherry", "postId": 82 }, { "id": 7, "listId": 1, "type": "post", "userId": "cherry", "postId": 77 }] }

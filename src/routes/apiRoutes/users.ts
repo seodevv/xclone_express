@@ -31,6 +31,8 @@ import { AdvancedUser } from '@/model/User';
 import { AdvancedPost } from '@/model/Post';
 import { AdvancedRoom } from '@/model/Room';
 import { Message } from '@/model/Message';
+import { REGEX_NUMBER_ONLY } from '@/lib/regex';
+import { AdvancedLists } from '@/model/Lists';
 
 const apiUsersRouter = express.Router();
 const upload = multer({ storage });
@@ -324,6 +326,61 @@ apiUsersRouter.get(
       data: userPostList,
       nextCursor:
         prevLength > pageSize ? userPostList.at(-1)?.postId : undefined,
+    });
+  }
+);
+
+// "GET /api/users/:id/lists"
+// 특정 유저의 리스트 조회
+apiUsersRouter.get(
+  '/:id/lists',
+  (
+    req: TypedRequestQueryParams<
+      { cursor?: string; size?: string },
+      { id: string }
+    >,
+    res: TypedResponse<{
+      data?: AdvancedLists[];
+      nextCursor?: number;
+      message: string;
+    }>
+  ) => {
+    const { cursor, size = '10' } = req.query;
+    const id = req.params.id;
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const findUser = dao.getUser({ id });
+    if (!findUser) {
+      return httpNotFoundResponse(res);
+    }
+
+    const make = currentUser.id !== findUser.id ? 'public' : undefined;
+    const listsList = dao.getListsList({ userId: findUser.id, make });
+
+    if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
+      const findIndex = listsList.findIndex((l) => l.id === ~~cursor);
+      if (findIndex > -1) {
+        listsList.splice(0, findIndex + 1);
+      }
+    }
+
+    const pageSize = REGEX_NUMBER_ONLY.test(size) && ~~size !== 0 ? ~~size : 10;
+    const sizeOver = listsList.length > pageSize;
+    if (sizeOver) {
+      listsList.splice(pageSize);
+    }
+
+    return httpSuccessResponse(res, {
+      data: listsList,
+      nextCursor: sizeOver ? listsList.at(-1)?.id : undefined,
     });
   }
 );

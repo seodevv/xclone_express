@@ -1,0 +1,26 @@
+{
+    "data": [
+        {
+            "id": 1,
+            "userId": "cherry",
+            "name": "seodev",
+            "description": "",
+            "banner": "1725036021640_html.png",
+            "thumbnail": "1725036021641_html.png",
+            "make": "private",
+            "pinned": false,
+            "createAt": "2024-08-30T16:40:21.648Z"
+        },
+        {
+            "id": 2,
+            "userId": "cherry",
+            "name": "seodev",
+            "description": "",
+            "banner": "lists_default.png",
+            "thumbnail": "lists_default.png",
+            "make": "private",
+            "pinned": false,
+            "createAt": "2024-08-30T16:44:35.473Z"
+        }
+    ]
+}

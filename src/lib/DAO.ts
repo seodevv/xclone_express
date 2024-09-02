@@ -8,6 +8,8 @@ import messageData from '@/data/message.json';
 import followData from '@/data/follow.json';
 import reactionsData from '@/data/reaction.json';
 import viewsData from '@/data/views.json';
+import listsData from '@/data/lists.json';
+import listsDetailData from '@/data/listsdetail.json';
 import { AdvancedUser, isVerified, SafeUser, User } from '@/model/User';
 import { AdvancedPost, GifType, ImageType, isScope, Post } from '@/model/Post';
 import { PostImage } from '@/model/PostImage';
@@ -18,6 +20,13 @@ import { AdvancedRoom, Room } from '@/model/Room';
 import { Message } from '@/model/Message';
 import { Morpheme } from '@/model/Morpheme';
 import { Views } from '@/model/Views';
+import {
+  AdvancedLists,
+  Lists,
+  ListsDetail,
+  ListsDetailRaw,
+  ListsRaw,
+} from '@/model/Lists';
 
 let instance: DAO | null;
 
@@ -30,6 +39,8 @@ class DAO {
   private followList: Follow[] = [];
   private reactionList: Reactions[] = [];
   private viewList: Views[] = [];
+  private lists: Lists[] = [];
+  private listsDetail: ListsDetail[] = [];
 
   constructor() {
     if (instance) {
@@ -75,6 +86,20 @@ class DAO {
     );
     this.reactionList.push(...reactionsData.data);
     this.viewList.push(...viewsData.data);
+    this.lists.push(
+      ...listsData.data
+        .map((l) => ({ ...l, createAt: new Date(l.createAt) }))
+        .filter(
+          (l: ListsRaw): l is Lists =>
+            l.make === 'private' || l.make === 'public'
+        )
+    );
+    this.listsDetail.push(
+      ...listsDetailData.data.filter(
+        (ld: ListsDetailRaw): ld is ListsDetail =>
+          ld.type === 'member' || ld.type === 'post' || ld.type === 'follower'
+      )
+    );
     instance = this;
     console.timeEnd('Data Load');
   }
@@ -106,17 +131,26 @@ class DAO {
     originalId,
     followIds,
     quote,
+    withPostIds,
   }: {
     userId?: User['id'];
     parentId?: Post['postId'];
     originalId?: Post['postId'];
     followIds?: User['id'][];
     quote?: boolean;
+    withPostIds?: Post['postId'][];
   }): AdvancedPost[] {
     const postList: AdvancedPost[] = [];
     this.postList.forEach((p) => {
       const post = this.getFullPost({ postId: p.postId });
       if (!post) return;
+      if (
+        typeof withPostIds !== 'undefined' &&
+        withPostIds.includes(post.postId)
+      ) {
+        postList.push(post);
+        return;
+      }
       if (userId && post.userId !== userId) return;
       if (parentId && post.parentId !== parentId) return;
       if (originalId && post.originalId !== originalId) return;
@@ -188,6 +222,25 @@ class DAO {
         (userId ? r.userId === userId : true) &&
         (postId ? r.postId === postId : true)
     );
+  }
+
+  getListsList({
+    userId,
+    make,
+  }: {
+    userId?: User['id'];
+    make?: Lists['make'];
+  }) {
+    const listsList: AdvancedLists[] = [];
+    this.lists.forEach((l) => {
+      const list = this.getLists({ id: l.id });
+      if (!list) return;
+      if (typeof userId !== 'undefined' && list.userId !== userId) return;
+      if (typeof make !== 'undefined' && list.make !== make) return;
+
+      listsList.push(list);
+    });
+    return listsList;
   }
 
   getRepostList({ postId }: { postId: Post['postId'] }): Reactions[] {
@@ -314,21 +367,91 @@ class DAO {
     return advancedPost;
   }
 
+  getLists({
+    id,
+    userId,
+    make,
+  }: {
+    id: Lists['id'];
+    userId?: User['id'];
+    make?: Lists['make'];
+  }) {
+    const findList = this.lists.find((l) => {
+      let condition = l.id === id;
+      if (typeof userId !== 'undefined') {
+        condition = condition && l.userId === userId;
+      }
+      if (typeof make !== 'undefined') {
+        condition = condition && l.make === make;
+      }
+      return condition;
+    });
+    if (!findList) return;
+
+    const member = this.listsDetail
+      .filter((l) => l.type === 'member' && l.listId === findList.id)
+      .map((l) => ({ id: l.userId }));
+    const follower = this.listsDetail
+      .filter((l) => l.type === 'follower' && l.listId === findList.id)
+      .map((l) => ({ id: l.userId }));
+    const posts = this.listsDetail
+      .filter(
+        (l): l is Required<ListsDetail> =>
+          l.type === 'post' && l.listId === findList.id && !!l.postId
+      )
+      .map((l) => l.postId);
+
+    const advancedLists: AdvancedLists = {
+      ...findList,
+      member,
+      follower,
+      posts,
+    };
+
+    return advancedLists;
+  }
+
+  getListsDetail({
+    listId,
+    type,
+    userId,
+    postId,
+  }: {
+    listId: ListsDetail['listId'];
+    type: ListsDetail['type'];
+    userId?: User['id'];
+    postId?: Post['postId'];
+  }): ListsDetail | undefined {
+    const findListsDetail = this.listsDetail.find((ld) => {
+      let condition = ld.listId === listId && ld.type === type;
+      if (typeof userId !== 'undefined') {
+        condition = condition && ld.userId === userId;
+      }
+      if (typeof postId !== 'undefined') {
+        condition = condition && ld.postId === postId;
+      }
+      return condition;
+    });
+
+    return findListsDetail;
+  }
+
   getRepostPost({
     originalId,
     userId,
     quote,
   }: {
     originalId: Post['postId'];
-    userId: User['id'];
+    userId?: User['id'];
     quote?: boolean;
   }): Post | undefined {
-    const findPost = this.postList.find(
-      (p) =>
-        p.originalId === originalId &&
-        p.userId === userId &&
-        !!p.quote === !!quote
-    );
+    const findPost = this.postList.find((p) => {
+      let condition = p.originalId === originalId && !!p.quote === !!quote;
+      if (typeof userId !== 'undefined') {
+        condition = condition && p.userId === userId;
+      }
+      return condition;
+    });
     return findPost;
   }
 
@@ -357,6 +480,13 @@ class DAO {
       const Original = this.getPost({ postId: findPost.originalId });
       if (Original) {
         findPost.Original = Original;
+
+        if (Original.quote && Original.originalId) {
+          const quote = this.getPost({ postId: Original.originalId });
+          if (quote) {
+            findPost.Original.Original = quote;
+          }
+        }
       }
     }
 
@@ -458,6 +588,39 @@ class DAO {
     return this.getFullPost({ postId: newPost.postId });
   }
 
+  createList({
+    userId,
+    name,
+    description = '',
+    banner,
+    thumbnail,
+    make,
+  }: {
+    userId: User['id'];
+    name: string;
+    description?: string;
+    banner: string;
+    thumbnail: string;
+    make: 'private' | 'public';
+  }): Lists {
+    const nextId = Math.max(...this.lists.map((l) => l.id)) + 1;
+    const newList: Lists = {
+      id: isFinite(nextId) ? nextId : 1,
+      userId,
+      name,
+      description,
+      banner,
+      thumbnail,
+      make,
+      pinned: false,
+      createAt: new Date(),
+    };
+    this.lists.push(newList);
+    this.writeDatabase('lists');
+
+    return newList;
+  }
+
   updatePost({
     userId,
     postId,
@@ -496,13 +659,23 @@ class DAO {
   }
 
   deletePost({ postId }: { postId: number }): void {
-    const targetIndex = this.postList.findIndex((p) => {
-      return p.postId === postId;
-    });
-    if (targetIndex > -1) {
-      this.postList.splice(targetIndex, 1);
-      this.writeDatabase('postList');
-    }
+    const newPostList = this.postList.filter((p) => p.postId !== postId);
+    this.postList = newPostList;
+    this.writeDatabase('postList');
+  }
+
+  deleteReaction({ postId }: { postId: Post['postId'] }): void {
+    const newReactionList = this.reactionList.filter(
+      (r) => r.postId !== postId
+    );
+    this.reactionList = newReactionList;
+    this.writeDatabase('reactionList');
+  }
+
+  deleteView({ postId }: { postId: Post['postId'] }): void {
+    const newViewList = this.viewList.filter((v) => v.postId !== postId);
+    this.viewList = newViewList;
+    this.writeDatabase('viewList');
   }
 
   followHandler({
@@ -629,6 +802,45 @@ class DAO {
     return updatedPost;
   }
 
+  listsDetailHandler({
+    method,
+    type,
+    listId,
+    userId,
+    postId,
+  }: {
+    method: 'post' | 'delete';
+    type: ListsDetail['type']; // member | post | follow;
+    listId: Lists['id'];
+    userId: User['id'];
+    postId?: Post['postId'];
+  }) {
+    const already = !!this.getListsDetail({ listId, type, userId, postId });
+
+    if (method === 'post' && !already) {
+      const nextId = Math.max(...this.listsDetail.map((ld) => ld.id)) + 1;
+      const newListsDetail: ListsDetail = {
+        id: isFinite(nextId) ? nextId : 1,
+        listId,
+        type,
+        userId,
+        postId,
+      };
+      this.listsDetail.push(newListsDetail);
+      this.writeDatabase('listsDetail');
+    } else if (method === 'delete' && already) {
+      this.listsDetail = this.listsDetail.filter((ld) => {
+        let condition =
+          ld.type === type && ld.listId === listId && ld.userId === userId;
+        if (typeof postId !== 'undefined') {
+          condition = condition && ld.postId === postId;
+        }
+        return !condition;
+      });
+      this.writeDatabase('listsDetail');
+    }
+  }
+
   hashtagsAnalysis(content: string): void {
     if (!content || !content.trim()) return;
 
@@ -731,6 +943,8 @@ class DAO {
       | 'followList'
       | 'reactionList'
       | 'viewList'
+      | 'lists'
+      | 'listsDetail'
   ): void {
     console.time(type);
     try {
@@ -764,6 +978,16 @@ class DAO {
         case 'viewList':
           fs.writeJsonSync(dbPath + '/views.json', {
             data: this.viewList,
+          });
+          break;
+        case 'lists':
+          fs.writeJsonSync(dbPath + '/lists.json', {
+            data: this.lists,
+          });
+          break;
+        case 'listsDetail':
+          fs.writeJsonSync(dbPath + '/listsdetail.json', {
+            data: this.listsDetail,
           });
           break;
         default:

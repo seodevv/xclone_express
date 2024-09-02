@@ -5,6 +5,7 @@ import path from 'path';
 import apiPostsRouter from './apiRoutes/posts';
 import apiUsersRouter from './apiRoutes/users';
 import apiHashtagsRouter from './apiRoutes/hashtags';
+import apiListsRouter from '@/routes/apiRoutes/lists';
 import {
   httpBadRequestResponse,
   httpForbiddenResponse,
@@ -34,6 +35,7 @@ const apiRouter = express.Router();
 apiRouter.use('/users', apiUsersRouter);
 apiRouter.use('/posts', apiPostsRouter);
 apiRouter.use('/hashtags', apiHashtagsRouter);
+apiRouter.use('/lists', apiListsRouter);
 
 // "GET" /api/login"
 // 로그인 아이디 확인

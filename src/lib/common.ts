@@ -84,8 +84,20 @@ export const removingFiles = (
   files?: { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[]
 ) => {
   if (files) {
-    Object.values(files).forEach((v: Express.Multer.File) => {
-      fs.removeSync(uploadPath + '/' + v.filename);
-    });
+    if (Array.isArray(files)) {
+      Object.values(files).forEach((file: Express.Multer.File) => {
+        fs.removeSync(uploadPath + '/' + file.filename);
+      });
+      return;
+    }
+
+    const already: string[] = [];
+    Object.values(files).forEach((array) =>
+      array.forEach((file) => {
+        if (already.includes(file.filename)) return;
+        fs.removeSync(uploadPath + '/' + file.filename);
+        already.push(file.filename);
+      })
+    );
   }
 };
