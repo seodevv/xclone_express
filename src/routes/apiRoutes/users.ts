@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import fs from 'fs-extra';
+import path from 'path';
 import { uploadPath } from '@/app';
 import {
   httpBadRequestResponse,
@@ -17,6 +18,7 @@ import {
   storage,
   delay,
   COOKIE_OPTIONS,
+  removingFiles,
 } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import {
@@ -27,7 +29,7 @@ import {
   TypedRequestQueryParams,
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
-import { AdvancedUser } from '@/model/User';
+import { AdvancedUser, User } from '@/model/User';
 import { AdvancedPost } from '@/model/Post';
 import { AdvancedRoom } from '@/model/Room';
 import { Message } from '@/model/Message';
@@ -91,6 +93,15 @@ apiUsersRouter.post(
       id,
       password,
       nickname,
+      birth: birth
+        ? {
+            date: birth,
+            scope: {
+              month: 'each',
+              year: 'only',
+            },
+          }
+        : undefined,
       image: file.filename,
     });
 
@@ -108,7 +119,7 @@ apiUsersRouter.post(
 // 유저 검색
 apiUsersRouter.get(
   '/search',
-  (
+  async (
     req: TypedRequestQuery<{
       cursor?: string;
       q?: string;
@@ -122,6 +133,7 @@ apiUsersRouter.get(
       message: string;
     }>
   ) => {
+    await delay(1000);
     const { cursor, q, pf, lf, f } = req.query;
     const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
@@ -243,6 +255,131 @@ apiUsersRouter.get(
   }
 );
 
+// "POST /api/users/edit"
+// 프로필 수정
+apiUsersRouter.post(
+  '/edit',
+  upload.fields([
+    { name: 'banner', maxCount: 1 },
+    { name: 'image', maxCount: 1 },
+  ]),
+  (
+    req: TypedRequestBody<{
+      nickname?: string;
+      desc?: string;
+      location?: string;
+      refer?: string;
+      birth?: string;
+      updated?: string;
+    }>,
+    res: TypedResponse<{ data?: AdvancedUser; message: string }>
+  ) => {
+    const { nickname, desc, location, refer } = req.body;
+    const birth = req.body.birth
+      ? (JSON.parse(req.body.birth) as User['birth'])
+      : undefined;
+    const updated = req.body.updated
+      ? (JSON.parse(req.body.updated) as {
+          nickname: boolean;
+          desc: boolean;
+          location: boolean;
+          refer: boolean;
+          birth: boolean;
+          image: boolean;
+          banner: boolean;
+        })
+      : undefined;
+    const files = req.files;
+    const { 'connect.sid': token } = req.cookies;
+    if (!updated || !files || Array.isArray(files)) {
+      removingFiles(files);
+      return httpBadRequestResponse(res);
+    }
+    if (!token) {
+      removingFiles(files);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      removingFiles(files);
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    if (Object.values(updated).every((v) => !v)) {
+      removingFiles(files);
+      return httpForbiddenResponse(res);
+    }
+
+    const imageFiles = files.image;
+    const bannerFiles = files.banner;
+    const image = imageFiles ? imageFiles[0].filename : undefined;
+    const banner = bannerFiles ? bannerFiles[0].filename : undefined;
+
+    const dao = new DAO();
+    const updatedUser = dao.updateUser({
+      id: currentUser.id,
+      nickname: updated.nickname ? nickname : undefined,
+      desc: updated.desc ? desc : undefined,
+      location: updated.location ? location : undefined,
+      birth: updated.birth ? birth : undefined,
+      refer: updated.refer ? refer : undefined,
+      image: updated.image ? image : undefined,
+      banner: updated.banner
+        ? typeof banner === 'undefined'
+          ? ''
+          : banner
+        : undefined,
+    });
+
+    if (updated.image && currentUser.image) {
+      const imagePath = path.join(uploadPath, '/', currentUser.image);
+      fs.removeSync(imagePath);
+    }
+
+    if (updated.banner && currentUser.banner) {
+      const imagePath = path.join(uploadPath, '/', currentUser.banner);
+      fs.removeSync(imagePath);
+    }
+
+    return httpSuccessResponse(res, { data: updatedUser });
+  }
+);
+
+// "DELETE /api/users/birth"
+// 유저 생일 삭제
+apiUsersRouter.delete(
+  '/birth',
+  (
+    req: TypedRequestCookies,
+    res: TypedResponse<{ data?: AdvancedUser; message: string }>
+  ) => {
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    if (!currentUser.birth) {
+      return httpForbiddenResponse(
+        res,
+        'The user does not have a set birthday'
+      );
+    }
+
+    const dao = new DAO();
+    const updatedUser = dao.deleteBirth({
+      id: currentUser.id,
+    });
+
+    return httpSuccessResponse(res, { data: updatedUser });
+  }
+);
+
 // "GET /api/users/:id"
 // 특정 유저 정보 조회
 apiUsersRouter.get(
@@ -336,7 +473,7 @@ apiUsersRouter.get(
   '/:id/lists',
   (
     req: TypedRequestQueryParams<
-      { cursor?: string; size?: string },
+      { cursor?: string; size?: string; filter?: string },
       { id: string }
     >,
     res: TypedResponse<{
@@ -345,9 +482,12 @@ apiUsersRouter.get(
       message: string;
     }>
   ) => {
-    const { cursor, size = '10' } = req.query;
+    const { cursor, size = '10', filter = 'all' } = req.query;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
+    if (filter !== 'all' && filter !== 'own' && filter !== 'memberships') {
+      return httpBadRequestResponse(res);
+    }
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
@@ -362,8 +502,41 @@ apiUsersRouter.get(
       return httpNotFoundResponse(res);
     }
 
-    const make = currentUser.id !== findUser.id ? 'public' : undefined;
-    const listsList = dao.getListsList({ userId: findUser.id, make });
+    let listsList = dao.getListsList({
+      userId: filter !== 'memberships' ? findUser.id : undefined,
+      sessionId: currentUser.id,
+      make: currentUser.id !== findUser.id ? 'public' : undefined,
+    });
+
+    if (filter === 'all') {
+      const followLists = dao.getListsDetailList({
+        type: 'follower',
+        userId: findUser.id,
+      });
+      followLists.forEach((detail) => {
+        const findList = dao.getLists({
+          id: detail.listId,
+          sessionId: currentUser.id,
+        });
+        if (findList) {
+          listsList.push(findList);
+        }
+      });
+    } else if (filter === 'memberships') {
+      listsList = listsList.filter((l) =>
+        l.Member.map((m) => m.id).includes(findUser.id)
+      );
+    }
+
+    if (currentUser.id === findUser.id) {
+      listsList.sort((a, b) => {
+        if (a.Pinned && !b.Pinned) return -1;
+        if (!a.Pinned && b.Pinned) return 1;
+        return a.createAt > b.createAt ? -1 : 1;
+      });
+    } else {
+      listsList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+    }
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
       const findIndex = listsList.findIndex((l) => l.id === ~~cursor);

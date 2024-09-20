@@ -1,5 +1,5 @@
 import { Post } from '@/model/Post';
-import { User, UserId } from '@/model/User';
+import { SafeUser, User, UserId } from '@/model/User';
 
 export interface ListsRaw {
   id: number;
@@ -9,7 +9,6 @@ export interface ListsRaw {
   banner: string;
   thumbnail: string;
   make: string;
-  pinned: boolean;
   createAt: Date;
 }
 
@@ -18,9 +17,12 @@ export interface Lists extends ListsRaw {
 }
 
 export interface AdvancedLists extends Lists {
-  member: UserId[];
-  follower: UserId[];
-  posts: Post['postId'][];
+  User: SafeUser;
+  Member: UserId[];
+  Follower: UserId[];
+  Posts: Post['postId'][];
+  UnShow: UserId[];
+  Pinned: boolean;
 }
 
 export interface ListsDetailRaw {
@@ -32,5 +34,5 @@ export interface ListsDetailRaw {
 }
 
 export interface ListsDetail extends ListsDetailRaw {
-  type: 'member' | 'post' | 'follower';
+  type: 'member' | 'post' | 'unpost' | 'follower' | 'pinned' | 'unshow';
 }

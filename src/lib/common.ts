@@ -24,6 +24,9 @@ export const storage = multer.diskStorage({
   },
 });
 
+export const IMAGE_DEFAULT_PROFILE = 'default_profile.png';
+export const IMAGE_DEFAULT_LISTS = 'default_lists.png';
+
 export const generateUserToken = (user: AdvancedUser): string | undefined => {
   try {
     const secret = process.env.JWT_SECRET || 'secret';

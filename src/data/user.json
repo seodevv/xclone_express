@@ -171,8 +171,27 @@
             "id": "student",
             "password": "student",
             "nickname": "student",
+            "birth": {
+                "date": "1992-8-28",
+                "scope": { "month": "each", "year": "only" }
+            },
             "image": "1724345212150_2ecd3323e3a8923251a3a333fe5334be.jpg",
             "regist": "2024-08-22T16:46:54.161Z"
+        },
+        {
+            "id": "seodev",
+            "password": "seodev",
+            "nickname": "seodevv",
+            "image": "1726801189471_39f240a04441d36e63432f10f21ff951.jpg",
+            "regist": "2024-09-12T13:54:36.027Z",
+            "birth": {
+                "date": "1992-8-28",
+                "scope": { "month": "each", "year": "only" }
+            },
+            "desc": "hi",
+            "banner": "1726717425893_39f240a04441d36e63432f10f21ff951.jpg",
+            "location": "seoul, republic of korea.",
+            "refer": "github.com/seodevv"
         }
     ]
 }
