@@ -1,4 +1,3 @@
-import { PostImage } from './PostImage';
 import { SafeUser, UserId } from './User';
 
 export interface Post {
@@ -12,6 +11,13 @@ export interface Post {
   quote?: boolean;
   pinned?: boolean;
   scope?: 'every' | 'follow' | 'verified' | 'only';
+}
+
+export interface PostImage {
+  link: string;
+  imageId: number;
+  width: number;
+  height: number;
 }
 
 export interface AdvancedPost extends Post {

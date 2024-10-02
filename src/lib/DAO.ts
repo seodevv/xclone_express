@@ -17,8 +17,14 @@ import {
   SafeUser,
   User,
 } from '@/model/User';
-import { AdvancedPost, GifType, ImageType, isScope, Post } from '@/model/Post';
-import { PostImage } from '@/model/PostImage';
+import {
+  AdvancedPost,
+  GifType,
+  ImageType,
+  isScope,
+  Post,
+  PostImage,
+} from '@/model/Post';
 import { Follow } from '@/model/Follow';
 import { Reactions } from '@/model/Reaction';
 import { isTag, isWord, Tag, Tags, Word } from '@/model/Hashtag';

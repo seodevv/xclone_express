@@ -27,8 +27,7 @@ import {
   TypedRequestQueryParams,
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
-import { AdvancedPost, GifType, ImageType } from '@/model/Post';
-import { PostImage } from '@/model/PostImage';
+import { AdvancedPost, GifType, ImageType, PostImage } from '@/model/Post';
 import { uploadPath } from '@/app';
 import { Views } from '@/model/Views';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
