@@ -1,3 +1,4 @@
+import { AdvancedPost } from '@/model/Post';
 import express from 'express';
 import multer from 'multer';
 import fs from 'fs-extra';
@@ -29,28 +30,30 @@ import {
   TypedRequestQueryParams,
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
-import { AdvancedUser, User } from '@/model/User';
-import { AdvancedPost } from '@/model/Post';
+import { AdvancedUser } from '@/model/User';
 import { AdvancedRoom } from '@/model/Room';
 import { Message } from '@/model/Message';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 import { AdvancedLists } from '@/model/Lists';
+import NEW_DAO from '@/lib/dao_n';
+import { Birth } from '@/db/schema';
 
 const apiUsersRouter = express.Router();
 const upload = multer({ storage });
 
 // "GET /api/users"
 // 내 정보 조회
+// release
 apiUsersRouter.get(
   '/',
-  (
+  async (
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res, 'please login first');
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
@@ -62,6 +65,7 @@ apiUsersRouter.get(
 
 // "POST /api/users"
 // 회원 가입
+// release
 apiUsersRouter.post(
   '/',
   upload.single('image'),
@@ -82,14 +86,15 @@ apiUsersRouter.post(
       return httpBadRequestResponse(res);
     }
 
-    const dao = new DAO();
-    const findUser = dao.getUser({ id });
+    const dao = new NEW_DAO();
+    const findUser = await dao.getUser({ id });
     if (findUser) {
+      dao.release();
       fs.removeSync(uploadPath + '/' + file.filename);
       return httpForbiddenResponse(res, 'This ID already exists.');
     }
 
-    const newUser = dao.createUser({
+    const newUser = await dao.createUser({
       id,
       password,
       nickname,
@@ -101,9 +106,15 @@ apiUsersRouter.post(
               year: 'only',
             },
           }
-        : undefined,
+        : null,
       image: file.filename,
     });
+    dao.release();
+
+    if (!newUser) {
+      fs.removeSync(uploadPath + '/' + file.filename);
+      return httpInternalServerErrorResponse(res);
+    }
 
     const userToken = generateUserToken(newUser);
     if (!userToken) {
@@ -117,6 +128,7 @@ apiUsersRouter.post(
 
 // "GET /api/users/search"
 // 유저 검색
+// release
 apiUsersRouter.get(
   '/search',
   async (
@@ -138,22 +150,16 @@ apiUsersRouter.get(
     const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
-    const dao = new DAO();
-    let searchUserList = dao.getUserList();
-    if (q) {
-      const decode = decodeURIComponent(q);
-      const regex = new RegExp(
-        `${decode.toLowerCase().replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&')}`
-      );
-      searchUserList = searchUserList.filter(
-        (u) => regex.test(u.id) || regex.test(u.nickname)
-      );
+    const dao = new NEW_DAO();
+    let searchUserList = await dao.getUserList({ q });
+    if (!searchUserList) {
+      return httpInternalServerErrorResponse(res);
     }
 
     if (cursor) {
@@ -162,15 +168,18 @@ apiUsersRouter.get(
     }
 
     if (pf) {
-      const followList = dao
-        .getFollowList({ target: currentUser.id })
-        .map((u) => u.source);
-      const followingList = dao
-        .getFollowList({ source: currentUser.id })
-        .map((u) => u.target);
+      const followList = await dao.getFollowList({ target: currentUser.id });
+      const followingList = await dao.getFollowList({ source: currentUser.id });
+      if (!followList || !followingList) {
+        return httpInternalServerErrorResponse(res);
+      }
+
+      const mappedFollowList = followList.map((u) => u.source);
+      const mappedFollowingList = followingList.map((u) => u.target);
 
       searchUserList = searchUserList.filter(
-        (u) => followList.includes(u.id) || followingList.includes(u.id)
+        (u) =>
+          mappedFollowList.includes(u.id) || mappedFollowingList.includes(u.id)
       );
     }
 
@@ -189,9 +198,10 @@ apiUsersRouter.get(
 
 // "GET /api/users/followRecommends"
 // 팔로우 추천인 조회
+// release
 apiUsersRouter.get(
   '/followRecommends',
-  (
+  async (
     req: TypedRequestQuery<{ cursor?: string; size?: string }>,
     res: TypedResponse<{
       data?: AdvancedUser[];
@@ -204,20 +214,27 @@ apiUsersRouter.get(
       req.query.size && ~~req.query.size !== 0 ? ~~req.query.size : 10;
     const { 'connect.sid': token } = req.cookies;
 
-    const dao = new DAO();
-    const recommendsList = dao.getUserList();
+    const dao = new NEW_DAO();
+    const recommendsList = await dao.getUserList({});
+    if (!recommendsList) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
     recommendsList.sort((a, b) =>
       a._count.Followers > b._count.Followers ? -1 : 1
     );
 
     if (!token) {
+      dao.release();
       recommendsList.splice(pageSize);
       return httpSuccessResponse(res, { data: recommendsList });
     }
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
+      dao.release();
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.clearCookie('connect.sid');
       recommendsList.splice(pageSize);
       return httpSuccessResponse(res, { data: recommendsList });
     }
@@ -229,7 +246,11 @@ apiUsersRouter.get(
       recommendsList.splice(currentUserIndex, 1);
     }
 
-    const followist = dao.getFollowList({ source: currentUser.id });
+    const followist = await dao.getFollowList({ source: currentUser.id });
+    dao.release();
+    if (!followist) {
+      return httpInternalServerErrorResponse(res);
+    }
     followist.forEach((f) => {
       const index = recommendsList.findIndex((u) => u.id === f.target);
       if (index > -1) {
@@ -237,8 +258,7 @@ apiUsersRouter.get(
       }
     });
 
-    const regex = /^[0-9]+$/;
-    if (cursor && regex.test(cursor)) {
+    if (cursor) {
       const index = recommendsList.findIndex((r) => (r.id = cursor));
       if (index > -1) {
         recommendsList.splice(0, index + 1);
@@ -257,13 +277,14 @@ apiUsersRouter.get(
 
 // "POST /api/users/edit"
 // 프로필 수정
+// release
 apiUsersRouter.post(
   '/edit',
   upload.fields([
     { name: 'banner', maxCount: 1 },
     { name: 'image', maxCount: 1 },
   ]),
-  (
+  async (
     req: TypedRequestBody<{
       nickname?: string;
       desc?: string;
@@ -276,7 +297,7 @@ apiUsersRouter.post(
   ) => {
     const { nickname, desc, location, refer } = req.body;
     const birth = req.body.birth
-      ? (JSON.parse(req.body.birth) as User['birth'])
+      ? (JSON.parse(req.body.birth) as Birth)
       : undefined;
     const updated = req.body.updated
       ? (JSON.parse(req.body.updated) as {
@@ -300,7 +321,7 @@ apiUsersRouter.post(
       return httpUnAuthorizedResponse(res);
     }
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
@@ -317,8 +338,8 @@ apiUsersRouter.post(
     const image = imageFiles ? imageFiles[0].filename : undefined;
     const banner = bannerFiles ? bannerFiles[0].filename : undefined;
 
-    const dao = new DAO();
-    const updatedUser = dao.updateUser({
+    const dao = new NEW_DAO();
+    const updatedUser = await dao.updateUser({
       id: currentUser.id,
       nickname: updated.nickname ? nickname : undefined,
       desc: updated.desc ? desc : undefined,
@@ -332,6 +353,7 @@ apiUsersRouter.post(
           : banner
         : undefined,
     });
+    dao.release();
 
     if (updated.image && currentUser.image) {
       const imagePath = path.join(uploadPath, '/', currentUser.image);
@@ -349,16 +371,17 @@ apiUsersRouter.post(
 
 // "DELETE /api/users/birth"
 // 유저 생일 삭제
+// release
 apiUsersRouter.delete(
   '/birth',
-  (
+  async (
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -371,10 +394,11 @@ apiUsersRouter.delete(
       );
     }
 
-    const dao = new DAO();
-    const updatedUser = dao.deleteBirth({
+    const dao = new NEW_DAO();
+    const updatedUser = await dao.deleteBirth({
       id: currentUser.id,
     });
+    dao.release();
 
     return httpSuccessResponse(res, { data: updatedUser });
   }
@@ -382,17 +406,19 @@ apiUsersRouter.delete(
 
 // "GET /api/users/:id"
 // 특정 유저 정보 조회
+// release
 apiUsersRouter.get(
   '/:id',
-  (
+  async (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { id } = req.params;
     if (!id) return httpBadRequestResponse(res);
 
-    const dao = new DAO();
-    const findUser = dao.getUser({ id });
+    const dao = new NEW_DAO();
+    const findUser = await dao.getUser({ id });
+    dao.release();
     if (!findUser) {
       return httpNotFoundResponse(res, 'User not found');
     }
@@ -427,30 +453,30 @@ apiUsersRouter.get(
       return httpNotFoundResponse(res, 'User not found');
     }
 
-    let userPostList = dao.getPostList({ userId: findUser.id });
+    let userPostList = dao.getPostList({ userid: findUser.id });
     userPostList.sort((a, b) => {
-      return a.createAt > b.createAt ? -1 : 1;
+      return a.createat > b.createat ? -1 : 1;
     });
     if (filter === 'all') {
       userPostList.sort((a, b) => {
         if (a.pinned && !b.pinned) return -1;
         if (b.pinned && !a.pinned) return 1;
-        return a.createAt > b.createAt ? -1 : 1;
+        return a.createat > b.createat ? -1 : 1;
       });
     }
 
     if (filter === 'reply') {
-      userPostList = userPostList.filter((p) => !!p.parentId);
+      userPostList = userPostList.filter((p) => !!p.parentid);
     } else if (filter === 'media') {
       userPostList = userPostList.filter(
-        (u) => !u.parentId && !u.originalId && u.images.length
+        (u) => !u.parentid && !u.originalid && u.images.length
       );
     }
 
     const regex = /^[0-9]+$/;
     if (cursor && regex.test(cursor)) {
       const index = userPostList.findIndex(
-        (p) => p.postId === parseInt(cursor)
+        (p) => p.postid === parseInt(cursor)
       );
       if (index > -1) {
         userPostList.splice(0, index + 1);
@@ -462,7 +488,7 @@ apiUsersRouter.get(
     return httpSuccessResponse(res, {
       data: userPostList,
       nextCursor:
-        prevLength > pageSize ? userPostList.at(-1)?.postId : undefined,
+        prevLength > pageSize ? userPostList.at(-1)?.postid : undefined,
     });
   }
 );
@@ -471,7 +497,7 @@ apiUsersRouter.get(
 // 특정 유저의 리스트 조회
 apiUsersRouter.get(
   '/:id/lists',
-  (
+  async (
     req: TypedRequestQueryParams<
       { cursor?: string; size?: string; filter?: string },
       { id: string }
@@ -490,7 +516,7 @@ apiUsersRouter.get(
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -503,7 +529,7 @@ apiUsersRouter.get(
     }
 
     let listsList = dao.getListsList({
-      userId: filter !== 'memberships' ? findUser.id : undefined,
+      userid: filter !== 'memberships' ? findUser.id : undefined,
       sessionId: currentUser.id,
       make: currentUser.id !== findUser.id ? 'public' : undefined,
     });
@@ -511,11 +537,11 @@ apiUsersRouter.get(
     if (filter === 'all') {
       const followLists = dao.getListsDetailList({
         type: 'follower',
-        userId: findUser.id,
+        userid: findUser.id,
       });
       followLists.forEach((detail) => {
         const findList = dao.getLists({
-          id: detail.listId,
+          id: detail.listid,
           sessionId: currentUser.id,
         });
         if (findList) {
@@ -532,10 +558,10 @@ apiUsersRouter.get(
       listsList.sort((a, b) => {
         if (a.Pinned && !b.Pinned) return -1;
         if (!a.Pinned && b.Pinned) return 1;
-        return a.createAt > b.createAt ? -1 : 1;
+        return a.createat > b.createat ? -1 : 1;
       });
     } else {
-      listsList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+      listsList.sort((a, b) => (a.createat > b.createat ? -1 : 1));
     }
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
@@ -580,15 +606,15 @@ apiUsersRouter.get(
     }
 
     if (filter === 'likes') {
-      const heartList = dao.getLikeList({ userId: findUser.id });
+      const heartList = dao.getLikeList({ userid: findUser.id });
       return httpSuccessResponse(res, { data: heartList.length });
     }
 
-    const userPostList = dao.getPostList({ userId: findUser.id });
+    const userPostList = dao.getPostList({ userid: findUser.id });
     let count = userPostList.length;
     if (filter === 'media') {
       count = userPostList.filter(
-        (p) => !p.parentId && !p.originalId && p.images.length !== 0
+        (p) => !p.parentid && !p.originalid && p.images.length !== 0
       ).length;
     }
 
@@ -666,7 +692,7 @@ apiUsersRouter.get(
 // 특정 유저 팔로우
 apiUsersRouter.post(
   '/:id/follow',
-  (
+  async (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
@@ -675,7 +701,7 @@ apiUsersRouter.post(
     if (!id) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res, 'please login first');
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
@@ -712,7 +738,7 @@ apiUsersRouter.post(
 // 특정 유저 언팔로우
 apiUsersRouter.delete(
   '/:id/follow',
-  (
+  async (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
@@ -721,7 +747,7 @@ apiUsersRouter.delete(
     if (!id) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
@@ -761,7 +787,7 @@ apiUsersRouter.delete(
 // 특정 유저가 참여중인 채팅 리스트
 apiUsersRouter.get(
   '/:id/rooms',
-  (
+  async (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ data?: AdvancedRoom[]; message: string }>
   ) => {
@@ -770,7 +796,7 @@ apiUsersRouter.get(
     if (!id) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
@@ -789,7 +815,7 @@ apiUsersRouter.get(
 // roomId : 상대방 아이디
 apiUsersRouter.get(
   '/:id/rooms/:roomId',
-  (
+  async (
     req: TypedRequestQueryParams<
       { cursor?: string },
       { id?: string; roomId?: string }
@@ -802,7 +828,7 @@ apiUsersRouter.get(
     if (!id || !roomId) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
@@ -811,9 +837,7 @@ apiUsersRouter.get(
 
     const room = [id, roomId].sort().join('-');
     const dao = new DAO();
-    const findRoom = dao
-      .getRoomList(currentUser.id)
-      .find((r) => r.room === room);
+    const findRoom = dao.getRoomList(currentUser.id).find((r) => r.id === room);
     if (!findRoom) {
       return httpNotFoundResponse(res, 'Room not found');
     }
@@ -821,7 +845,7 @@ apiUsersRouter.get(
     let messageList = dao.getMessageList(room);
     const regex = /^[0-9]+$/;
     if (cursor && regex.test(cursor)) {
-      messageList = messageList.filter((m) => m.messageId < parseInt(cursor));
+      messageList = messageList.filter((m) => m.id < parseInt(cursor));
     }
     messageList.splice(0, messageList.length - 10);
 

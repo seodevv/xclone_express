@@ -10,23 +10,10 @@ import reactionsData from '@/data/reaction.json';
 import viewsData from '@/data/views.json';
 import listsData from '@/data/lists.json';
 import listsDetailData from '@/data/listsdetail.json';
-import {
-  AdvancedUser,
-  isBirth,
-  isVerified,
-  SafeUser,
-  User,
-} from '@/model/User';
-import {
-  AdvancedPost,
-  GifType,
-  ImageType,
-  isScope,
-  Post,
-  PostImage,
-} from '@/model/Post';
+import { AdvancedUser, isBirth, isVerified, User } from '@/model/User';
+import { AdvancedPost, GifType, ImageType, isScope, Post } from '@/model/Post';
 import { Follow } from '@/model/Follow';
-import { Reactions } from '@/model/Reaction';
+import { isReactionType, Reactions } from '@/model/Reaction';
 import { isTag, isWord, Tag, Tags, Word } from '@/model/Hashtag';
 import { AdvancedRoom, Room } from '@/model/Room';
 import { Message } from '@/model/Message';
@@ -34,11 +21,12 @@ import { Morpheme } from '@/model/Morpheme';
 import { Views } from '@/model/Views';
 import {
   AdvancedLists,
+  isListsDetailType,
+  isListsMake,
   Lists,
   ListsDetail,
-  ListsDetailRaw,
-  ListsRaw,
 } from '@/model/Lists';
+import { PostImage, SafeUser } from '@/db/schema';
 
 let instance: DAO | null;
 
@@ -63,16 +51,24 @@ class DAO {
     this.userList.push(
       ...userData.data.map((u) => ({
         ...u,
-        verified: u.verified ? isVerified(u.verified) : undefined,
-        birth: isBirth(u.birth) ? u.birth : undefined,
+        verified: u.verified ? isVerified(u.verified) : null,
+        birth: isBirth(u.birth) ? u.birth : null,
         regist: new Date(u.regist),
+        location: typeof u.location !== 'undefined' ? u.location : null,
+        banner: typeof u.banner !== 'undefined' ? u.banner : null,
+        desc: typeof u.desc !== 'undefined' ? u.desc : null,
+        refer: typeof u.refer !== 'undefined' ? u.refer : null,
       }))
     );
     this.postList.push(
       ...postData.data.map((p) => ({
         ...p,
-        createAt: new Date(p.createAt),
+        createat: new Date(p.createat),
         scope: isScope(p.scope),
+        parentid: typeof p.parentid !== 'undefined' ? p.parentid : null,
+        originalid: typeof p.originalid !== 'undefined' ? p.originalid : null,
+        quote: typeof p.quote !== 'undefined' ? p.quote : false,
+        pinned: typeof p.pinned !== 'undefined' ? p.pinned : false,
       }))
     );
     this.tagList.push(
@@ -84,38 +80,40 @@ class DAO {
     this.roomList.push(
       ...roomData.data.map((r) => ({
         ...r,
-        createdAt: new Date(r.createdAt),
-        lastAt: r.lastAt ? new Date(r.lastAt) : undefined,
+        createat: new Date(r.createat),
       }))
     );
     this.messageList.push(
       ...messageData.data.map((m) => ({
         ...m,
-        createdAt: new Date(m.createdAt),
+        createat: new Date(m.createat),
       }))
     );
     this.followList.push(
-      ...followData.data.map((f) => ({ ...f, createAt: new Date(f.createAt) }))
+      ...followData.data.map((f) => ({ ...f, createat: new Date(f.createat) }))
     );
-    this.reactionList.push(...reactionsData.data);
+    this.reactionList.push(
+      ...reactionsData.data.map((r) => ({
+        ...r,
+        commentid: typeof r.commentid !== 'undefined' ? r.commentid : null,
+        type: isReactionType(r.type),
+        quote: typeof r.quote !== 'undefined' ? r.quote : false,
+      }))
+    );
     this.viewList.push(...viewsData.data);
     this.lists.push(
-      ...listsData.data
-        .map((l) => ({ ...l, createAt: new Date(l.createAt) }))
-        .filter(
-          (l: ListsRaw): l is Lists =>
-            l.make === 'private' || l.make === 'public'
-        )
+      ...listsData.data.map((l) => ({
+        ...l,
+        createat: new Date(l.createat),
+        make: isListsMake(l.make),
+      }))
     );
     this.listsDetail.push(
-      ...listsDetailData.data.filter(
-        (ld: ListsDetailRaw): ld is ListsDetail =>
-          ld.type === 'member' ||
-          ld.type === 'post' ||
-          ld.type === 'unpost' ||
-          ld.type === 'follower' ||
-          ld.type === 'pinned'
-      )
+      ...listsDetailData.data.map((ld) => ({
+        ...ld,
+        type: isListsDetailType(ld.type),
+        postid: typeof ld.postid !== 'undefined' ? ld.postid : null,
+      }))
     );
     instance = this;
     console.timeEnd('Data Load');
@@ -152,34 +150,34 @@ class DAO {
   }
 
   getPostList({
-    userId,
+    userid,
     parentId,
-    originalId,
+    originalid,
     followIds,
     quote,
-    withPostIds,
+    withpostids,
   }: {
-    userId?: User['id'];
-    parentId?: Post['postId'];
-    originalId?: Post['postId'];
+    userid?: User['id'];
+    parentId?: Post['postid'];
+    originalid?: Post['postid'];
     followIds?: User['id'][];
     quote?: boolean;
-    withPostIds?: Post['postId'][];
+    withpostids?: Post['postid'][];
   }): AdvancedPost[] {
     const postList: AdvancedPost[] = [];
     this.postList.forEach((p) => {
-      const post = this.getFullPost({ postId: p.postId });
+      const post = this.getFullPost({ postid: p.postid });
       if (!post) return;
       if (
-        typeof withPostIds !== 'undefined' &&
-        withPostIds.includes(post.postId)
+        typeof withpostids !== 'undefined' &&
+        withpostids.includes(post.postid)
       ) {
         postList.push(post);
         return;
       }
-      if (userId && post.userId !== userId) return;
-      if (parentId && post.parentId !== parentId) return;
-      if (originalId && post.originalId !== originalId) return;
+      if (userid && post.userid !== userid) return;
+      if (parentId && post.parentid !== parentId) return;
+      if (originalid && post.originalid !== originalid) return;
       if (followIds && !followIds.includes(post.User.id)) return;
       if (typeof quote !== 'undefined' && post.quote !== quote) return;
 
@@ -196,12 +194,12 @@ class DAO {
     return tagList;
   }
 
-  getRoomList(userId: User['id']): AdvancedRoom[] {
+  getRoomList(userid: User['id']): AdvancedRoom[] {
     const roomList: AdvancedRoom[] = [];
     this.roomList.forEach((r) => {
-      if (r.receiverId !== userId && r.senderId !== userId) return;
-      const Receiver = this.getSafeUser(r.receiverId);
-      const Sender = this.getSafeUser(r.senderId);
+      if (r.receiverid !== userid && r.senderid !== userid) return;
+      const Receiver = this.getSafeUser(r.receiverid);
+      const Sender = this.getSafeUser(r.senderid);
       if (!Receiver || !Sender) return;
       roomList.push({
         ...r,
@@ -212,10 +210,10 @@ class DAO {
     return roomList;
   }
 
-  getMessageList(room: Room['room']): Message[] {
+  getMessageList(room: Room['id']): Message[] {
     return this.messageList
-      .filter((m) => m.room === room)
-      .sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+      .filter((m) => m.roomid === room)
+      .sort((a, b) => (a.createat > b.createat ? 1 : -1));
   }
 
   getFollowList({
@@ -236,34 +234,34 @@ class DAO {
   }
 
   getLikeList({
-    userId,
-    postId,
+    userid,
+    postid,
   }: {
-    userId?: User['id'];
-    postId?: Post['postId'];
+    userid?: User['id'];
+    postid?: Post['postid'];
   }): Reactions[] {
     return this.reactionList.filter(
       (r) =>
         r.type === 'Heart' &&
-        (userId ? r.userId === userId : true) &&
-        (postId ? r.postId === postId : true)
+        (userid ? r.userid === userid : true) &&
+        (postid ? r.postid === postid : true)
     );
   }
 
   getListsList({
     sessionId,
-    userId,
+    userid,
     make,
   }: {
     sessionId: User['id'];
-    userId?: User['id'];
+    userid?: User['id'];
     make?: Lists['make'];
   }) {
     const listsList: AdvancedLists[] = [];
     this.lists.forEach((l) => {
       const list = this.getLists({ id: l.id, sessionId });
       if (!list) return;
-      if (typeof userId !== 'undefined' && list.userId !== userId) return;
+      if (typeof userid !== 'undefined' && list.userid !== userid) return;
       if (typeof make !== 'undefined' && list.make !== make) return;
 
       listsList.push(list);
@@ -273,18 +271,18 @@ class DAO {
 
   getListsDetailList({
     type,
-    userId,
+    userid,
   }: {
     type?: ListsDetail['type'];
-    userId?: ListsDetail['userId'];
+    userid?: ListsDetail['userid'];
   }) {
     let detailList = this.listsDetail.filter((d) => {
       let condition = !!d;
       if (typeof type !== 'undefined') {
         condition = condition && d.type === type;
       }
-      if (typeof userId !== 'undefined') {
-        condition = condition && d.userId === userId;
+      if (typeof userid !== 'undefined') {
+        condition = condition && d.userid === userid;
       }
       return condition;
     });
@@ -292,9 +290,9 @@ class DAO {
     return detailList;
   }
 
-  getRepostList({ postId }: { postId: Post['postId'] }): Reactions[] {
+  getRepostList({ postid }: { postid: Post['postid'] }): Reactions[] {
     return this.reactionList.filter(
-      (r) => r.type === 'Repost' && r.postId === postId
+      (r) => r.type === 'Repost' && r.postid === postid
     );
   }
 
@@ -342,7 +340,6 @@ class DAO {
         verified: findUser.verified,
         Followers,
         Followings,
-
         _count: {
           Followers: Followers.length,
           Followings: Followings.length,
@@ -367,42 +364,42 @@ class DAO {
   }
 
   getPost({
-    userId,
-    postId,
+    userid,
+    postid,
   }: {
-    userId?: string;
-    postId: number;
+    userid?: string;
+    postid: number;
   }): AdvancedPost | undefined {
     const findPost = this.postList.find((p) => {
-      if (userId) {
-        return p.postId === postId && p.userId === userId;
+      if (userid) {
+        return p.postid === postid && p.userid === userid;
       }
-      return p.postId === postId;
+      return p.postid === postid;
     });
     if (!findPost) return;
 
-    const user = this.getSafeUser(findPost.userId);
+    const user = this.getSafeUser(findPost.userid);
     if (!user) return;
 
     const Hearts = this.reactionList
-      .filter((r) => r.type === 'Heart' && r.postId === findPost.postId)
-      .map((r) => ({ id: r.userId }));
+      .filter((r) => r.type === 'Heart' && r.postid === findPost.postid)
+      .map((r) => ({ id: r.userid }));
     const totalReposts = this.reactionList.filter(
-      (r) => r.type === 'Repost' && r.postId === findPost.postId
+      (r) => r.type === 'Repost' && r.postid === findPost.postid
     );
     const Reposts = totalReposts
       .filter((r) => !r.quote)
-      .map((r) => ({ id: r.userId }));
+      .map((r) => ({ id: r.userid }));
     const totalComments = this.reactionList
-      .filter((r) => r.type === 'Comment' && r.postId === findPost.postId)
-      .map((r) => ({ id: r.userId }));
+      .filter((r) => r.type === 'Comment' && r.postid === findPost.postid)
+      .map((r) => ({ id: r.userid }));
     const Comments = [...new Set(totalComments.map((v) => v.id))].map((v) => ({
       id: v,
     }));
     const Bookmarks = this.reactionList
-      .filter((r) => r.type === 'Bookmark' && r.postId === findPost.postId)
-      .map((r) => ({ id: r.userId }));
-    const Views = this.getView({ postId })?.impressions || 0;
+      .filter((r) => r.type === 'Bookmark' && r.postid === findPost.postid)
+      .map((r) => ({ id: r.userid }));
+    const Views = this.getView({ postid })?.impressions || 0;
 
     const advancedPost: AdvancedPost = {
       ...findPost,
@@ -418,6 +415,8 @@ class DAO {
         Bookmarks: Bookmarks.length,
         Views,
       },
+      Parent: null,
+      Original: null,
     };
 
     return advancedPost;
@@ -426,18 +425,18 @@ class DAO {
   getLists({
     id,
     sessionId,
-    userId,
+    userid,
     make,
   }: {
     id: Lists['id'];
     sessionId: User['id'];
-    userId?: User['id'];
+    userid?: User['id'];
     make?: Lists['make'];
   }) {
     const findList = this.lists.find((l) => {
       let condition = l.id === id;
-      if (typeof userId !== 'undefined') {
-        condition = condition && l.userId === userId;
+      if (typeof userid !== 'undefined') {
+        condition = condition && l.userid === userid;
       }
       if (typeof make !== 'undefined') {
         condition = condition && l.make === make;
@@ -446,43 +445,46 @@ class DAO {
     });
     if (!findList) return;
 
-    const User = this.getSafeUser(findList.userId);
+    const User = this.getSafeUser(findList.userid);
     if (!User) return;
 
     const Member = this.listsDetail
-      .filter((l) => l.type === 'member' && l.listId === findList.id)
-      .map((l) => ({ id: l.userId }));
+      .filter((l) => l.type === 'member' && l.listid === findList.id)
+      .map((l) => ({ id: l.userid }));
     const Follower = this.listsDetail
-      .filter((l) => l.type === 'follower' && l.listId === findList.id)
-      .map((l) => ({ id: l.userId }));
+      .filter((l) => l.type === 'follower' && l.listid === findList.id)
+      .map((l) => ({ id: l.userid }));
     const UnShow = this.listsDetail
-      .filter((l) => l.type === 'unshow' && l.listId === findList.id)
-      .map((l) => ({ id: l.userId }));
+      .filter((l) => l.type === 'unshow' && l.listid === findList.id)
+      .map((l) => ({ id: l.userid }));
     const memberIds = Member.map((m) => m.id);
-    const unPostIds = this.listsDetail
+    const unpostids = this.listsDetail
       .filter(
         (l): l is Required<ListsDetail> =>
-          l.type === 'unpost' && l.listId === findList.id && !!l.postId
+          l.type === 'unpost' && l.listid === findList.id && !!l.postid
       )
-      .map((ld) => ld.postId);
+      .map((ld) => ld.postid);
     const Posts = this.postList
       .filter(
-        (p) => memberIds.includes(p.userId) && !unPostIds.includes(p.postId)
+        (p) => memberIds.includes(p.userid) && !unpostids.includes(p.postid)
       )
-      .map((p) => p.postId);
+      .map((p) => p.postid);
     Posts.push(
       ...this.listsDetail
         .filter(
-          (l): l is Required<ListsDetail> =>
-            l.type === 'post' && l.listId === findList.id && !!l.postId
+          (
+            l
+          ): l is Omit<ListsDetail, 'postid'> & {
+            postid: number;
+          } => l.type === 'post' && l.listid === findList.id && !!l.postid
         )
-        .map((l) => l.postId)
+        .map((l) => l.postid)
     );
     const Pinned = !!this.listsDetail.find(
       (ld) =>
-        ld.listId === findList.id &&
+        ld.listid === findList.id &&
         ld.type === 'pinned' &&
-        ld.userId === sessionId
+        ld.userid === sessionId
     );
 
     const advancedLists: AdvancedLists = {
@@ -499,23 +501,23 @@ class DAO {
   }
 
   getListsDetail({
-    listId,
+    listid,
     type,
-    userId,
-    postId,
+    userid,
+    postid,
   }: {
-    listId: ListsDetail['listId'];
+    listid: ListsDetail['listid'];
     type: ListsDetail['type'];
-    userId?: User['id'];
-    postId?: Post['postId'];
+    userid?: User['id'];
+    postid?: Post['postid'];
   }): ListsDetail | undefined {
     const findListsDetail = this.listsDetail.find((ld) => {
-      let condition = ld.listId === listId && ld.type === type;
-      if (typeof userId !== 'undefined') {
-        condition = condition && ld.userId === userId;
+      let condition = ld.listid === listid && ld.type === type;
+      if (typeof userid !== 'undefined') {
+        condition = condition && ld.userid === userid;
       }
-      if (typeof postId !== 'undefined') {
-        condition = condition && ld.postId === postId;
+      if (typeof postid !== 'undefined') {
+        condition = condition && ld.postid === postid;
       }
       return condition;
     });
@@ -524,18 +526,18 @@ class DAO {
   }
 
   getRepostPost({
-    originalId,
-    userId,
+    originalid,
+    userid,
     quote,
   }: {
-    originalId: Post['postId'];
-    userId?: User['id'];
+    originalid: Post['postid'];
+    userid?: User['id'];
     quote?: boolean;
   }): Post | undefined {
     const findPost = this.postList.find((p) => {
-      let condition = p.originalId === originalId && !!p.quote === !!quote;
-      if (typeof userId !== 'undefined') {
-        condition = condition && p.userId === userId;
+      let condition = p.originalid === originalid && !!p.quote === !!quote;
+      if (typeof userid !== 'undefined') {
+        condition = condition && p.userid === userid;
       }
       return condition;
     });
@@ -543,33 +545,33 @@ class DAO {
   }
 
   getFullPost({
-    userId,
-    postId,
+    userid,
+    postid,
   }: {
-    userId?: string;
-    postId: number;
+    userid?: string;
+    postid: number;
   }): AdvancedPost | undefined {
-    const findPost = this.getPost({ userId: userId, postId: postId });
+    const findPost = this.getPost({ userid: userid, postid: postid });
     if (!findPost) return;
 
-    if (findPost.parentId) {
-      const Parent = this.getPost({ postId: findPost.parentId });
+    if (findPost.parentid) {
+      const Parent = this.getPost({ postid: findPost.parentid });
       if (Parent) {
         findPost.Parent = {
-          postId: Parent.postId,
+          postid: Parent.postid,
           User: Parent.User,
           images: Parent.images,
         };
       }
     }
 
-    if (findPost.originalId) {
-      const Original = this.getPost({ postId: findPost.originalId });
+    if (findPost.originalid) {
+      const Original = this.getPost({ postid: findPost.originalid });
       if (Original) {
         findPost.Original = Original;
 
-        if (Original.quote && Original.originalId) {
-          const quote = this.getPost({ postId: Original.originalId });
+        if (Original.quote && Original.originalid) {
+          const quote = this.getPost({ postid: Original.originalid });
           if (quote) {
             findPost.Original.Original = quote;
           }
@@ -580,8 +582,8 @@ class DAO {
     return findPost;
   }
 
-  getView({ postId }: { postId: Post['postId'] }) {
-    return this.viewList.find((v) => v.postId === postId);
+  getView({ postid }: { postid: Post['postid'] }) {
+    return this.viewList.find((v) => v.postid === postid);
   }
 
   createUser({
@@ -602,45 +604,56 @@ class DAO {
       birth,
       image,
       regist,
+      banner: null,
+      desc: null,
+      location: null,
+      refer: null,
+      verified: null,
     };
     this.userList.push(newUser);
     this.writeDatabase('userList');
     return {
       id: newUser.id,
       nickname: newUser.nickname,
+      birth: newUser.birth,
       image: newUser.image,
+      regist,
+      banner: newUser.banner,
+      desc: newUser.desc,
+      location: newUser.location,
+      refer: newUser.refer,
+      verified: newUser.verified,
       Followers: [],
       Followings: [],
       _count: {
         Followers: 0,
         Followings: 0,
       },
-      regist,
     };
   }
 
   createPost({
-    userId,
+    userid,
     content = '',
     files,
     media,
     parentId,
-    originalId,
+    originalid,
     quote,
   }: {
-    userId: User['id'];
+    userid: User['id'];
     content?: Post['content'];
     files?:
       | { [fieldname: string]: Express.Multer.File[] }
       | Express.Multer.File[];
     media?: (GifType | ImageType)[];
-    parentId?: Post['postId'];
-    originalId?: Post['postId'];
+    parentId?: Post['postid'];
+    originalid?: Post['postid'];
     quote?: boolean;
   }): AdvancedPost | undefined {
     this.hashtagsAnalysis(content);
     this.morphologyAnalysis(content);
-    const nextId = Math.max(...this.postList.map((p) => p.postId)) + 1;
+    const nextId = Math.max(...this.postList.map((p) => p.postid)) + 1;
     const images: PostImage[] = media
       ? media.map((m, i) => {
           if (m.type === 'gif') {
@@ -665,31 +678,33 @@ class DAO {
         })
       : [];
     const newPost: Post = {
-      postId: isFinite(nextId) ? nextId : 1,
-      userId,
+      postid: isFinite(nextId) ? nextId : 1,
+      userid: userid,
       content,
       images,
-      createAt: new Date(),
-      parentId,
-      originalId,
-      quote,
+      createat: new Date(),
+      parentid: typeof parentId !== 'undefined' ? parentId : null,
+      originalid: typeof originalid !== 'undefined' ? originalid : null,
+      quote: typeof quote !== 'undefined' ? quote : false,
+      pinned: false,
+      scope: 'every',
     };
     this.postList.push(newPost);
-    this.viewsHandler({ postId: newPost.postId, create: true });
+    this.viewsHandler({ postid: newPost.postid, create: true });
     this.writeDatabase('postList');
 
-    return this.getFullPost({ postId: newPost.postId });
+    return this.getFullPost({ postid: newPost.postid });
   }
 
   createList({
-    userId,
+    userid,
     name,
     description = '',
     banner,
     thumbnail,
     make,
   }: {
-    userId: User['id'];
+    userid: User['id'];
     name: string;
     description?: string;
     banner: string;
@@ -699,18 +714,18 @@ class DAO {
     const nextId = Math.max(...this.lists.map((l) => l.id)) + 1;
     const newList: Lists = {
       id: isFinite(nextId) ? nextId : 1,
-      userId,
+      userid,
       name,
       description,
       banner,
       thumbnail,
       make,
-      createAt: new Date(),
+      createat: new Date(),
     };
     this.lists.push(newList);
     this.writeDatabase('lists');
 
-    return this.getLists({ id: newList.id, sessionId: userId });
+    return this.getLists({ id: newList.id, sessionId: userid });
   }
 
   updateUser({
@@ -750,7 +765,7 @@ class DAO {
       banner:
         typeof banner !== 'undefined'
           ? banner === ''
-            ? undefined
+            ? null
             : banner
           : findUserRaw.banner,
       verified:
@@ -767,22 +782,22 @@ class DAO {
   }
 
   updatePost({
-    userId,
-    postId,
+    userid,
+    postid,
     content,
     images,
     pinned,
     scope,
   }: {
-    postId: Post['postId'];
-    userId: User['id'];
+    postid: Post['postid'];
+    userid: User['id'];
     content?: Post['content'];
     images?: PostImage[];
     pinned?: Post['pinned'];
     scope?: Post['scope'];
   }): AdvancedPost | undefined {
     const findPostRaw = this.postList.find(
-      (p) => p.userId === userId && p.postId === postId
+      (p) => p.userid === userid && p.postid === postid
     );
     if (!findPostRaw) return;
 
@@ -800,12 +815,12 @@ class DAO {
       this.writeDatabase('postList');
     }
 
-    return this.getPost({ userId, postId });
+    return this.getPost({ userid, postid });
   }
 
   updateLists({
     id,
-    userId,
+    userid,
     name,
     description,
     banner,
@@ -813,7 +828,7 @@ class DAO {
     make,
   }: {
     id: Lists['id'];
-    userId: Lists['userId'];
+    userid: Lists['userid'];
     name?: Lists['name'];
     description?: Lists['description'];
     banner?: Lists['banner'];
@@ -821,7 +836,7 @@ class DAO {
     make?: Lists['make'];
   }) {
     const findListsRaw = this.lists.find(
-      (l) => l.id === id && l.userId === userId
+      (l) => l.id === id && l.userid === userid
     );
     if (!findListsRaw) return;
 
@@ -844,7 +859,7 @@ class DAO {
       this.writeDatabase('lists');
     }
 
-    return this.getLists({ id, userId, sessionId: userId });
+    return this.getLists({ id, userid, sessionId: userid });
   }
 
   deleteBirth({ id }: { id: User['id'] }) {
@@ -853,45 +868,45 @@ class DAO {
 
     this.userList[index] = {
       ...this.userList[index],
-      birth: undefined,
+      birth: null,
     };
     this.writeDatabase('userList');
 
     return this.getUser({ id });
   }
 
-  deletePost({ postId }: { postId: number }): void {
-    const newPostList = this.postList.filter((p) => p.postId !== postId);
+  deletePost({ postid }: { postid: number }): void {
+    const newPostList = this.postList.filter((p) => p.postid !== postid);
     this.postList = newPostList;
     this.writeDatabase('postList');
   }
 
-  deleteReaction({ postId }: { postId: Post['postId'] }): void {
+  deleteReaction({ postid }: { postid: Post['postid'] }): void {
     const newReactionList = this.reactionList.filter(
-      (r) => r.postId !== postId
+      (r) => r.postid !== postid
     );
     this.reactionList = newReactionList;
     this.writeDatabase('reactionList');
   }
 
-  deleteView({ postId }: { postId: Post['postId'] }): void {
-    const newViewList = this.viewList.filter((v) => v.postId !== postId);
+  deleteView({ postid }: { postid: Post['postid'] }): void {
+    const newViewList = this.viewList.filter((v) => v.postid !== postid);
     this.viewList = newViewList;
     this.writeDatabase('viewList');
   }
 
-  deleteLists({ id, userId }: { id: Lists['id']; userId: Lists['userId'] }) {
+  deleteLists({ id, userid }: { id: Lists['id']; userid: Lists['userid'] }) {
     const newListslist = this.lists.filter(
-      (l) => l.id !== id || l.userId !== userId
+      (l) => l.id !== id || l.userid !== userid
     );
     this.lists = newListslist;
     this.writeDatabase('lists');
-    this.deleteListsDetail({ listId: id });
+    this.deleteListsDetail({ listid: id });
   }
 
-  deleteListsDetail({ listId }: { listId: Lists['id'] }) {
+  deleteListsDetail({ listid }: { listid: Lists['id'] }) {
     const newListsDetailList = this.listsDetail.filter(
-      (ld) => ld.listId !== listId
+      (ld) => ld.listid !== listid
     );
     this.listsDetail = newListsDetailList;
     this.writeDatabase('listsDetail');
@@ -918,7 +933,7 @@ class DAO {
             id: !isFinite(nextId) ? 1 : nextId,
             source,
             target,
-            createAt: new Date(),
+            createat: new Date(),
           });
         }
         break;
@@ -942,22 +957,22 @@ class DAO {
   reactionHandler({
     type,
     method,
-    userId,
-    postId,
-    commentId,
+    userid,
+    postid,
+    commentid,
     quote,
   }: {
     type: 'Heart' | 'Repost' | 'Comment' | 'Bookmark';
     method: 'post' | 'delete';
-    userId: User['id'];
-    postId: Post['postId'];
-    commentId?: Post['postId'];
+    userid: User['id'];
+    postid: Post['postid'];
+    commentid?: Post['postid'];
     quote?: boolean;
   }): AdvancedPost | undefined {
     const isReaction = !!this.reactionList.find((r) => {
       const condition =
-        r.type === type && r.userId === userId && r.postId === postId;
-      if (type === 'Comment') return condition && r.commentId === commentId;
+        r.type === type && r.userid === userid && r.postid === postid;
+      if (type === 'Comment') return condition && r.commentid === commentid;
       if (type === 'Repost' && quote) return condition && r.quote;
       if (type === 'Repost' && !quote)
         return condition && typeof r.quote === 'undefined';
@@ -970,10 +985,15 @@ class DAO {
       const newReaction: Reactions = {
         id: isFinite(nextId) ? nextId : 1,
         type,
-        postId,
-        userId,
-        commentId: type === 'Comment' ? commentId : undefined,
-        quote,
+        postid,
+        userid,
+        commentid:
+          type === 'Comment'
+            ? typeof commentid !== 'undefined'
+              ? commentid
+              : null
+            : null,
+        quote: typeof quote !== 'undefined' ? quote : false,
       };
       this.reactionList.push(newReaction);
       this.writeDatabase('reactionList');
@@ -981,78 +1001,78 @@ class DAO {
       this.reactionList = this.reactionList.filter(
         (r) =>
           r.type !== type ||
-          r.postId !== postId ||
-          r.userId !== userId ||
+          r.postid !== postid ||
+          r.userid !== userid ||
           r.quote !== quote
       );
       this.writeDatabase('reactionList');
     }
 
-    const updatedPost = this.getFullPost({ postId: postId });
+    const updatedPost = this.getFullPost({ postid: postid });
     return updatedPost;
   }
 
   viewsHandler({
     key = 'impressions',
-    postId,
+    postid,
     create,
   }: {
-    key?: keyof Omit<Views, 'postId'>;
-    postId: Post['postId'];
+    key?: keyof Omit<Views, 'postid'>;
+    postid: Post['postid'];
     create?: boolean;
   }) {
-    const findViewIndex = this.viewList.findIndex((v) => v.postId === postId);
+    const findViewIndex = this.viewList.findIndex((v) => v.postid === postid);
     if (findViewIndex > -1) {
       this.viewList[findViewIndex][key]++;
     } else {
       const newView: Views = {
-        postId,
+        postid,
         impressions: create ? 0 : 1,
         engagements: 0,
-        detailExpands: 0,
-        newFollowers: 0,
-        profileVisit: 0,
+        detailexpands: 0,
+        newfollowers: 0,
+        profilevisit: 0,
       };
       this.viewList.push(newView);
     }
     this.writeDatabase('viewList');
 
-    const updatedPost = this.getFullPost({ postId });
+    const updatedPost = this.getFullPost({ postid });
     return updatedPost;
   }
 
   listsDetailHandler({
     method,
     type,
-    listId,
-    userId,
-    postId,
+    listid,
+    userid,
+    postid,
   }: {
     method: 'post' | 'delete';
     type: ListsDetail['type']; // member | post | unpost | follow | pinned | unshow;
-    listId: Lists['id'];
-    userId: User['id'];
-    postId?: Post['postId'];
+    listid: Lists['id'];
+    userid: User['id'];
+    postid?: Post['postid'];
   }) {
-    const already = !!this.getListsDetail({ listId, type, userId, postId });
+    const already = !!this.getListsDetail({ listid, type, userid, postid });
 
     if (method === 'post' && !already) {
       const nextId = Math.max(...this.listsDetail.map((ld) => ld.id)) + 1;
       const newListsDetail: ListsDetail = {
         id: isFinite(nextId) ? nextId : 1,
-        listId,
+        listid,
         type,
-        userId,
-        postId,
+        userid,
+        postid: typeof postid !== 'undefined' ? postid : null,
       };
       this.listsDetail.push(newListsDetail);
       this.writeDatabase('listsDetail');
     } else if (method === 'delete' && already) {
       this.listsDetail = this.listsDetail.filter((ld) => {
         let condition =
-          ld.type === type && ld.listId === listId && ld.userId === userId;
-        if (typeof postId !== 'undefined') {
-          condition = condition && ld.postId === postId;
+          ld.type === type && ld.listid === listid && ld.userid === userid;
+        if (typeof postid !== 'undefined') {
+          condition = condition && ld.postid === postid;
         }
         return !condition;
       });

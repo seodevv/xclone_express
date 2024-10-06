@@ -20,7 +20,6 @@ import {
   encodingString,
   generateUserToken,
 } from '@/lib/common';
-import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
   TypedRequestCookies,
@@ -29,6 +28,7 @@ import {
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
 import { AdvancedUser } from '@/model/User';
+import NEW_DAO from '@/lib/dao_n';
 
 const apiRouter = express.Router();
 
@@ -39,6 +39,7 @@ apiRouter.use('/lists', apiListsRouter);
 
 // "GET" /api/login"
 // 로그인 아이디 확인
+// release
 apiRouter.get(
   '/login',
   async (
@@ -53,8 +54,11 @@ apiRouter.get(
     const { type = 'login', id, nickname } = req.query;
     if (!id) return httpBadRequestResponse(res);
 
-    const dao = new DAO();
-    const findUser = dao.getUser({ id, nickname });
+    // const dao = new DAO();
+    const dao = new NEW_DAO();
+    const findUser = await dao.getUser({ id, nickname });
+    dao.release();
+
     switch (type) {
       case 'login':
         return findUser
@@ -72,6 +76,7 @@ apiRouter.get(
 
 // "POST /api/login"
 // 로그인
+// release
 apiRouter.post(
   '/login',
   multer().none(),
@@ -84,8 +89,10 @@ apiRouter.post(
     // body 가 없을 시
     if (!id || !password) return httpBadRequestResponse(res);
 
-    const dao = new DAO();
-    const findUser = dao.getUser({ id, password });
+    // const dao = new DAO();
+    const dao = new NEW_DAO();
+    const findUser = await dao.getUser({ id, password });
+    dao.release();
 
     // 로그인 성공 시
     if (findUser) {
@@ -104,26 +111,34 @@ apiRouter.post(
 
 // "POST /api/login/oauth"
 // OAuth 로그인
+// release
 apiRouter.post(
   '/login/oauth',
   multer().none(),
-  (
+  async (
     req: TypedRequestBody<{ id?: string; nickname?: string; image?: string }>,
     res: TypedResponse<{ message: string }>
   ) => {
     const { id, nickname, image } = req.body;
     if (!id || !nickname || !image) return httpBadRequestResponse(res);
 
-    const dao = new DAO();
-    let user = dao.getUser({ id });
+    // const dao = new DAO();
+    const dao = new NEW_DAO();
+    let user = await dao.getUser({ id });
     if (!user) {
-      user = dao.createUser({
+      user = await dao.createUser({
         id,
         password: encodingString(id) as string,
         nickname,
         image,
+        birth: null,
       });
+      if (!user) {
+        dao.release();
+        return httpInternalServerErrorResponse(res);
+      }
     }
+    dao.release();
 
     const userToken = generateUserToken(user);
     if (!userToken) {
@@ -137,16 +152,19 @@ apiRouter.post(
 
 // "POST /api/logout"
 // 로그아웃
+// release
 apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
     res.cookie('connect.sid', '', COOKIE_OPTIONS);
+    res.clearCookie('connect.sid');
     return httpSuccessResponse(res, { message: 'Logout successful' });
   }
 );
 
 // "GET /api/image/:imageName"
 // 이미지 호스팅
+// release
 apiRouter.get(
   '/image/:imageName',
   (

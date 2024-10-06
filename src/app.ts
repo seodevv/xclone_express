@@ -7,6 +7,7 @@ import fs from 'fs-extra';
 import https from 'https';
 import apiRouter from '@/routes/api';
 import morgan from 'morgan';
+import { Pool } from 'pg';
 
 const app = express();
 const host = process.env.SERVER_HOST || '0.0.0.0';
@@ -15,6 +16,19 @@ export const uploadPath = path.join(__dirname, './uploads');
 if (!fs.pathExistsSync(uploadPath)) {
   fs.mkdirSync(uploadPath);
 }
+
+export const pool = new Pool({
+  host: 'localhost',
+  port: 5432,
+  user: 'xclone',
+  password: 'xclone',
+  database: 'xclone',
+});
+
+pool.on('error', (err) => {
+  console.error(err);
+  process.exit(-1);
+});
 
 app.use(
   cors({

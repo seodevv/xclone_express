@@ -1,10 +1,3 @@
-import { Room } from './Room';
-import { User } from './User';
+import { Schemas } from '@/db/schema';
 
-export interface Message {
-  messageId: number;
-  room: Room['room'];
-  senderId: User['id'];
-  content: string;
-  createdAt: Date;
-}
+export type Message = Schemas['messages'];

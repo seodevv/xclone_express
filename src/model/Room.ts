@@ -1,13 +1,6 @@
-import { SafeUser, User } from './User';
+import { SafeUser, Schemas } from '@/db/schema';
 
-export interface Room {
-  room: string;
-  receiverId: User['id'];
-  senderId: User['id'];
-  createdAt: Date;
-  content?: string;
-  lastAt?: Date;
-}
+export type Room = Schemas['rooms'];
 
 export interface AdvancedRoom extends Room {
   Receiver: SafeUser;

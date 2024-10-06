@@ -1,10 +1,3 @@
-import { Post } from '@/model/Post';
+import { Schemas } from '@/db/schema';
 
-export interface Views {
-  postId: Post['postId'];
-  impressions: number;
-  engagements: number;
-  detailExpands: number;
-  newFollowers: number;
-  profileVisit: number;
-}
+export type Views = Schemas['views'];

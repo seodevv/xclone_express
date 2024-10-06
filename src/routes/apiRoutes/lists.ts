@@ -41,7 +41,7 @@ const upload = multer({ storage });
 // 리스트를 검색
 apiListsRouter.get(
   '/',
-  (
+  async (
     req: TypedRequestQuery<{ q?: string; cursor?: string; size?: string }>,
     res: TypedResponse<{
       data?: AdvancedLists[];
@@ -53,7 +53,7 @@ apiListsRouter.get(
     const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -62,11 +62,11 @@ apiListsRouter.get(
     const dao = new DAO();
     let searchListsList = dao
       .getListsList({ sessionId: currentUser.id, make: 'public' })
-      .filter((l) => l.userId !== currentUser.id)
+      .filter((l) => l.userid !== currentUser.id)
       .sort((a, b) => {
         if (a.Follower.length > b.Follower.length) return -1;
         else if (a.Follower.length < b.Follower.length) return 1;
-        return a.createAt > b.createAt ? 1 : -1;
+        return a.createat > b.createat ? 1 : -1;
       });
 
     if (q) {
@@ -135,7 +135,7 @@ apiListsRouter.post(
       return httpUnAuthorizedResponse(res);
     }
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
@@ -149,7 +149,7 @@ apiListsRouter.post(
 
     const dao = new DAO();
     const newList = dao.createList({
-      userId: currentUser.id,
+      userid: currentUser.id,
       name,
       description,
       banner: banner[0].filename,
@@ -165,7 +165,7 @@ apiListsRouter.post(
 // 리스트를 추천
 apiListsRouter.get(
   '/recommends',
-  (
+  async (
     req: TypedRequestQuery<{ cursor?: string; size?: string }>,
     res: TypedResponse<{
       data?: AdvancedLists[];
@@ -177,7 +177,7 @@ apiListsRouter.get(
     const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -191,13 +191,13 @@ apiListsRouter.get(
       })
       .filter(
         (l) =>
-          l.userId !== currentUser.id &&
+          l.userid !== currentUser.id &&
           !l.Follower.map((f) => f.id).includes(currentUser.id)
       )
       .sort((a, b) => {
         if (a.Follower.length > b.Follower.length) return -1;
         if (b.Follower.length > a.Follower.length) return 1;
-        return a.createAt > b.createAt ? 1 : -1;
+        return a.createat > b.createat ? 1 : -1;
       });
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
@@ -224,8 +224,8 @@ apiListsRouter.get(
 // 특정 리스트를 조회
 apiListsRouter.get(
   '/:id',
-  (
-    req: TypedRequestQueryParams<{ userId?: string }, { id: string }>,
+  async (
+    req: TypedRequestQueryParams<{ userid?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
     const id = req.params.id;
@@ -233,7 +233,7 @@ apiListsRouter.get(
     if (!REGEX_NUMBER_ONLY.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -248,7 +248,7 @@ apiListsRouter.get(
       return httpNotFoundResponse(res);
     }
 
-    if (findLists.userId !== currentUser.id && findLists.make === 'private') {
+    if (findLists.userid !== currentUser.id && findLists.make === 'private') {
       return httpNotFoundResponse(res);
     }
 
@@ -260,13 +260,13 @@ apiListsRouter.get(
 // 특정 리스트를 삭제
 apiListsRouter.delete(
   '/:id',
-  (req: TypedRequestParams<{ id: string }>, res: TypedResponse<{}>) => {
+  async (req: TypedRequestParams<{ id: string }>, res: TypedResponse<{}>) => {
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
     if (!REGEX_NUMBER_ONLY.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -276,13 +276,13 @@ apiListsRouter.delete(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
     if (!findLists) {
       return httpNotFoundResponse(res);
     }
 
-    dao.deleteLists({ id: findLists.id, userId: findLists.userId });
+    dao.deleteLists({ id: findLists.id, userid: findLists.userid });
 
     if (findLists.banner !== IMAGE_DEFAULT_LISTS) {
       const imagePath = path.join(uploadPath, '/', findLists.banner);
@@ -305,7 +305,7 @@ apiListsRouter.post(
     { name: 'banner', maxCount: 1 },
     { name: 'thumbnail', maxCount: 1 },
   ]),
-  (
+  async (
     req: TypedRequestBodyParams<
       {
         name?: string;
@@ -338,7 +338,7 @@ apiListsRouter.post(
       return httpUnAuthorizedResponse(res);
     }
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
@@ -349,7 +349,7 @@ apiListsRouter.post(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
     if (!findLists) {
       removingFiles(files);
@@ -367,7 +367,7 @@ apiListsRouter.post(
 
     const updateLists = dao.updateLists({
       id: findLists.id,
-      userId: findLists.userId,
+      userid: findLists.userid,
       name,
       description,
       banner,
@@ -391,7 +391,7 @@ apiListsRouter.post(
 // 특정 리스트의 게시글을 조회
 apiListsRouter.get(
   '/:id/posts',
-  (
+  async (
     req: TypedRequestQueryParams<
       { cursor?: string; size?: string },
       { id: string }
@@ -408,7 +408,7 @@ apiListsRouter.get(
     if (!REGEX_NUMBER_ONLY.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -423,17 +423,17 @@ apiListsRouter.get(
       return httpNotFoundResponse(res);
     }
 
-    if (findLists.userId !== currentUser.id && findLists.make === 'private') {
+    if (findLists.userid !== currentUser.id && findLists.make === 'private') {
       return httpNotFoundResponse(res);
     }
 
     const postList = dao
       .getPostList({})
-      .filter((p) => findLists.Posts.includes(p.postId))
-      .sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+      .filter((p) => findLists.Posts.includes(p.postid))
+      .sort((a, b) => (a.createat > b.createat ? -1 : 1));
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
-      const findIndex = postList.findIndex((p) => p.postId === ~~cursor);
+      const findIndex = postList.findIndex((p) => p.postid === ~~cursor);
       if (findIndex > -1) {
         postList.splice(0, findIndex + 1);
       }
@@ -447,7 +447,7 @@ apiListsRouter.get(
 
     return httpSuccessResponse(res, {
       data: postList,
-      nextCursor: sizeOver ? postList.at(-1)?.postId : undefined,
+      nextCursor: sizeOver ? postList.at(-1)?.postid : undefined,
     });
   }
 );
@@ -456,7 +456,7 @@ apiListsRouter.get(
 // 리스트의 멤버를 조회
 apiListsRouter.get(
   '/:id/member',
-  (
+  async (
     req: TypedRequestQueryParams<
       { cursor?: string; size?: string },
       { id: string }
@@ -473,7 +473,7 @@ apiListsRouter.get(
     if (!REGEX_NUMBER_ONLY.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -488,7 +488,7 @@ apiListsRouter.get(
       return httpNotFoundResponse(res);
     }
 
-    if (findLists.userId !== currentUser.id && findLists.make === 'private') {
+    if (findLists.userid !== currentUser.id && findLists.make === 'private') {
       return httpNotFoundResponse(res);
     }
 
@@ -526,7 +526,7 @@ apiListsRouter.get(
 // 특정 리스트의 멤버를 추가
 apiListsRouter.post(
   '/:id/member',
-  (
+  async (
     req: TypedRequestBodyParams<{ memberId?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
@@ -538,7 +538,7 @@ apiListsRouter.post(
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -548,7 +548,7 @@ apiListsRouter.post(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
     if (!findLists) {
       return httpNotFoundResponse(res, 'Lists not found');
@@ -561,8 +561,8 @@ apiListsRouter.post(
 
     const already = dao.getListsDetail({
       type: 'member',
-      listId: findLists.id,
-      userId: findUser.id,
+      listid: findLists.id,
+      userid: findUser.id,
     });
     if (already) {
       return httpForbiddenResponse(res, 'This member already exists.');
@@ -570,9 +570,9 @@ apiListsRouter.post(
 
     dao.listsDetailHandler({
       method: 'post',
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'member',
-      userId: memberId,
+      userid: memberId,
     });
     const updatedLists = dao.getLists({
       id: findLists.id,
@@ -587,7 +587,7 @@ apiListsRouter.post(
 // 특정 리스트의 멤버를 삭제
 apiListsRouter.delete(
   '/:id/member',
-  (
+  async (
     req: TypedRequestBodyParams<{ memberId?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
@@ -599,7 +599,7 @@ apiListsRouter.delete(
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -609,7 +609,7 @@ apiListsRouter.delete(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
     if (!findLists) {
       return httpNotFoundResponse(res, 'Lists not found');
@@ -622,8 +622,8 @@ apiListsRouter.delete(
 
     const already = dao.getListsDetail({
       type: 'member',
-      listId: findLists.id,
-      userId: findUser.id,
+      listid: findLists.id,
+      userid: findUser.id,
     });
     if (!already) {
       return httpForbiddenResponse(res, 'This member already does not exist.');
@@ -631,9 +631,9 @@ apiListsRouter.delete(
 
     dao.listsDetailHandler({
       method: 'delete',
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'member',
-      userId: memberId,
+      userid: memberId,
     });
     const updatedLists = dao.getLists({
       id: findLists.id,
@@ -648,7 +648,7 @@ apiListsRouter.delete(
 // 특정 리스트의 팔로워를 조회
 apiListsRouter.get(
   '/:id/follow',
-  (
+  async (
     req: TypedRequestQueryParams<
       { cursor?: string; size?: string },
       { id: string }
@@ -667,7 +667,7 @@ apiListsRouter.get(
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -682,7 +682,7 @@ apiListsRouter.get(
       return httpNotFoundResponse(res);
     }
 
-    if (findLists.userId !== currentUser.id && findLists.make === 'private') {
+    if (findLists.userid !== currentUser.id && findLists.make === 'private') {
       return httpNotFoundResponse(res);
     }
 
@@ -720,7 +720,7 @@ apiListsRouter.get(
 // 특정 리스트를 팔로우
 apiListsRouter.post(
   '/:id/follow',
-  (
+  async (
     req: TypedRequestParams<{ id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
@@ -731,7 +731,7 @@ apiListsRouter.post(
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -743,14 +743,14 @@ apiListsRouter.post(
       return httpNotFoundResponse(res, 'Lists not found');
     }
 
-    if (findLists.userId === currentUser.id) {
+    if (findLists.userid === currentUser.id) {
       return httpForbiddenResponse(res, 'Can not follow your own list');
     }
 
     const already = dao.getListsDetail({
       type: 'follower',
-      listId: findLists.id,
-      userId: currentUser.id,
+      listid: findLists.id,
+      userid: currentUser.id,
     });
     if (already) {
       return httpForbiddenResponse(res, 'You are already following.');
@@ -759,8 +759,8 @@ apiListsRouter.post(
     dao.listsDetailHandler({
       method: 'post',
       type: 'follower',
-      listId: findLists.id,
-      userId: currentUser.id,
+      listid: findLists.id,
+      userid: currentUser.id,
     });
     const updatedLists = dao.getLists({
       id: findLists.id,
@@ -775,7 +775,7 @@ apiListsRouter.post(
 // 특정 리스트를 언팔로우
 apiListsRouter.delete(
   '/:id/follow',
-  (
+  async (
     req: TypedRequestParams<{ id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
@@ -786,7 +786,7 @@ apiListsRouter.delete(
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -798,14 +798,14 @@ apiListsRouter.delete(
       return httpNotFoundResponse(res, 'Lists not found');
     }
 
-    if (findLists.userId === currentUser.id) {
+    if (findLists.userid === currentUser.id) {
       return httpForbiddenResponse(res, 'Can not unfollow your own list');
     }
 
     const already = dao.getListsDetail({
       type: 'follower',
-      listId: findLists.id,
-      userId: currentUser.id,
+      listid: findLists.id,
+      userid: currentUser.id,
     });
     if (!already) {
       return httpForbiddenResponse(res, 'You are already unfollowing.');
@@ -814,8 +814,8 @@ apiListsRouter.delete(
     dao.listsDetailHandler({
       method: 'delete',
       type: 'follower',
-      listId: findLists.id,
-      userId: currentUser.id,
+      listid: findLists.id,
+      userid: currentUser.id,
     });
     const updatedLists = dao.getLists({
       id: findLists.id,
@@ -830,22 +830,22 @@ apiListsRouter.delete(
 // 게시글을 특정 리스트에 추가
 apiListsRouter.post(
   '/:id/post',
-  (
-    req: TypedRequestBodyParams<{ postId?: string }, { id: string }>,
+  async (
+    req: TypedRequestBodyParams<{ postid?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
-    const postId = req.body.postId;
+    const postid = req.body.postid;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
     if (
-      !postId ||
-      !REGEX_NUMBER_ONLY.test(postId) ||
+      !postid ||
+      !REGEX_NUMBER_ONLY.test(postid) ||
       !REGEX_NUMBER_ONLY.test(id)
     )
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -855,29 +855,29 @@ apiListsRouter.post(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
-    const findPost = dao.getPost({ postId: ~~postId });
+    const findPost = dao.getPost({ postid: ~~postid });
     if (!findLists || !findPost) {
       return httpNotFoundResponse(res);
     }
 
-    if (findLists.Posts.includes(findPost.postId)) {
+    if (findLists.Posts.includes(findPost.postid)) {
       return httpForbiddenResponse(res, 'Posts already added to this list');
     }
 
     const memberIds = findLists.Member.map((m) => m.id);
-    const memberPostIds = dao
+    const memberpostids = dao
       .getPostList({ followIds: memberIds })
-      .map((p) => p.postId);
-    const isMemberPost = memberPostIds.includes(findPost.postId);
+      .map((p) => p.postid);
+    const isMemberPost = memberpostids.includes(findPost.postid);
 
     dao.listsDetailHandler({
       method: isMemberPost ? 'delete' : 'post',
       type: isMemberPost ? 'unpost' : 'post',
-      listId: findLists.id,
-      userId: currentUser.id,
-      postId: findPost.postId,
+      listid: findLists.id,
+      userid: currentUser.id,
+      postid: findPost.postid,
     });
 
     const updatedLists = dao.getLists({
@@ -893,23 +893,23 @@ apiListsRouter.post(
 // 게시글을 특정 리스트에서 제거
 apiListsRouter.delete(
   '/:id/post',
-  (
-    req: TypedRequestBodyParams<{ postId?: string }, { id: string }>,
+  async (
+    req: TypedRequestBodyParams<{ postid?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
-    const postId = req.body.postId;
+    const postid = req.body.postid;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
     if (
-      !postId ||
-      !REGEX_NUMBER_ONLY.test(postId) ||
+      !postid ||
+      !REGEX_NUMBER_ONLY.test(postid) ||
       !REGEX_NUMBER_ONLY.test(id)
     ) {
       return httpBadRequestResponse(res);
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -919,14 +919,14 @@ apiListsRouter.delete(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
-    const findPost = dao.getPost({ postId: ~~postId });
+    const findPost = dao.getPost({ postid: ~~postid });
     if (!findLists || !findPost) {
       return httpNotFoundResponse(res);
     }
 
-    if (!findLists.Posts.includes(findPost.postId)) {
+    if (!findLists.Posts.includes(findPost.postid)) {
       return httpForbiddenResponse(
         res,
         'This post is not already on the list.'
@@ -934,17 +934,17 @@ apiListsRouter.delete(
     }
 
     const memberIds = findLists.Member.map((m) => m.id);
-    const memberPostIds = dao
+    const memberpostids = dao
       .getPostList({ followIds: memberIds })
-      .map((p) => p.postId);
-    const isMemberPost = memberPostIds.includes(findPost.postId);
+      .map((p) => p.postid);
+    const isMemberPost = memberpostids.includes(findPost.postid);
 
     dao.listsDetailHandler({
       method: isMemberPost ? 'post' : 'delete',
       type: isMemberPost ? 'unpost' : 'post',
-      listId: findLists.id,
-      userId: currentUser.id,
-      postId: findPost.postId,
+      listid: findLists.id,
+      userid: currentUser.id,
+      postid: findPost.postid,
     });
 
     const updatedLists = dao.getLists({
@@ -960,18 +960,18 @@ apiListsRouter.delete(
 // 특정 리스트 pinned 설정
 apiListsRouter.post(
   '/:id/pinned',
-  (
-    req: TypedRequestBodyParams<{ userId?: string }, { id: string }>,
+  async (
+    req: TypedRequestBodyParams<{ userid?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
-    const userId = req.body.userId;
+    const userid = req.body.userid;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
-    if (!userId || !REGEX_NUMBER_ONLY.test(id))
+    if (!userid || !REGEX_NUMBER_ONLY.test(id))
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -981,16 +981,16 @@ apiListsRouter.post(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId,
+      userid,
     });
     if (!findLists) {
       return httpNotFoundResponse(res);
     }
 
     const already = dao.getListsDetail({
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'pinned',
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
     if (already) {
       return httpForbiddenResponse(res, 'This list is already pinned.');
@@ -998,9 +998,9 @@ apiListsRouter.post(
 
     dao.listsDetailHandler({
       method: 'post',
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'pinned',
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
 
     const updatedLists = dao.getLists({
@@ -1015,18 +1015,18 @@ apiListsRouter.post(
 // 특정 리스트 pinned 제거
 apiListsRouter.delete(
   '/:id/pinned',
-  (
-    req: TypedRequestBodyParams<{ userId: string }, { id: string }>,
+  async (
+    req: TypedRequestBodyParams<{ userid: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
-    const userId = req.body.userId;
+    const userid = req.body.userid;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
-    if (!userId || !REGEX_NUMBER_ONLY.test(id))
+    if (!userid || !REGEX_NUMBER_ONLY.test(id))
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -1036,16 +1036,16 @@ apiListsRouter.delete(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId,
+      userid,
     });
     if (!findLists) {
       return httpNotFoundResponse(res);
     }
 
     const already = dao.getListsDetail({
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'pinned',
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
     if (!already) {
       return httpForbiddenResponse(res, 'This list is not already pinned.');
@@ -1053,9 +1053,9 @@ apiListsRouter.delete(
 
     dao.listsDetailHandler({
       method: 'delete',
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'pinned',
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
 
     const updatedLists = dao.getLists({
@@ -1070,18 +1070,18 @@ apiListsRouter.delete(
 // 특정 리스트 show 설정
 apiListsRouter.post(
   '/:id/unshow',
-  (
-    req: TypedRequestBodyParams<{ userId?: string }, { id: string }>,
+  async (
+    req: TypedRequestBodyParams<{ userid?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
-    const userId = req.body.userId;
+    const userid = req.body.userid;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
-    if (!userId || !REGEX_NUMBER_ONLY.test(id))
+    if (!userid || !REGEX_NUMBER_ONLY.test(id))
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -1091,16 +1091,16 @@ apiListsRouter.post(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId,
+      userid,
     });
     if (!findLists) {
       return httpNotFoundResponse(res);
     }
 
     const already = dao.getListsDetail({
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'unshow',
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
     if (already) {
       return httpForbiddenResponse(res, 'This list is already unshowed.');
@@ -1108,9 +1108,9 @@ apiListsRouter.post(
 
     dao.listsDetailHandler({
       method: 'post',
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'unshow',
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
 
     const updatedLists = dao.getLists({
@@ -1125,18 +1125,18 @@ apiListsRouter.post(
 // 특정 리스트 show 제거
 apiListsRouter.delete(
   '/:id/unshow',
-  (
-    req: TypedRequestBodyParams<{ userId: string }, { id: string }>,
+  async (
+    req: TypedRequestBodyParams<{ userid: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
-    const userId = req.body.userId;
+    const userid = req.body.userid;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
-    if (!userId || !REGEX_NUMBER_ONLY.test(id))
+    if (!userid || !REGEX_NUMBER_ONLY.test(id))
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -1146,16 +1146,16 @@ apiListsRouter.delete(
     const findLists = dao.getLists({
       id: ~~id,
       sessionId: currentUser.id,
-      userId,
+      userid,
     });
     if (!findLists) {
       return httpNotFoundResponse(res);
     }
 
     const already = dao.getListsDetail({
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'unshow',
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
     if (!already) {
       return httpForbiddenResponse(res, 'This list is not already unshowed.');
@@ -1163,9 +1163,9 @@ apiListsRouter.delete(
 
     dao.listsDetailHandler({
       method: 'delete',
-      listId: findLists.id,
+      listid: findLists.id,
       type: 'unshow',
-      userId: currentUser.id,
+      userid: currentUser.id,
     });
 
     const updatedLists = dao.getLists({

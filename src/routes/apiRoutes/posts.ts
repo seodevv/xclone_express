@@ -27,11 +27,12 @@ import {
   TypedRequestQueryParams,
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
-import { AdvancedPost, GifType, ImageType, PostImage } from '@/model/Post';
+import { AdvancedPost, GifType, ImageType } from '@/model/Post';
 import { uploadPath } from '@/app';
 import { Views } from '@/model/Views';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 import { AdvancedUser } from '@/model/User';
+import { PostImage } from '@/db/schema';
 
 const apiPostsRouter = express.Router();
 const upload = multer({ storage });
@@ -60,7 +61,7 @@ apiPostsRouter.get(
     const pageSize = f === 'media' ? 12 : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
@@ -107,7 +108,7 @@ apiPostsRouter.get(
         a._count.Hearts > b._count.Hearts ? -1 : 1
       );
     } else if (f === 'live') {
-      searchPostList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+      searchPostList.sort((a, b) => (a.createat > b.createat ? -1 : 1));
     } else if (f === 'media') {
       searchPostList = searchPostList.filter(
         (p) => !p.Original && !p.Parent && p.images.length !== 0
@@ -126,7 +127,7 @@ apiPostsRouter.get(
 
     const regex = /^[0-9]*$/;
     if (cursor && regex.test(cursor)) {
-      const findIndex = searchPostList.findIndex((p) => p.postId === ~~cursor);
+      const findIndex = searchPostList.findIndex((p) => p.postid === ~~cursor);
       searchPostList.splice(0, findIndex + 1);
     }
 
@@ -136,7 +137,7 @@ apiPostsRouter.get(
     return httpSuccessResponse(res, {
       data: searchPostList,
       nextCursor:
-        prevLength > pageSize ? searchPostList.at(-1)?.postId : undefined,
+        prevLength > pageSize ? searchPostList.at(-1)?.postid : undefined,
     });
   }
 );
@@ -150,12 +151,12 @@ apiPostsRouter.post(
     req: TypedRequestBody<{
       content?: string;
       mediaInfo?: string;
-      repostId?: string;
+      repostid?: string;
     }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     await delay(3000);
-    const { content, mediaInfo, repostId } = req.body;
+    const { content, mediaInfo, repostid } = req.body;
     const files = req.files;
     const { 'connect.sid': token } = req.cookies;
     const media = mediaInfo
@@ -170,7 +171,7 @@ apiPostsRouter.post(
       return httpUnAuthorizedResponse(res);
     }
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
@@ -178,22 +179,22 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    if (repostId) {
+    if (repostid) {
       dao.reactionHandler({
         method: 'post',
         type: 'Repost',
-        postId: ~~repostId,
-        userId: currentUser.id,
+        postid: ~~repostid,
+        userid: currentUser.id,
         quote: true,
       });
     }
     const newPost = dao.createPost({
-      userId: currentUser.id,
+      userid: currentUser.id,
       content,
       files,
       media,
-      originalId: repostId ? ~~repostId : undefined,
-      quote: !!repostId,
+      originalid: repostid ? ~~repostid : undefined,
+      quote: !!repostid,
     });
 
     return httpCreatedResponse(res, { data: newPost });
@@ -218,12 +219,12 @@ apiPostsRouter.get(
 
     const dao = new DAO();
     let recommendsList = dao.getPostList({});
-    recommendsList.sort((a, b) => (a.createAt < b.createAt ? 1 : -1));
+    recommendsList.sort((a, b) => (a.createat < b.createat ? 1 : -1));
 
     const regex = /^[0-9]+$/;
     if (cursor && regex.test(cursor)) {
       const findIndex = recommendsList.findIndex(
-        (p) => p.postId === parseInt(cursor)
+        (p) => p.postid === parseInt(cursor)
       );
       if (findIndex > -1) {
         recommendsList.splice(0, findIndex + 1);
@@ -236,7 +237,7 @@ apiPostsRouter.get(
     return httpSuccessResponse(res, {
       data: recommendsList,
       nextCursor:
-        prevLength > pageSize ? recommendsList.at(-1)?.postId : undefined,
+        prevLength > pageSize ? recommendsList.at(-1)?.postid : undefined,
     });
   }
 );
@@ -245,7 +246,7 @@ apiPostsRouter.get(
 // 팔로잉 게시글 조회
 apiPostsRouter.get(
   '/followings',
-  (
+  async (
     req: TypedRequestQuery<{ cursor?: string }>,
     res: TypedResponse<{
       data?: AdvancedPost[];
@@ -258,7 +259,7 @@ apiPostsRouter.get(
     const pageSize = 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -270,11 +271,11 @@ apiPostsRouter.get(
       .map((f) => f.target);
 
     const filterdList = dao.getPostList({ followIds: followingList });
-    filterdList.sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+    filterdList.sort((a, b) => (a.createat > b.createat ? -1 : 1));
 
     if (cursor && !Number.isNaN(parseInt(cursor))) {
       const findIndex = filterdList.findIndex(
-        (p) => p.postId === parseInt(cursor)
+        (p) => p.postid === parseInt(cursor)
       );
       filterdList.splice(0, findIndex + 1);
     }
@@ -285,7 +286,7 @@ apiPostsRouter.get(
     return httpSuccessResponse(res, {
       data: filterdList,
       nextCursor:
-        prevLength > pageSize ? filterdList.at(-1)?.postId : undefined,
+        prevLength > pageSize ? filterdList.at(-1)?.postid : undefined,
     });
   }
 );
@@ -294,7 +295,7 @@ apiPostsRouter.get(
 // 좋아요를 한 게시글 조회
 apiPostsRouter.get(
   '/likes',
-  (
+  async (
     req: TypedRequestQuery<{ cursor?: string }>,
     res: TypedResponse<{
       data?: AdvancedPost[];
@@ -307,7 +308,7 @@ apiPostsRouter.get(
     const pageSize = 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const findUser = decodingUserToken(token);
+    const findUser = await decodingUserToken(token);
     if (!findUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpNotFoundResponse(res);
@@ -316,14 +317,14 @@ apiPostsRouter.get(
     const dao = new DAO();
     let postList = dao.getPostList({});
     let likeList = dao
-      .getLikeList({ userId: findUser.id })
-      .map((l) => l.postId);
+      .getLikeList({ userid: findUser.id })
+      .map((l) => l.postid);
 
-    postList = postList.filter((p) => likeList.includes(p.postId));
+    postList = postList.filter((p) => likeList.includes(p.postid));
 
     const regex = /^[0-9]+$/;
     if (cursor && regex.test(cursor)) {
-      const findIndex = postList.findIndex((p) => p.postId === ~~cursor);
+      const findIndex = postList.findIndex((p) => p.postid === ~~cursor);
       postList.splice(0, findIndex + 1);
     }
 
@@ -332,7 +333,7 @@ apiPostsRouter.get(
 
     return httpSuccessResponse(res, {
       data: postList,
-      nextCursor: prevLength > pageSize ? postList.at(-1)?.postId : undefined,
+      nextCursor: prevLength > pageSize ? postList.at(-1)?.postid : undefined,
     });
   }
 );
@@ -355,7 +356,7 @@ apiPostsRouter.get(
     const pageSize = 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
@@ -365,10 +366,10 @@ apiPostsRouter.get(
     let postList = dao
       .getPostList({})
       .filter((p) => p.Bookmarks.some((u) => u.id === currentUser.id))
-      .sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+      .sort((a, b) => (a.createat > b.createat ? -1 : 1));
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
-      const findIndex = postList.findIndex((p) => p.postId === ~~cursor);
+      const findIndex = postList.findIndex((p) => p.postid === ~~cursor);
       if (findIndex > -1) {
         postList.splice(0, findIndex + 1);
       }
@@ -381,7 +382,7 @@ apiPostsRouter.get(
 
     return httpSuccessResponse(res, {
       data: postList,
-      nextCursor: isOver ? postList.at(-1)?.postId : undefined,
+      nextCursor: isOver ? postList.at(-1)?.postid : undefined,
     });
   }
 );
@@ -391,16 +392,16 @@ apiPostsRouter.get(
 apiPostsRouter.get(
   '/:id',
   (
-    req: TypedRequestQueryParams<{ userId?: string }, { id?: string }>,
+    req: TypedRequestQueryParams<{ userid?: string }, { id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
-    const { userId } = req.query;
+    const { userid } = req.query;
     const { id } = req.params;
     const regex = /^[0-9]*$/;
-    if (!id || !regex.test(id) || !userId) return httpBadRequestResponse(res);
+    if (!id || !regex.test(id) || !userid) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findPost = dao.getFullPost({ userId, postId: ~~id });
+    const findPost = dao.getFullPost({ userid: userid, postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -413,7 +414,7 @@ apiPostsRouter.get(
 // 특정 게시글 삭제
 apiPostsRouter.delete(
   '/:id',
-  (
+  async (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ message: string }>
   ) => {
@@ -423,14 +424,14 @@ apiPostsRouter.delete(
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const findPost = dao.getFullPost({ userId: currentUser.id, postId: ~~id });
+    const findPost = dao.getFullPost({ userid: currentUser.id, postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -445,19 +446,19 @@ apiPostsRouter.delete(
         console.error(error);
       }
     }
-    dao.deletePost({ postId: findPost.postId });
-    dao.deleteReaction({ postId: findPost.postId });
-    dao.deleteView({ postId: findPost.postId });
+    dao.deletePost({ postid: findPost.postid });
+    dao.deleteReaction({ postid: findPost.postid });
+    dao.deleteView({ postid: findPost.postid });
 
     const repostList = dao
       .getPostList({
-        originalId: findPost.postId,
+        originalid: findPost.postid,
       })
       .filter((p) => !p.quote);
     if (repostList.length !== 0) {
       repostList.forEach((p) => {
-        dao.deletePost({ postId: p.postId });
-        dao.deleteView({ postId: p.postId });
+        dao.deletePost({ postid: p.postid });
+        dao.deleteView({ postid: p.postid });
       });
     }
 
@@ -469,7 +470,7 @@ apiPostsRouter.delete(
 // 특정 게시글 좋아요
 apiPostsRouter.post(
   '/:id/hearts',
-  (
+  async (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -479,14 +480,14 @@ apiPostsRouter.post(
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postId: ~~id });
+    const findPost = dao.getPost({ postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -499,8 +500,8 @@ apiPostsRouter.post(
     const updatedPost = dao.reactionHandler({
       method: 'post',
       type: 'Heart',
-      postId: findPost.postId,
-      userId: currentUser.id,
+      postid: findPost.postid,
+      userid: currentUser.id,
     });
 
     return httpCreatedResponse(res, { data: updatedPost });
@@ -511,7 +512,7 @@ apiPostsRouter.post(
 // 특정 게시글 좋아요 취소
 apiPostsRouter.delete(
   '/:id/hearts',
-  (
+  async (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -521,14 +522,14 @@ apiPostsRouter.delete(
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postId: ~~id });
+    const findPost = dao.getPost({ postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -541,8 +542,8 @@ apiPostsRouter.delete(
     const updatedPost = dao.reactionHandler({
       method: 'delete',
       type: 'Heart',
-      postId: findPost.postId,
-      userId: currentUser.id,
+      postid: findPost.postid,
+      userid: currentUser.id,
     });
 
     return httpSuccessResponse(res, { data: updatedPost });
@@ -553,7 +554,7 @@ apiPostsRouter.delete(
 // 특정 게시글 리포스트
 apiPostsRouter.post(
   '/:id/reposts',
-  (
+  async (
     req: TypedRequestQueryParams<{ quote?: string }, { id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -563,14 +564,14 @@ apiPostsRouter.post(
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const findPost = dao.getFullPost({ postId: ~~id });
+    const findPost = dao.getFullPost({ postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -583,14 +584,14 @@ apiPostsRouter.post(
     dao.reactionHandler({
       method: 'post',
       type: 'Repost',
-      postId: findPost.postId,
-      userId: currentUser.id,
+      postid: findPost.postid,
+      userid: currentUser.id,
     });
 
     const newRepost = dao.createPost({
-      userId: currentUser.id,
+      userid: currentUser.id,
       content: '',
-      originalId: findPost.postId,
+      originalid: findPost.postid,
     });
 
     return httpCreatedResponse(res, { data: newRepost });
@@ -601,7 +602,7 @@ apiPostsRouter.post(
 // 특정 게시글 리포스트 취소
 apiPostsRouter.delete(
   '/:id/reposts',
-  (
+  async (
     req: TypedRequestParams<{ id?: string }>,
     res: TypedResponse<{ message: string }>
   ) => {
@@ -611,7 +612,7 @@ apiPostsRouter.delete(
     if (!id || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
@@ -619,22 +620,22 @@ apiPostsRouter.delete(
 
     const dao = new DAO();
     const findPost = dao.getRepostPost({
-      originalId: ~~id,
-      userId: currentUser.id,
+      originalid: ~~id,
+      userid: currentUser.id,
       quote: false,
     });
-    if (!findPost || !findPost.originalId) {
+    if (!findPost || !findPost.originalid) {
       return httpNotFoundResponse(res, 'Post not found');
     }
 
     dao.reactionHandler({
       method: 'delete',
       type: 'Repost',
-      postId: findPost.originalId,
-      userId: currentUser.id,
+      postid: findPost.originalid,
+      userid: currentUser.id,
     });
-    dao.deletePost({ postId: findPost.postId });
-    dao.deleteView({ postId: findPost.postId });
+    dao.deletePost({ postid: findPost.postid });
+    dao.deleteView({ postid: findPost.postid });
 
     return httpNoContentRepsonse(res);
   }
@@ -646,7 +647,7 @@ apiPostsRouter.get(
   '/:id/comments',
   (
     req: TypedRequestQueryParams<
-      { cursor?: string; userId?: string },
+      { cursor?: string; userid?: string },
       { id?: string }
     >,
     res: TypedResponse<{
@@ -655,24 +656,24 @@ apiPostsRouter.get(
       message: string;
     }>
   ) => {
-    const { cursor, userId } = req.query;
+    const { cursor, userid } = req.query;
     const { id } = req.params;
     const regex = /^[0-9]*$/;
     const pageSize = 10;
-    if (!id || !regex.test(id) || !userId) return httpBadRequestResponse(res);
+    if (!id || !regex.test(id) || !userid) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userId, postId: ~~id });
+    const findPost = dao.getPost({ userid, postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    const commentList = dao.getPostList({ parentId: findPost.postId });
-    commentList.sort((a, b) => (a.createAt > b.createAt ? 1 : -1));
+    const commentList = dao.getPostList({ parentId: findPost.postid });
+    commentList.sort((a, b) => (a.createat > b.createat ? 1 : -1));
 
     if (cursor && regex.test(cursor)) {
       const findIndex = commentList.findIndex(
-        (p) => p.postId === parseInt(cursor)
+        (p) => p.postid === parseInt(cursor)
       );
       if (findIndex >= 0) {
         commentList.splice(0, findIndex + 1);
@@ -685,7 +686,7 @@ apiPostsRouter.get(
     return httpSuccessResponse(res, {
       data: commentList,
       nextCursor:
-        prevLength > pageSize ? commentList.at(-1)?.postId : undefined,
+        prevLength > pageSize ? commentList.at(-1)?.postid : undefined,
     });
   }
 );
@@ -720,7 +721,7 @@ apiPostsRouter.post(
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
@@ -728,25 +729,25 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postId: ~~id });
+    const findPost = dao.getPost({ postid: ~~id });
     if (!findPost) {
       removingFiles(files);
       return httpNotFoundResponse(res, 'Post not found');
     }
 
     const newComment = dao.createPost({
-      userId: currentUser.id,
+      userid: currentUser.id,
       content,
       files,
       media,
-      parentId: findPost.postId,
+      parentId: findPost.postid,
     });
     dao.reactionHandler({
       method: 'post',
       type: 'Comment',
-      userId: currentUser.id,
-      postId: findPost.postId,
-      commentId: newComment?.postId,
+      userid: currentUser.id,
+      postid: findPost.postid,
+      commentid: newComment?.postid,
     });
 
     return httpCreatedResponse(res, { data: newComment });
@@ -757,7 +758,7 @@ apiPostsRouter.post(
 // 특정 게시물 view 조회
 apiPostsRouter.get(
   '/:id/views',
-  (
+  async (
     req: TypedRequestParams<{ id: string }>,
     res: TypedResponse<{ data?: Views; message: string }>
   ) => {
@@ -767,26 +768,26 @@ apiPostsRouter.get(
     if (!regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postId: ~~id });
+    const findPost = dao.getPost({ postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res);
     }
 
-    if (findPost.userId !== currentUser.id) {
+    if (findPost.userid !== currentUser.id) {
       return httpForbiddenResponse(res);
     }
 
-    let findView = dao.getView({ postId: ~~id });
+    let findView = dao.getView({ postid: ~~id });
     if (!findView) {
-      dao.viewsHandler({ postId: findPost.postId, create: true });
-      findView = dao.getView({ postId: findPost.postId });
+      dao.viewsHandler({ postid: findPost.postid, create: true });
+      findView = dao.getView({ postid: findPost.postid });
     }
 
     return httpSuccessResponse(res, { data: findView });
@@ -797,33 +798,33 @@ apiPostsRouter.get(
 // 특정 게시물 view 카운트 추가
 apiPostsRouter.post(
   '/:id/views',
-  (
+  async (
     req: TypedRequestBodyParams<
-      { userId?: string; type?: string },
+      { userid?: string; type?: string },
       { id: string }
     >,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const id = req.params.id;
-    const { userId, type = '' } = req.body;
+    const { userid, type = '' } = req.body;
     const { 'connect.sid': token } = req.cookies;
     const regex = /^[0-9]+$/;
-    if (!userId || !regex.test(id)) return httpBadRequestResponse(res);
+    if (!userid || !regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postId: ~~id, userId });
+    const findPost = dao.getPost({ postid: ~~id, userid });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    const isViews = (type: string): type is keyof Omit<Views, 'postId'> => {
+    const isViews = (type: string): type is keyof Omit<Views, 'postid'> => {
       return [
         'impressions',
         'engagements',
@@ -836,7 +837,7 @@ apiPostsRouter.post(
 
     const updatedPost = dao.viewsHandler({
       key,
-      postId: ~~id,
+      postid: ~~id,
     });
 
     return httpCreatedResponse(res, { data: updatedPost });
@@ -847,7 +848,7 @@ apiPostsRouter.post(
 // 특정 게시물 bookmark 추가
 apiPostsRouter.post(
   '/:id/bookmarks',
-  (
+  async (
     req: TypedRequestParams<{ id: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -857,14 +858,14 @@ apiPostsRouter.post(
     if (!regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postId: ~~id });
+    const findPost = dao.getPost({ postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res);
     }
@@ -877,8 +878,8 @@ apiPostsRouter.post(
     const updatedPost = dao.reactionHandler({
       type: 'Bookmark',
       method: 'post',
-      userId: currentUser.id,
-      postId: ~~id,
+      userid: currentUser.id,
+      postid: ~~id,
     });
 
     return httpCreatedResponse(res, { data: updatedPost });
@@ -889,7 +890,7 @@ apiPostsRouter.post(
 // 특정 게시물 bookmark 제거
 apiPostsRouter.delete(
   '/:id/bookmarks',
-  (
+  async (
     req: TypedRequestParams<{ id: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -899,14 +900,14 @@ apiPostsRouter.delete(
     if (!regex.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postId: ~~id });
+    const findPost = dao.getPost({ postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res);
     }
@@ -919,8 +920,8 @@ apiPostsRouter.delete(
     const updatedPost = dao.reactionHandler({
       type: 'Bookmark',
       method: 'delete',
-      userId: currentUser.id,
-      postId: ~~id,
+      userid: currentUser.id,
+      postid: ~~id,
     });
     return httpSuccessResponse(res, { data: updatedPost });
   }
@@ -932,7 +933,7 @@ apiPostsRouter.get(
   '/:id/engagements',
   async (
     req: TypedRequestQueryParams<
-      { userId?: string; cursor?: string; filter?: string },
+      { userid?: string; cursor?: string; filter?: string },
       { id: string }
     >,
     res: TypedResponse<{
@@ -942,12 +943,12 @@ apiPostsRouter.get(
     }>
   ) => {
     await delay(1000);
-    const { userId, filter, cursor } = req.query;
+    const { userid, filter, cursor } = req.query;
     const id = req.params.id;
     const { 'connect.sid': token } = req.cookies;
     const pageSize = 10;
     if (
-      !userId ||
+      !userid ||
       !REGEX_NUMBER_ONLY.test(id) ||
       (filter !== 'quotes' && filter !== 'retweets' && filter !== 'likes')
     ) {
@@ -955,14 +956,14 @@ apiPostsRouter.get(
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userId, postId: ~~id });
+    const findPost = dao.getPost({ userid, postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res);
     }
@@ -971,12 +972,12 @@ apiPostsRouter.get(
       case 'quotes': {
         const postList = dao
           .getPostList({
-            originalId: findPost.postId,
+            originalid: findPost.postid,
             quote: true,
           })
-          .sort((a, b) => (a.createAt > b.createAt ? -1 : 1));
+          .sort((a, b) => (a.createat > b.createat ? -1 : 1));
         if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
-          const findIndex = postList.findIndex((p) => p.postId === ~~cursor);
+          const findIndex = postList.findIndex((p) => p.postid === ~~cursor);
           if (findIndex > -1) {
             postList.splice(0, findIndex + 1);
           }
@@ -988,13 +989,13 @@ apiPostsRouter.get(
 
         return httpSuccessResponse(res, {
           data: postList,
-          nextCursor: isOver ? postList.at(-1)?.postId : undefined,
+          nextCursor: isOver ? postList.at(-1)?.postid : undefined,
         });
       }
       case 'retweets': {
         const repostList = dao
-          .getRepostList({ postId: ~~id })
-          .map((r) => r.userId);
+          .getRepostList({ postid: ~~id })
+          .map((r) => r.userid);
         const userList = dao
           .getUserList()
           .filter((u) => repostList.includes(u.id));
@@ -1015,7 +1016,7 @@ apiPostsRouter.get(
         });
       }
       case 'likes': {
-        const likeList = dao.getLikeList({ postId: ~~id }).map((r) => r.userId);
+        const likeList = dao.getLikeList({ postid: ~~id }).map((r) => r.userid);
         const userList = dao
           .getUserList()
           .filter((u) => likeList.includes(u.id));
@@ -1045,7 +1046,7 @@ apiPostsRouter.get(
 // 특정 게시물 pinned 추가
 apiPostsRouter.post(
   '/:id/pinned',
-  (
+  async (
     req: TypedRequestParams<{ id: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -1054,14 +1055,14 @@ apiPostsRouter.post(
     if (!REGEX_NUMBER_ONLY.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userId: currentUser.id, postId: ~~id });
+    const findPost = dao.getPost({ userid: currentUser.id, postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'post not found');
     }
@@ -1070,8 +1071,8 @@ apiPostsRouter.post(
     }
 
     const updatedPost = dao.updatePost({
-      userId: currentUser.id,
-      postId: ~~id,
+      userid: currentUser.id,
+      postid: ~~id,
       pinned: true,
     });
 
@@ -1083,7 +1084,7 @@ apiPostsRouter.post(
 // 특정 게시물 pinned 추가
 apiPostsRouter.delete(
   '/:id/pinned',
-  (
+  async (
     req: TypedRequestParams<{ id: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -1092,14 +1093,14 @@ apiPostsRouter.delete(
     if (!REGEX_NUMBER_ONLY.test(id)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userId: currentUser.id, postId: ~~id });
+    const findPost = dao.getPost({ userid: currentUser.id, postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'post not found');
     }
@@ -1108,8 +1109,8 @@ apiPostsRouter.delete(
     }
 
     const updatedPost = dao.updatePost({
-      userId: currentUser.id,
-      postId: ~~id,
+      userid: currentUser.id,
+      postid: ~~id,
       pinned: false,
     });
 
@@ -1121,7 +1122,7 @@ apiPostsRouter.delete(
 // 특정 게시물 scope 설정
 apiPostsRouter.post(
   '/:id/scope',
-  (
+  async (
     req: TypedRequestBodyParams<{ scope?: string }, { id: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -1139,14 +1140,14 @@ apiPostsRouter.post(
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const currentUser = decodingUserToken(token);
+    const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       res.cookie('connect.sid', '', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userId: currentUser.id, postId: ~~id });
+    const findPost = dao.getPost({ userid: currentUser.id, postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res);
     }
@@ -1156,8 +1157,8 @@ apiPostsRouter.post(
     }
 
     const updatedPost = dao.updatePost({
-      userId: currentUser.id,
-      postId: ~~id,
+      userid: currentUser.id,
+      postid: ~~id,
       scope,
     });
 
@@ -1180,7 +1181,7 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postId: ~~id });
+    const findPost = dao.getPost({ postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }

@@ -1,8 +1,3 @@
-import { User } from './User';
+import { Schemas } from '@/db/schema';
 
-export interface Follow {
-  id: number;
-  source: User['id'];
-  target: User['id'];
-  createAt: Date;
-}
+export type Follow = Schemas['follow'];

@@ -1,38 +1,32 @@
+import { SafeUser, Schemas } from '@/db/schema';
 import { Post } from '@/model/Post';
-import { SafeUser, User, UserId } from '@/model/User';
+import { User, UserId } from '@/model/User';
 
-export interface ListsRaw {
-  id: number;
-  userId: User['id'];
-  name: string;
-  description: string;
-  banner: string;
-  thumbnail: string;
-  make: string;
-  createAt: Date;
-}
-
-export interface Lists extends ListsRaw {
-  make: 'private' | 'public';
-}
+export type Lists = Schemas['lists'];
 
 export interface AdvancedLists extends Lists {
   User: SafeUser;
   Member: UserId[];
   Follower: UserId[];
-  Posts: Post['postId'][];
+  Posts: Post['postid'][];
   UnShow: UserId[];
   Pinned: boolean;
 }
 
-export interface ListsDetailRaw {
-  id: number;
-  listId: Lists['id'];
-  type: string;
-  userId: User['id'];
-  postId?: Post['postId'];
-}
+export type ListsDetail = Schemas['listsdetail'];
 
-export interface ListsDetail extends ListsDetailRaw {
-  type: 'member' | 'post' | 'unpost' | 'follower' | 'pinned' | 'unshow';
-}
+export const isListsMake = (str?: string): Lists['make'] => {
+  return str === 'private' ? 'private' : 'public';
+};
+
+export const isListsDetailType = (str?: string): ListsDetail['type'] => {
+  if (
+    str === 'member' ||
+    str === 'post' ||
+    str === 'unpost' ||
+    str === 'follower' ||
+    str === 'pinned'
+  )
+    return str;
+  return 'member';
+};

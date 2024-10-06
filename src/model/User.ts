@@ -1,36 +1,10 @@
+import { Birth, Schemas, Verified } from '@/db/schema';
+
 export interface UserId {
   id: User['id'];
 }
 
-interface Verified {
-  type: 'blue' | 'gold' | 'gray';
-  date: Date;
-}
-
-interface Birth {
-  date: string;
-  scope: {
-    month: 'public' | 'follower' | 'following' | 'each' | 'only';
-    year: 'public' | 'follower' | 'following' | 'each' | 'only';
-  };
-}
-
-export interface User {
-  id: string;
-  password: string;
-  nickname: string;
-  image: string;
-  banner?: string;
-  desc?: string;
-  location?: string;
-  birth?: Birth;
-  refer?: string;
-  verified?: Verified;
-  regist: Date;
-}
-
-export interface SafeUser
-  extends Pick<User, 'id' | 'nickname' | 'image' | 'verified'> {}
+export type User = Schemas['users'];
 export interface AdvancedUser extends Omit<User, 'password'> {
   Followers: UserId[];
   Followings: UserId[];
@@ -43,13 +17,14 @@ export interface AdvancedUser extends Omit<User, 'password'> {
 export function isVerified(obj: {
   type: string;
   date: string;
-}): Verified | undefined {
+}): Verified | null {
   if (obj.type === 'blue' || obj.type === 'gold' || obj.type === 'gray') {
     return {
       type: obj.type,
       date: new Date(obj.date),
     };
   }
+  return null;
 }
 
 export function isBirth(data?: {

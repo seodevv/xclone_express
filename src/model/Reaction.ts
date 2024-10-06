@@ -1,11 +1,15 @@
-import { Post } from './Post';
-import { User } from './User';
+import { Schemas } from '@/db/schema';
 
-export interface Reactions {
-  id: number;
-  type: string;
-  postId: Post['postId'];
-  commentId?: Post['postId'];
-  userId: User['id'];
-  quote?: boolean;
-}
+export type Reactions = Schemas['reactions'];
+
+export const isReactionType = (str?: string): Reactions['type'] => {
+  if (
+    str === 'Heart' ||
+    str === 'Comment' ||
+    str === 'Repost' ||
+    str === 'Bookmark'
+  ) {
+    return str;
+  }
+  return 'Heart';
+};

@@ -1,10 +1,11 @@
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import fs from 'fs-extra';
-import DAO from './DAO';
 import { uploadPath } from '@/app';
-import { AdvancedUser, SafeUser } from '@/model/User';
+import { AdvancedUser } from '@/model/User';
 import { CookieOptions } from 'express';
+import NEW_DAO from '@/lib/dao_n';
+import { SafeUser } from '@/db/schema';
 
 export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,
@@ -49,14 +50,18 @@ export const generateUserToken = (user: AdvancedUser): string | undefined => {
   }
 };
 
-export const decodingUserToken = (token: string): AdvancedUser | undefined => {
+export const decodingUserToken = async (
+  token: string
+): Promise<AdvancedUser | undefined> => {
   try {
     const secret = process.env.JWT_SECRET || 'secret';
     const options: jwt.VerifyOptions = {};
     const decode = jwt.verify(token, secret, options) as SafeUser;
 
-    const dao = new DAO();
-    const user = dao.getUser({ id: decode.id });
+    const dao = new NEW_DAO();
+    // const dao = new DAO();
+    const user = await dao.getUser({ id: decode.id });
+    dao.release();
 
     return user;
   } catch (error) {

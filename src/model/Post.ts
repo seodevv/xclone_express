@@ -1,45 +1,7 @@
-import { SafeUser, UserId } from './User';
+import { Schemas } from '@/db/schema';
 
-export interface Post {
-  postId: number;
-  userId: string;
-  content: string;
-  images: PostImage[];
-  createAt: Date;
-  parentId?: Post['postId'];
-  originalId?: Post['postId'];
-  quote?: boolean;
-  pinned?: boolean;
-  scope?: 'every' | 'follow' | 'verified' | 'only';
-}
-
-export interface PostImage {
-  link: string;
-  imageId: number;
-  width: number;
-  height: number;
-}
-
-export interface AdvancedPost extends Post {
-  User: SafeUser;
-  Hearts: UserId[];
-  Reposts: UserId[];
-  Comments: UserId[];
-  Bookmarks: UserId[];
-  _count: {
-    Hearts: number;
-    Reposts: number;
-    Comments: number;
-    Bookmarks: number;
-    Views: number;
-  };
-  Parent?: {
-    postId: Post['postId'];
-    User: SafeUser;
-    images: PostImage[];
-  };
-  Original?: AdvancedPost;
-}
+export type Post = Schemas['post'];
+export type AdvancedPost = Schemas['advancedPost'];
 
 export interface GifType {
   type: 'gif';
@@ -55,7 +17,7 @@ export interface ImageType {
   height: number;
 }
 
-export const isScope = (str?: string): Post['scope'] | undefined => {
+export const isScope = (str?: string): Post['scope'] => {
   if (
     str === 'every' ||
     str === 'follow' ||
@@ -64,5 +26,5 @@ export const isScope = (str?: string): Post['scope'] | undefined => {
   ) {
     return str;
   }
-  return undefined;
+  return 'every';
 };
