@@ -1,8 +1,4 @@
-import { Birth, Schemas, Verified } from '@/db/schema';
-
-export interface UserId {
-  id: User['id'];
-}
+import { Birth, Schemas, UserId, Verified } from '@/db/schema';
 
 export type User = Schemas['users'];
 export interface AdvancedUser extends Omit<User, 'password'> {

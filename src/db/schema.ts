@@ -111,6 +111,13 @@ export interface Schemas {
     make: 'private' | 'public';
     createat: Date;
   };
+  advancedLists: Schemas['lists'] & {
+    User: SafeUser;
+    Member: UserId[];
+    Follower: UserId[];
+    UnShow: UserId[];
+    Posts: number[];
+  };
   listsdetail: {
     id: number;
     listid: number;
@@ -125,12 +132,21 @@ export interface Schemas {
     createat: Date;
     lastmessageid: number | null;
   };
+  advancedRooms: Schemas['rooms'] & {
+    Receiver: SafeUser;
+    Sender: SafeUser;
+    content: string | null;
+    lastat: Date | null;
+  };
   messages: {
     id: number;
     roomid: string;
     senderid: string;
     content: string;
     createat: Date;
+  };
+  advancedMessages: Schemas['messages'] & {
+    Sender: SafeUser;
   };
 }
 

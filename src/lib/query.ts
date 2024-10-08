@@ -16,13 +16,13 @@ function makeSelectField<T extends keyof Schemas>(
 
   if (fields && fields.length !== 0) {
     fields.forEach((field, i) => {
-      text += ` ${i === 0 ? '' : ','}${field.toString()}\n`;
+      text += `\t${i === 0 ? '' : ','}${field.toString()}\n`;
     });
   } else {
-    text += ' *\n';
+    text += '\t*\n';
   }
 
-  text += `FROM ${table}\n`;
+  text += `FROM\n\t${table}\n`;
 
   return text;
 }
@@ -44,14 +44,14 @@ function makeInsertField<T extends keyof Schemas>(
   if (fields && fields.length !== 0) {
     queryConfig.text += '(';
     fields.forEach((field, i) => {
-      queryConfig.text += `${i === 0 ? '' : ','} ${field.toString()}`;
+      queryConfig.text += `${i === 0 ? '' : ','}${field.toString()}`;
     });
     queryConfig.text += ')';
   }
 
   queryConfig.text += ' values(';
   values.forEach((v, i) => {
-    queryConfig.text += `${i === 0 ? '' : ','} $${i + 1}`;
+    queryConfig.text += `${i === 0 ? '' : ','}$${i + 1}`;
   });
   queryConfig.text += ');';
 
@@ -61,7 +61,7 @@ function makeInsertField<T extends keyof Schemas>(
 function makeUpdateField<T extends keyof Schemas>(
   table: T,
   update: { fields: (keyof Schemas[T])[]; values: any[] },
-  where: Where<Schemas[T]>[]
+  wheres: Where<Schemas[T]>[][]
 ) {
   const queryConfig: RequiredQueryConfig = {
     text: `UPDATE ${table} SET `,
@@ -81,43 +81,45 @@ function makeUpdateField<T extends keyof Schemas>(
     queryConfig.text += ' ';
   }
 
-  queryConfig.text += 'WHERE ';
-  where.forEach(({ field, value, logic, operator }, i) => {
-    queryConfig.text += `${
-      i === 0 ? '' : `${logic || 'AND'} `
-    }${field.toString()} ${operator || '='} $${
-      queryConfig.values.length + i + 1
-    }`;
-    queryConfig.values.push(value);
-  });
+  const { text, values } = makeWhere(queryConfig, wheres, update.fields.length);
+  queryConfig.text = text;
+  queryConfig.values = values;
 
   return queryConfig;
 }
 
 function makeDeleteField<T extends keyof Schemas>(
   table: T,
-  where: Where<Schemas[T]>[]
+  wheres: Where<Schemas[T]>[][]
 ) {
   let queryConfig: RequiredQueryConfig = {
-    text: `DELETE FROM ${table}`,
+    text: `DELETE FROM ${table} `,
     values: [],
   };
-  queryConfig = makeWhere(queryConfig, where);
+  queryConfig = makeWhere(queryConfig, wheres);
 
   return queryConfig;
 }
 
 function makeWhere<T>(
   queryConfig: RequiredQueryConfig,
-  where?: Where<T>[]
+  wheres?: Where<T>[][],
+  startIndex = 1
 ): RequiredQueryConfig {
-  if (where && where.length !== 0) {
+  if (wheres && wheres.length !== 0) {
+    let index = startIndex;
     queryConfig.text += 'WHERE\n';
-    where.forEach(({ field, operator, value, logic }, i) => {
-      queryConfig.text += `  ${
-        i === 0 ? '' : `${logic || 'AND'} `
-      }${field.toString()} ${operator || '='} $${i + 1}\n`;
-      queryConfig.values?.push(value);
+    wheres.forEach((where, i) => {
+      if (wheres[i].length === 0) return;
+      queryConfig.text += ` ${i === 0 ? '' : 'AND '}(\n`;
+      where.forEach(({ field, operator, value, logic }, j) => {
+        queryConfig.text += `\t${
+          j === 0 ? '' : `${logic || 'AND'} `
+        }${field.toString()} ${operator || '='} $${index}\n`;
+        queryConfig.values?.push(value);
+        index++;
+      });
+      queryConfig.text += ' )\n';
     });
   }
 
@@ -141,12 +143,12 @@ function makeOrder<T>(
 export const selectQuery = <T extends keyof Schemas>({
   table,
   fields,
-  where,
+  wheres,
   order,
 }: {
   table: T;
   fields?: (keyof Schemas[T])[];
-  where?: Where<Schemas[T]>[];
+  wheres?: Where<Schemas[T]>[][];
   order?: Order<Schemas[T]>[];
 }): QueryConfig => {
   const queryConfig: RequiredQueryConfig = {
@@ -154,7 +156,7 @@ export const selectQuery = <T extends keyof Schemas>({
     values: [],
   };
 
-  const whereResult = makeWhere(queryConfig, where);
+  const whereResult = makeWhere(queryConfig, wheres);
   queryConfig.text = whereResult.text;
   queryConfig.values = whereResult.values;
 
@@ -177,25 +179,26 @@ export const insertQuery = <T extends keyof Schemas>({
 
 export const deleteQuery = <T extends keyof Schemas>({
   table,
-  where,
+  wheres,
 }: {
   table: T;
-  where: Where<Schemas[T]>[];
+  wheres: Where<Schemas[T]>[][];
 }) => {
-  return makeDeleteField(table, where);
+  return makeDeleteField(table, wheres);
 };
 
 export const selectUsersQuery = ({
-  where,
+  wheres,
   order,
 }: {
-  where?: Where<Schemas['users']>[];
+  wheres?: Where<Schemas['users']>[][];
   order?: Order<Schemas['users']>[];
 }): RequiredQueryConfig => {
   const queryConfig: RequiredQueryConfig = {
     text: '',
     values: [],
   };
+
   queryConfig.text = `
 select
 	u.id ,
@@ -261,7 +264,7 @@ left outer join (
 	follower.target = u.id
 `;
 
-  const { text, values } = makeWhere(queryConfig, where);
+  const { text, values } = makeWhere(queryConfig, wheres);
   queryConfig.text = text;
   queryConfig.values = values;
 
@@ -271,26 +274,148 @@ left outer join (
 };
 
 export const selectPostsQuery = ({
-  userId,
-  parentId,
-  originalId,
-  followIds,
+  userid,
+  parentid,
+  originalid,
+  followids,
   quote,
-  withPostIds,
+  postids,
 }: {
-  userId?: string;
-  parentId?: number;
-  originalId?: number;
-  followIds?: string[];
+  userid?: string;
+  parentid?: number;
+  originalid?: number;
   quote?: boolean;
-  withPostIds?: number[];
+  followids?: string[];
+  postids?: number[];
 }) => {
   const queryConfig: RequiredQueryConfig = {
     text: '',
     values: [],
   };
+  const wheres: Where<Schemas['advancedPost']>[][] = [];
+  let index = 0;
+
+  if (typeof userid !== 'undefined') {
+    wheres[index].push({ field: 'userid', value: userid });
+  }
+  if (typeof parentid !== 'undefined') {
+    wheres[index].push({ field: 'parentid', value: parentid });
+  }
+  if (typeof originalid !== 'undefined') {
+    wheres[index].push({ field: 'originalid', value: originalid });
+  }
+  if (typeof quote !== 'undefined') {
+    wheres[index].push({ field: 'quote', value: quote });
+  }
+  if (typeof followids !== 'undefined') {
+    wheres[index].push({
+      field: 'userid',
+      operator: 'in',
+      value: followids.toString(),
+    });
+  }
+  if (typeof postids !== 'undefined') {
+    wheres[index].push({
+      field: 'postid',
+      operator: 'in',
+      value: postids.toString(),
+    });
+  }
 
   queryConfig.text = makeSelectField('advancedPost');
+  const { text, values } = makeWhere(queryConfig, wheres);
+  queryConfig.text = text;
+  queryConfig.values = values;
+
+  return queryConfig;
+};
+
+export const selectListsQuery = ({
+  sessionid,
+  userid,
+  make,
+  filter,
+}: {
+  sessionid: string;
+  userid?: string;
+  make?: Schemas['lists']['make'];
+  filter?: 'all' | 'own' | 'memberships';
+}) => {
+  let queryConfig: RequiredQueryConfig = {
+    text: '',
+    values: [sessionid],
+  };
+
+  queryConfig.text = `
+select
+	al.id,
+	al.userid,
+	al."User",
+	al.name,
+	al.description,
+	al.banner,
+	al.thumbnail,
+	al.make,
+	al.createat,
+	al."Member",
+	al."Follower",
+	al."UnShow",
+	al."Posts",
+	case
+		when ld.id is not null then true
+		else false
+	end as "Pinned"
+from
+	advancedlists al
+left outer join (
+	select
+		id,
+		listid
+	from
+		listsdetail
+	where
+		type = 'pinned'
+		and userid = $1) ld on
+	ld.listid = al.id
+`;
+
+  const wheres: Where<Schemas['advancedLists']>[][] = [];
+  let index = 0;
+  if (typeof userid !== 'undefined') {
+    wheres[index].push({ field: 'userid', value: userid });
+  }
+  if (typeof make !== 'undefined') {
+    wheres[index].push({ field: 'make', value: make });
+  }
+
+  if (filter === 'all') {
+    const { text, values } = makeWhere(queryConfig, wheres, 2);
+    queryConfig.text = text;
+    queryConfig.values = values;
+
+    queryConfig.text += `\tOR al."Follower"::text like $${
+      queryConfig.values.length + 1
+    }\n`;
+    queryConfig.values.push(`%"${userid}"%`);
+  } else if (filter === 'own' || typeof filter === 'undefined') {
+    const { text, values } = makeWhere(queryConfig, wheres, 2);
+    queryConfig.text = text;
+    queryConfig.values = values;
+  } else if (filter === 'memberships') {
+    queryConfig.text += 'WHERE\n';
+    queryConfig.text += `\tal."Member"::text like $${
+      queryConfig.values.length + 1
+    }\n`;
+    queryConfig.values.push(`%"${userid}"%`);
+  }
+
+  queryConfig.text += 'ORDER BY\n';
+  if (sessionid === userid) {
+    queryConfig.text += '\t"Pinned" desc,\n';
+  }
+  queryConfig.text += '\tcreateat desc\n';
+
+  return queryConfig;
 };
 
 export const insertUsersQuery = ({
@@ -335,7 +460,7 @@ export const updateUsersQuery = ({
 }) => {
   const fields: (keyof Schemas['users'])[] = [];
   const values: any[] = [];
-  const where: Where<Schemas['users']>[] = [{ field: 'id', value: id }];
+  const wheres: Where<Schemas['users']>[][] = [[{ field: 'id', value: id }]];
   if (typeof nickname !== 'undefined') {
     fields.push('nickname');
     values.push(nickname);
@@ -369,7 +494,7 @@ export const updateUsersQuery = ({
     values.push(verified);
   }
 
-  let queryConfig = makeUpdateField('users', { fields, values }, where);
+  let queryConfig = makeUpdateField('users', { fields, values }, wheres);
 
   return queryConfig;
 };

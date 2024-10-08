@@ -15,7 +15,7 @@ import { AdvancedPost, GifType, ImageType, isScope, Post } from '@/model/Post';
 import { Follow } from '@/model/Follow';
 import { isReactionType, Reactions } from '@/model/Reaction';
 import { isTag, isWord, Tag, Tags, Word } from '@/model/Hashtag';
-import { AdvancedRoom, Room } from '@/model/Room';
+import { AdvancedRooms, Room } from '@/model/Room';
 import { Message } from '@/model/Message';
 import { Morpheme } from '@/model/Morpheme';
 import { Views } from '@/model/Views';
@@ -194,8 +194,8 @@ class DAO {
     return tagList;
   }
 
-  getRoomList(userid: User['id']): AdvancedRoom[] {
-    const roomList: AdvancedRoom[] = [];
+  getRoomList(userid: User['id']): AdvancedRooms[] {
+    const roomList: AdvancedRooms[] = [];
     this.roomList.forEach((r) => {
       if (r.receiverid !== userid && r.senderid !== userid) return;
       const Receiver = this.getSafeUser(r.receiverid);
@@ -205,6 +205,8 @@ class DAO {
         ...r,
         Receiver,
         Sender,
+        content: null,
+        lastat: null,
       });
     });
     return roomList;

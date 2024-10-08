@@ -26,7 +26,7 @@ export const pool = new Pool({
 });
 
 pool.on('error', (err) => {
-  console.error(err);
+  console.error('[pg][error event]\n', err);
   process.exit(-1);
 });
 

@@ -1,8 +1,4 @@
-import { SafeUser, Schemas } from '@/db/schema';
+import { Schemas } from '@/db/schema';
 
 export type Room = Schemas['rooms'];
-
-export interface AdvancedRoom extends Room {
-  Receiver: SafeUser;
-  Sender: SafeUser;
-}
+export type AdvancedRooms = Schemas['advancedRooms'];
