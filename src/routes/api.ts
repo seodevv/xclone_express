@@ -28,7 +28,7 @@ import {
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
 import { AdvancedUser } from '@/model/User';
-import NEW_DAO from '@/lib/dao_n';
+import DAO from '@/lib/DAO';
 
 const apiRouter = express.Router();
 
@@ -39,7 +39,6 @@ apiRouter.use('/lists', apiListsRouter);
 
 // "GET" /api/login"
 // 로그인 아이디 확인
-// release
 apiRouter.get(
   '/login',
   async (
@@ -54,8 +53,7 @@ apiRouter.get(
     const { type = 'login', id, nickname } = req.query;
     if (!id) return httpBadRequestResponse(res);
 
-    // const dao = new DAO();
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findUser = await dao.getUser({ id, nickname });
     dao.release();
 
@@ -76,7 +74,6 @@ apiRouter.get(
 
 // "POST /api/login"
 // 로그인
-// release
 apiRouter.post(
   '/login',
   multer().none(),
@@ -89,8 +86,7 @@ apiRouter.post(
     // body 가 없을 시
     if (!id || !password) return httpBadRequestResponse(res);
 
-    // const dao = new DAO();
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findUser = await dao.getUser({ id, password });
     dao.release();
 
@@ -111,7 +107,6 @@ apiRouter.post(
 
 // "POST /api/login/oauth"
 // OAuth 로그인
-// release
 apiRouter.post(
   '/login/oauth',
   multer().none(),
@@ -122,8 +117,7 @@ apiRouter.post(
     const { id, nickname, image } = req.body;
     if (!id || !nickname || !image) return httpBadRequestResponse(res);
 
-    // const dao = new DAO();
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     let user = await dao.getUser({ id });
     if (!user) {
       user = await dao.createUser({
@@ -152,7 +146,6 @@ apiRouter.post(
 
 // "POST /api/logout"
 // 로그아웃
-// release
 apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
@@ -164,7 +157,6 @@ apiRouter.post(
 
 // "GET /api/image/:imageName"
 // 이미지 호스팅
-// release
 apiRouter.get(
   '/image/:imageName',
   (

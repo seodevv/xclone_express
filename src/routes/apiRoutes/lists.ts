@@ -9,11 +9,11 @@ import {
   removingFiles,
   storage,
 } from '@/lib/common';
-import DAO from '@/lib/DAO';
 import {
   httpBadRequestResponse,
   httpCreatedResponse,
   httpForbiddenResponse,
+  httpInternalServerErrorResponse,
   httpNoContentRepsonse,
   httpNotFoundResponse,
   httpSuccessResponse,
@@ -33,6 +33,7 @@ import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 import { AdvancedUser } from '@/model/User';
 import { AdvancedPost } from '@/model/Post';
 import { uploadPath } from '@/app';
+import DAO from '@/lib/DAO';
 
 const apiListsRouter = express.Router();
 const upload = multer({ storage });
@@ -60,24 +61,24 @@ apiListsRouter.get(
     }
 
     const dao = new DAO();
-    let searchListsList = dao
-      .getListsList({ sessionId: currentUser.id, make: 'public' })
+    let searchListsList = await dao.getListsList({
+      sessionid: currentUser.id,
+      make: 'public',
+      q,
+    });
+    dao.release();
+
+    if (!searchListsList) {
+      return httpInternalServerErrorResponse(res);
+    }
+
+    searchListsList = searchListsList
       .filter((l) => l.userid !== currentUser.id)
       .sort((a, b) => {
         if (a.Follower.length > b.Follower.length) return -1;
         else if (a.Follower.length < b.Follower.length) return 1;
         return a.createat > b.createat ? 1 : -1;
       });
-
-    if (q) {
-      const decode = decodeURIComponent(q);
-      const regex = new RegExp(
-        `${decode.toLowerCase().replace(/[/\-\\^$*+?.()|[\]{}]/g, '\\$&')}`
-      );
-      searchListsList = searchListsList.filter((l) =>
-        regex.test(l.name.toLowerCase())
-      );
-    }
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
       const findIndex = searchListsList.findIndex((l) => l.id === ~~cursor);
@@ -148,7 +149,8 @@ apiListsRouter.post(
     } = files;
 
     const dao = new DAO();
-    const newList = dao.createList({
+    const newList = await dao.createList({
+      sessionid: currentUser.id,
       userid: currentUser.id,
       name,
       description,
@@ -156,6 +158,7 @@ apiListsRouter.post(
       thumbnail: thumbnail[0].filename,
       make,
     });
+    dao.release();
 
     return httpSuccessResponse(res, { data: newList });
   }
@@ -184,12 +187,13 @@ apiListsRouter.get(
     }
 
     const dao = new DAO();
-    const listsList = dao
-      .getListsList({
-        sessionId: currentUser.id,
+    const listsList = (
+      await dao.getListsList({
+        sessionid: currentUser.id,
         make: 'public',
       })
-      .filter(
+    )
+      ?.filter(
         (l) =>
           l.userid !== currentUser.id &&
           !l.Follower.map((f) => f.id).includes(currentUser.id)
@@ -199,6 +203,11 @@ apiListsRouter.get(
         if (b.Follower.length > a.Follower.length) return 1;
         return a.createat > b.createat ? 1 : -1;
       });
+    dao.release();
+
+    if (!listsList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
       const findIndex = listsList.findIndex((l) => l.id === ~~cursor);
@@ -240,10 +249,11 @@ apiListsRouter.get(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
     });
+    dao.release();
     if (!findLists) {
       return httpNotFoundResponse(res);
     }
@@ -273,16 +283,18 @@ apiListsRouter.delete(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid: currentUser.id,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
-    dao.deleteLists({ id: findLists.id, userid: findLists.userid });
+    await dao.deleteLists({ id: findLists.id });
+    dao.release();
 
     if (findLists.banner !== IMAGE_DEFAULT_LISTS) {
       const imagePath = path.join(uploadPath, '/', findLists.banner);
@@ -346,12 +358,13 @@ apiListsRouter.post(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid: currentUser.id,
     });
     if (!findLists) {
+      dao.release();
       removingFiles(files);
       return httpNotFoundResponse(res);
     }
@@ -365,7 +378,7 @@ apiListsRouter.post(
     const banner = bannerFiles[0].filename;
     const thumbnail = thumbnailFiles[0].filename;
 
-    const updateLists = dao.updateLists({
+    const updateLists = await dao.updateLists({
       id: findLists.id,
       userid: findLists.userid,
       name,
@@ -374,6 +387,7 @@ apiListsRouter.post(
       thumbnail,
       make,
     });
+    dao.release();
 
     if (findLists.banner !== IMAGE_DEFAULT_LISTS) {
       const imagePath = path.join(uploadPath, '/', findLists.banner);
@@ -415,22 +429,30 @@ apiListsRouter.get(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     if (findLists.userid !== currentUser.id && findLists.make === 'private') {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
-    const postList = dao
-      .getPostList({})
-      .filter((p) => findLists.Posts.includes(p.postid))
-      .sort((a, b) => (a.createat > b.createat ? -1 : 1));
+    if (findLists.Posts.length === 0) {
+      dao.release();
+      return httpSuccessResponse(res, { data: [] });
+    }
+
+    const postList = await dao.getPostListWithIds({ postids: findLists.Posts });
+    dao.release();
+    if (!postList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
       const findIndex = postList.findIndex((p) => p.postid === ~~cursor);
@@ -480,23 +502,31 @@ apiListsRouter.get(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
-
     if (findLists.userid !== currentUser.id && findLists.make === 'private') {
+      dao.release();
       return httpNotFoundResponse(res);
+    }
+    if (findLists.Member.length === 0) {
+      dao.release();
+      return httpSuccessResponse(res, { data: [] });
     }
 
     const memberIds = findLists.Member.map((m) => m.id);
-    const userList = dao
-      .getUserList()
-      .filter((u) => memberIds.includes(u.id))
-      .sort((a, b) => (a.id > b.id ? 1 : -1));
+    const userList = (
+      await dao.getUserListWithIds({ userids: memberIds })
+    )?.sort((a, b) => (a.id > b.id ? 1 : -1));
+    dao.release();
+    if (!userList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
     if (cursor) {
       const findIndex = userList.findIndex((u) => u.id === cursor);
@@ -545,40 +575,48 @@ apiListsRouter.post(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid: currentUser.id,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res, 'Lists not found');
     }
 
-    const findUser = dao.getUser({ id: memberId });
+    const findUser = await dao.getUser({ id: memberId });
     if (!findUser) {
+      dao.release();
       return httpNotFoundResponse(res, 'User not found');
     }
 
-    const already = dao.getListsDetail({
+    const already = await dao.getListsDetail({
       type: 'member',
       listid: findLists.id,
       userid: findUser.id,
     });
     if (already) {
+      dao.release();
       return httpForbiddenResponse(res, 'This member already exists.');
     }
 
-    dao.listsDetailHandler({
+    const result = await dao.listsDetailHandler({
       method: 'post',
       listid: findLists.id,
       type: 'member',
       userid: memberId,
     });
-    const updatedLists = dao.getLists({
-      id: findLists.id,
-      sessionId: currentUser.id,
-    });
+    if (!result) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
 
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
+      id: findLists.id,
+    });
+    dao.release();
     return httpCreatedResponse(res, { data: updatedLists });
   }
 );
@@ -606,40 +644,47 @@ apiListsRouter.delete(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid: currentUser.id,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res, 'Lists not found');
     }
 
-    const findUser = dao.getUser({ id: memberId });
+    const findUser = await dao.getUser({ id: memberId });
     if (!findUser) {
+      dao.release();
       return httpNotFoundResponse(res, 'User not found');
     }
 
-    const already = dao.getListsDetail({
+    const already = await dao.getListsDetail({
       type: 'member',
       listid: findLists.id,
       userid: findUser.id,
     });
     if (!already) {
+      dao.release();
       return httpForbiddenResponse(res, 'This member already does not exist.');
     }
 
-    dao.listsDetailHandler({
+    const result = await dao.listsDetailHandler({
       method: 'delete',
       listid: findLists.id,
       type: 'member',
       userid: memberId,
     });
-    const updatedLists = dao.getLists({
+    if (!result) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
-
+    dao.release();
     return httpCreatedResponse(res, { data: updatedLists });
   }
 );
@@ -674,23 +719,28 @@ apiListsRouter.get(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     if (findLists.userid !== currentUser.id && findLists.make === 'private') {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     const followerIds = findLists.Follower.map((f) => f.id);
-    const userList = dao
-      .getUserList()
-      .filter((u) => followerIds.includes(u.id))
-      .sort((a, b) => (a.id > b.id ? 1 : -1));
+    const userList = (
+      await dao.getUserListWithIds({ userids: followerIds })
+    )?.sort((a, b) => (a.id > b.id ? 1 : -1));
+    dao.release();
+    if (!userList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
     if (cursor) {
       const findIndex = userList.findIndex((u) => u.id === cursor);
@@ -738,34 +788,46 @@ apiListsRouter.post(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({ id: ~~id, sessionId: currentUser.id });
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
+      id: ~~id,
+      make: 'public',
+    });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res, 'Lists not found');
     }
 
     if (findLists.userid === currentUser.id) {
+      dao.release();
       return httpForbiddenResponse(res, 'Can not follow your own list');
     }
 
-    const already = dao.getListsDetail({
+    const already = await dao.getListsDetail({
       type: 'follower',
       listid: findLists.id,
       userid: currentUser.id,
     });
     if (already) {
+      dao.release();
       return httpForbiddenResponse(res, 'You are already following.');
     }
 
-    dao.listsDetailHandler({
+    const result = await dao.listsDetailHandler({
       method: 'post',
       type: 'follower',
       listid: findLists.id,
       userid: currentUser.id,
     });
-    const updatedLists = dao.getLists({
+    if (!result) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
+    dao.release();
 
     return httpCreatedResponse(res, { data: updatedLists });
   }
@@ -793,35 +855,46 @@ apiListsRouter.delete(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({ id: ~~id, sessionId: currentUser.id });
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
+      id: ~~id,
+      make: 'public',
+    });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res, 'Lists not found');
     }
 
     if (findLists.userid === currentUser.id) {
+      dao.release();
       return httpForbiddenResponse(res, 'Can not unfollow your own list');
     }
 
-    const already = dao.getListsDetail({
+    const already = await dao.getListsDetail({
       type: 'follower',
       listid: findLists.id,
       userid: currentUser.id,
     });
     if (!already) {
+      dao.release();
       return httpForbiddenResponse(res, 'You are already unfollowing.');
     }
 
-    dao.listsDetailHandler({
+    const result = await dao.listsDetailHandler({
       method: 'delete',
       type: 'follower',
       listid: findLists.id,
       userid: currentUser.id,
     });
-    const updatedLists = dao.getLists({
+    if (!result) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
-
+    dao.release();
     return httpCreatedResponse(res, { data: updatedLists });
   }
 );
@@ -852,27 +925,33 @@ apiListsRouter.post(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid: currentUser.id,
     });
-    const findPost = dao.getPost({ postid: ~~postid });
+    const findPost = await dao.getPost({ postid: ~~postid });
     if (!findLists || !findPost) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     if (findLists.Posts.includes(findPost.postid)) {
+      dao.release();
       return httpForbiddenResponse(res, 'Posts already added to this list');
     }
 
     const memberIds = findLists.Member.map((m) => m.id);
-    const memberpostids = dao
-      .getPostList({ followIds: memberIds })
-      .map((p) => p.postid);
+    const memberpostids = (
+      await dao.getPostListWithIds({ userids: memberIds })
+    )?.map((p) => p.postid);
+    if (!memberpostids) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
     const isMemberPost = memberpostids.includes(findPost.postid);
 
-    dao.listsDetailHandler({
+    await dao.listsDetailHandler({
       method: isMemberPost ? 'delete' : 'post',
       type: isMemberPost ? 'unpost' : 'post',
       listid: findLists.id,
@@ -880,10 +959,11 @@ apiListsRouter.post(
       postid: findPost.postid,
     });
 
-    const updatedLists = dao.getLists({
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
+    dao.release();
 
     return httpSuccessResponse(res, { data: updatedLists });
   }
@@ -916,17 +996,19 @@ apiListsRouter.delete(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid: currentUser.id,
     });
-    const findPost = dao.getPost({ postid: ~~postid });
+    const findPost = await dao.getPost({ postid: ~~postid });
     if (!findLists || !findPost) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     if (!findLists.Posts.includes(findPost.postid)) {
+      dao.release();
       return httpForbiddenResponse(
         res,
         'This post is not already on the list.'
@@ -934,12 +1016,16 @@ apiListsRouter.delete(
     }
 
     const memberIds = findLists.Member.map((m) => m.id);
-    const memberpostids = dao
-      .getPostList({ followIds: memberIds })
-      .map((p) => p.postid);
+    const memberpostids = (
+      await dao.getPostListWithIds({ userids: memberIds })
+    )?.map((p) => p.postid);
+    if (!memberpostids) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
     const isMemberPost = memberpostids.includes(findPost.postid);
 
-    dao.listsDetailHandler({
+    await dao.listsDetailHandler({
       method: isMemberPost ? 'post' : 'delete',
       type: isMemberPost ? 'unpost' : 'post',
       listid: findLists.id,
@@ -947,9 +1033,9 @@ apiListsRouter.delete(
       postid: findPost.postid,
     });
 
-    const updatedLists = dao.getLists({
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
 
     return httpSuccessResponse(res, { data: updatedLists });
@@ -978,35 +1064,41 @@ apiListsRouter.post(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid,
+      make: currentUser.id !== userid ? 'public' : undefined,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
-    const already = dao.getListsDetail({
-      listid: findLists.id,
-      type: 'pinned',
-      userid: currentUser.id,
-    });
-    if (already) {
+    if (
+      currentUser.id !== findLists.userid &&
+      !findLists.Follower.map((u) => u.id).includes(currentUser.id)
+    ) {
+      dao.release();
+      return httpForbiddenResponse(res, 'These lists are not being followed.');
+    }
+
+    if (findLists.Pinned) {
+      dao.release();
       return httpForbiddenResponse(res, 'This list is already pinned.');
     }
 
-    dao.listsDetailHandler({
+    await dao.listsDetailHandler({
       method: 'post',
       listid: findLists.id,
       type: 'pinned',
       userid: currentUser.id,
     });
-
-    const updatedLists = dao.getLists({
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
+    dao.release();
     return httpSuccessResponse(res, { data: updatedLists });
   }
 );
@@ -1033,35 +1125,42 @@ apiListsRouter.delete(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid,
+      make: currentUser.id !== userid ? 'public' : undefined,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
-    const already = dao.getListsDetail({
-      listid: findLists.id,
-      type: 'pinned',
-      userid: currentUser.id,
-    });
-    if (!already) {
+    if (
+      currentUser.id !== findLists.userid &&
+      !findLists.Follower.map((u) => u.id).includes(currentUser.id)
+    ) {
+      dao.release();
+      return httpForbiddenResponse(res, 'These lists are not being followed.');
+    }
+
+    if (!findLists.Pinned) {
+      dao.release();
       return httpForbiddenResponse(res, 'This list is not already pinned.');
     }
 
-    dao.listsDetailHandler({
+    await dao.listsDetailHandler({
       method: 'delete',
       listid: findLists.id,
       type: 'pinned',
       userid: currentUser.id,
     });
 
-    const updatedLists = dao.getLists({
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
+    dao.release();
     return httpSuccessResponse(res, { data: updatedLists });
   }
 );
@@ -1088,35 +1187,33 @@ apiListsRouter.post(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid,
+      make: currentUser.id !== userid ? 'public' : undefined,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
-    const already = dao.getListsDetail({
-      listid: findLists.id,
-      type: 'unshow',
-      userid: currentUser.id,
-    });
-    if (already) {
+    if (findLists.UnShow.map((u) => u.id).includes(currentUser.id)) {
+      dao.release();
       return httpForbiddenResponse(res, 'This list is already unshowed.');
     }
 
-    dao.listsDetailHandler({
+    await dao.listsDetailHandler({
       method: 'post',
       listid: findLists.id,
       type: 'unshow',
       userid: currentUser.id,
     });
-
-    const updatedLists = dao.getLists({
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
+    dao.release();
     return httpSuccessResponse(res, { data: updatedLists });
   }
 );
@@ -1143,35 +1240,33 @@ apiListsRouter.delete(
     }
 
     const dao = new DAO();
-    const findLists = dao.getLists({
+    const findLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: ~~id,
-      sessionId: currentUser.id,
       userid,
+      make: currentUser.id !== userid ? 'public' : undefined,
     });
     if (!findLists) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
-    const already = dao.getListsDetail({
-      listid: findLists.id,
-      type: 'unshow',
-      userid: currentUser.id,
-    });
-    if (!already) {
+    if (!findLists.UnShow.map((u) => u.id).includes(currentUser.id)) {
+      dao.release();
       return httpForbiddenResponse(res, 'This list is not already unshowed.');
     }
 
-    dao.listsDetailHandler({
+    await dao.listsDetailHandler({
       method: 'delete',
       listid: findLists.id,
       type: 'unshow',
       userid: currentUser.id,
     });
-
-    const updatedLists = dao.getLists({
+    const updatedLists = await dao.getLists({
+      sessionid: currentUser.id,
       id: findLists.id,
-      sessionId: currentUser.id,
     });
+    dao.release;
     return httpSuccessResponse(res, { data: updatedLists });
   }
 );

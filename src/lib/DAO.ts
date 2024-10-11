@@ -1,826 +1,954 @@
-import path from 'path';
-import fs from 'fs-extra';
-import userData from '@/data/user.json';
-import postData from '@/data/post.json';
-import tagData from '@/data/hashtag.json';
-import roomData from '@/data/room.json';
-import messageData from '@/data/message.json';
-import followData from '@/data/follow.json';
-import reactionsData from '@/data/reaction.json';
-import viewsData from '@/data/views.json';
-import listsData from '@/data/lists.json';
-import listsDetailData from '@/data/listsdetail.json';
-import { AdvancedUser, isBirth, isVerified, User } from '@/model/User';
-import { AdvancedPost, GifType, ImageType, isScope, Post } from '@/model/Post';
-import { Follow } from '@/model/Follow';
-import { isReactionType, Reactions } from '@/model/Reaction';
-import { isTag, isWord, Tag, Tags, Word } from '@/model/Hashtag';
-import { AdvancedRooms, Room } from '@/model/Room';
-import { Message } from '@/model/Message';
-import { Morpheme } from '@/model/Morpheme';
-import { Views } from '@/model/Views';
+import { GifType, ImageType, Post } from '../model/Post';
+import { pool } from '@/app';
+import { Birth, PostImage, Schemas, Verified, Where } from '@/db/schema';
 import {
-  AdvancedLists,
-  isListsDetailType,
-  isListsMake,
-  Lists,
-  ListsDetail,
-} from '@/model/Lists';
-import { PostImage, SafeUser } from '@/db/schema';
-
-let instance: DAO | null;
+  deleteQuery,
+  insertQuery,
+  insertUsersQuery,
+  selectListsQuery,
+  selectPostsQuery,
+  selectQuery,
+  selectUsersQuery,
+  updateQuery,
+  updateUsersQuery,
+} from '@/lib/query';
+import { Follow } from '@/model/Follow';
+import { HashTags } from '@/model/Hashtag';
+import { AdvancedLists, ListsDetail } from '@/model/Lists';
+import { AdvancedMessages } from '@/model/Message';
+import { Morpheme } from '@/model/Morpheme';
+import { AdvancedPost } from '@/model/Post';
+import { Reactions } from '@/model/Reaction';
+import { AdvancedRooms } from '@/model/Room';
+import { AdvancedUser } from '@/model/User';
+import { Views } from '@/model/Views';
+import { PoolClient } from 'pg';
 
 class DAO {
-  private userList: User[] = [];
-  private postList: Post[] = [];
-  private tagList: Tags[] = [];
-  private roomList: Room[] = [];
-  private messageList: Message[] = [];
-  private followList: Follow[] = [];
-  private reactionList: Reactions[] = [];
-  private viewList: Views[] = [];
-  private lists: Lists[] = [];
-  private listsDetail: ListsDetail[] = [];
+  private client: PoolClient | undefined;
 
-  constructor() {
-    if (instance) {
-      return instance;
+  constructor() {}
+
+  async init() {
+    if (typeof this.client === 'undefined') {
+      this.client = await pool.connect();
     }
-
-    console.time('Data Load');
-    this.userList.push(
-      ...userData.data.map((u) => ({
-        ...u,
-        verified: u.verified ? isVerified(u.verified) : null,
-        birth: isBirth(u.birth) ? u.birth : null,
-        regist: new Date(u.regist),
-        location: typeof u.location !== 'undefined' ? u.location : null,
-        banner: typeof u.banner !== 'undefined' ? u.banner : null,
-        desc: typeof u.desc !== 'undefined' ? u.desc : null,
-        refer: typeof u.refer !== 'undefined' ? u.refer : null,
-      }))
-    );
-    this.postList.push(
-      ...postData.data.map((p) => ({
-        ...p,
-        createat: new Date(p.createat),
-        scope: isScope(p.scope),
-        parentid: typeof p.parentid !== 'undefined' ? p.parentid : null,
-        originalid: typeof p.originalid !== 'undefined' ? p.originalid : null,
-        quote: typeof p.quote !== 'undefined' ? p.quote : false,
-        pinned: typeof p.pinned !== 'undefined' ? p.pinned : false,
-      }))
-    );
-    this.tagList.push(
-      ...tagData.data.map((t) => {
-        if (isWord(t)) return t;
-        return isTag(t);
-      })
-    );
-    this.roomList.push(
-      ...roomData.data.map((r) => ({
-        ...r,
-        createat: new Date(r.createat),
-      }))
-    );
-    this.messageList.push(
-      ...messageData.data.map((m) => ({
-        ...m,
-        createat: new Date(m.createat),
-      }))
-    );
-    this.followList.push(
-      ...followData.data.map((f) => ({ ...f, createat: new Date(f.createat) }))
-    );
-    this.reactionList.push(
-      ...reactionsData.data.map((r) => ({
-        ...r,
-        commentid: typeof r.commentid !== 'undefined' ? r.commentid : null,
-        type: isReactionType(r.type),
-        quote: typeof r.quote !== 'undefined' ? r.quote : false,
-      }))
-    );
-    this.viewList.push(...viewsData.data);
-    this.lists.push(
-      ...listsData.data.map((l) => ({
-        ...l,
-        createat: new Date(l.createat),
-        make: isListsMake(l.make),
-      }))
-    );
-    this.listsDetail.push(
-      ...listsDetailData.data.map((ld) => ({
-        ...ld,
-        type: isListsDetailType(ld.type),
-        postid: typeof ld.postid !== 'undefined' ? ld.postid : null,
-      }))
-    );
-    instance = this;
-    console.timeEnd('Data Load');
   }
 
-  getUserList(): AdvancedUser[] {
-    const userList: AdvancedUser[] = this.userList.map((u) => {
-      const Followers = this.getFollowList({ target: u.id }).map((f) => ({
-        id: f.source,
-      }));
-      const Followings = this.getFollowList({ source: u.id }).map((f) => ({
-        id: f.target,
-      }));
-      return {
-        id: u.id,
-        nickname: u.nickname,
-        desc: u.desc,
-        location: u.location,
-        refer: u.refer,
-        birth: u.birth,
-        image: u.image,
-        banner: u.banner,
-        regist: u.regist,
-        verified: u.verified,
-        Followers,
-        Followings,
-        _count: {
-          Followers: Followers.length,
-          Followings: Followings.length,
-        },
-      };
-    });
-    return userList;
-  }
-
-  getPostList({
-    userid,
-    parentId,
-    originalid,
-    followIds,
-    quote,
-    withpostids,
-  }: {
-    userid?: User['id'];
-    parentId?: Post['postid'];
-    originalid?: Post['postid'];
-    followIds?: User['id'][];
-    quote?: boolean;
-    withpostids?: Post['postid'][];
-  }): AdvancedPost[] {
-    const postList: AdvancedPost[] = [];
-    this.postList.forEach((p) => {
-      const post = this.getFullPost({ postid: p.postid });
-      if (!post) return;
-      if (
-        typeof withpostids !== 'undefined' &&
-        withpostids.includes(post.postid)
-      ) {
-        postList.push(post);
-        return;
-      }
-      if (userid && post.userid !== userid) return;
-      if (parentId && post.parentid !== parentId) return;
-      if (originalid && post.originalid !== originalid) return;
-      if (followIds && !followIds.includes(post.User.id)) return;
-      if (typeof quote !== 'undefined' && post.quote !== quote) return;
-
-      postList.push(post);
-    });
-
-    return postList;
-  }
-
-  getTagList(): Tags[] {
-    const tagList = [
-      ...this.tagList.sort((a, b) => (a.count > b.count ? -1 : 1)),
-    ];
-    return tagList;
-  }
-
-  getRoomList(userid: User['id']): AdvancedRooms[] {
-    const roomList: AdvancedRooms[] = [];
-    this.roomList.forEach((r) => {
-      if (r.receiverid !== userid && r.senderid !== userid) return;
-      const Receiver = this.getSafeUser(r.receiverid);
-      const Sender = this.getSafeUser(r.senderid);
-      if (!Receiver || !Sender) return;
-      roomList.push({
-        ...r,
-        Receiver,
-        Sender,
-        content: null,
-        lastat: null,
-      });
-    });
-    return roomList;
-  }
-
-  getMessageList(room: Room['id']): Message[] {
-    return this.messageList
-      .filter((m) => m.roomid === room)
-      .sort((a, b) => (a.createat > b.createat ? 1 : -1));
-  }
-
-  getFollowList({
-    source,
-    target,
-  }: {
-    source?: User['id'];
-    target?: User['id'];
-  }): Follow[] {
-    if (!source && !target) return [...this.followList];
-    if (source && target)
-      return this.followList.filter(
-        (f) => f.source === source && f.target === target
-      );
-    return this.followList.filter(
-      (f) => f.source === source || f.target === target
-    );
-  }
-
-  getLikeList({
-    userid,
-    postid,
-  }: {
-    userid?: User['id'];
-    postid?: Post['postid'];
-  }): Reactions[] {
-    return this.reactionList.filter(
-      (r) =>
-        r.type === 'Heart' &&
-        (userid ? r.userid === userid : true) &&
-        (postid ? r.postid === postid : true)
-    );
-  }
-
-  getListsList({
-    sessionId,
-    userid,
-    make,
-  }: {
-    sessionId: User['id'];
-    userid?: User['id'];
-    make?: Lists['make'];
-  }) {
-    const listsList: AdvancedLists[] = [];
-    this.lists.forEach((l) => {
-      const list = this.getLists({ id: l.id, sessionId });
-      if (!list) return;
-      if (typeof userid !== 'undefined' && list.userid !== userid) return;
-      if (typeof make !== 'undefined' && list.make !== make) return;
-
-      listsList.push(list);
-    });
-    return listsList;
-  }
-
-  getListsDetailList({
-    type,
-    userid,
-  }: {
-    type?: ListsDetail['type'];
-    userid?: ListsDetail['userid'];
-  }) {
-    let detailList = this.listsDetail.filter((d) => {
-      let condition = !!d;
-      if (typeof type !== 'undefined') {
-        condition = condition && d.type === type;
-      }
-      if (typeof userid !== 'undefined') {
-        condition = condition && d.userid === userid;
-      }
-      return condition;
-    });
-
-    return detailList;
-  }
-
-  getRepostList({ postid }: { postid: Post['postid'] }): Reactions[] {
-    return this.reactionList.filter(
-      (r) => r.type === 'Repost' && r.postid === postid
-    );
-  }
-
-  getUser({
+  async getUser({
     id,
     password,
     nickname,
   }: {
-    id: User['id'];
-    password?: User['password'];
-    nickname?: User['nickname'];
-  }): AdvancedUser | undefined {
-    let findUser: User | undefined;
+    id: string;
+    password?: string;
+    nickname?: string;
+  }): Promise<AdvancedUser | undefined> {
+    await this.init();
+    if (!this.client) return;
+    const wheres: Where<Schemas['users']>[][] = [[{ field: 'id', value: id }]];
+    let index = 0;
     if (password) {
-      findUser = this.userList.find(
-        (u) =>
-          u.id.toLowerCase() === id.toLowerCase() && u.password === password
-      );
-    } else {
-      findUser = this.userList.find(
-        (u) =>
-          u.id.toLowerCase() === id.toLowerCase() ||
-          u.nickname.toLowerCase() === nickname?.toLowerCase()
-      );
+      if (typeof wheres[index] === 'undefined') {
+        wheres.push([]);
+      }
+      wheres[index].push({ field: 'password', value: password });
+      index++;
+    }
+    if (nickname) {
+      if (typeof wheres[index] === 'undefined') {
+        wheres.push([]);
+      }
+      wheres[index].push({ field: 'nickname', value: nickname, logic: 'OR' });
     }
 
-    if (findUser) {
-      const Followers = this.followList
-        .filter((f) => f.target === findUser.id)
-        .map((u) => ({ id: u.source }));
-      const Followings = this.followList
-        .filter((f) => f.source === findUser.id)
-        .map((u) => ({ id: u.target }));
-
-      const advancedUser: AdvancedUser = {
-        id: findUser.id,
-        nickname: findUser.nickname,
-        desc: findUser.desc,
-        location: findUser.location,
-        refer: findUser.refer,
-        birth: findUser.birth,
-        image: findUser.image,
-        banner: findUser.banner,
-        regist: findUser.regist,
-        verified: findUser.verified,
-        Followers,
-        Followings,
-        _count: {
-          Followers: Followers.length,
-          Followings: Followings.length,
-        },
-      };
-      return advancedUser;
+    try {
+      const queryConfig = selectUsersQuery({ wheres });
+      const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
+        .rows;
+      return queryResult[0];
+    } catch (error) {
+      console.error(error);
+      return;
     }
-    return;
   }
 
-  getSafeUser(id: User['id']): SafeUser | undefined {
-    const advancedUser = this.getUser({ id });
-    if (advancedUser) {
-      return {
-        id: advancedUser.id,
-        image: advancedUser.image,
-        nickname: advancedUser.nickname,
-        verified: advancedUser.verified,
-      };
+  async getPost({
+    postid,
+    userid,
+  }: {
+    postid: Schemas['post']['postid'];
+    userid?: Schemas['post']['userid'];
+  }): Promise<AdvancedPost | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    const where: Where<Schemas['advancedPost']>[] = [
+      { field: 'postid', value: postid },
+    ];
+    if (typeof userid !== 'undefined') {
+      where.push({ field: 'userid', value: userid });
     }
-    return;
+
+    try {
+      const selectQueryConfig = selectQuery({
+        table: 'advancedPost',
+        wheres: [where],
+      });
+      console.log('[getPost]\n', selectQueryConfig.text);
+      const post = (await this.client.query<AdvancedPost>(selectQueryConfig))
+        .rows[0];
+
+      return post;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  getPost({
+  async getRepostPost({
+    userid,
+    originalid,
+    quote,
+  }: {
+    userid: Schemas['post']['userid'];
+    originalid: Schemas['post']['originalid'];
+    quote: Schemas['post']['quote'];
+  }): Promise<Post | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'post',
+        wheres: [
+          [
+            { field: 'userid', value: userid },
+            { field: 'originalid', value: originalid },
+            { field: 'quote', value: quote },
+          ],
+        ],
+      });
+      console.log('[getRepostPost]\n', queryConfig.text);
+      const repost = (await this.client.query<Post>(queryConfig)).rows[0];
+      return repost;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getReactions({
+    type,
     userid,
     postid,
+    commentid,
+    quote,
   }: {
-    userid?: string;
-    postid: number;
-  }): AdvancedPost | undefined {
-    const findPost = this.postList.find((p) => {
-      if (userid) {
-        return p.postid === postid && p.userid === userid;
-      }
-      return p.postid === postid;
-    });
-    if (!findPost) return;
+    type: Schemas['reactions']['type'];
+    userid: Schemas['reactions']['userid'];
+    postid: Schemas['reactions']['postid'];
+    commentid?: Schemas['reactions']['commentid'];
+    quote?: Schemas['reactions']['quote'];
+  }): Promise<Reactions | undefined> {
+    await this.init();
+    if (!this.client) return;
+    const where: Where<Schemas['reactions']>[] = [
+      { field: 'type', value: type },
+      { field: 'userid', value: userid },
+      { field: 'postid', value: postid },
+    ];
+    if (typeof commentid !== 'undefined') {
+      where.push({ field: 'commentid', value: commentid });
+    }
+    if (typeof quote !== 'undefined') {
+      where.push({ field: 'quote', value: quote });
+    }
 
-    const user = this.getSafeUser(findPost.userid);
-    if (!user) return;
-
-    const Hearts = this.reactionList
-      .filter((r) => r.type === 'Heart' && r.postid === findPost.postid)
-      .map((r) => ({ id: r.userid }));
-    const totalReposts = this.reactionList.filter(
-      (r) => r.type === 'Repost' && r.postid === findPost.postid
-    );
-    const Reposts = totalReposts
-      .filter((r) => !r.quote)
-      .map((r) => ({ id: r.userid }));
-    const totalComments = this.reactionList
-      .filter((r) => r.type === 'Comment' && r.postid === findPost.postid)
-      .map((r) => ({ id: r.userid }));
-    const Comments = [...new Set(totalComments.map((v) => v.id))].map((v) => ({
-      id: v,
-    }));
-    const Bookmarks = this.reactionList
-      .filter((r) => r.type === 'Bookmark' && r.postid === findPost.postid)
-      .map((r) => ({ id: r.userid }));
-    const Views = this.getView({ postid })?.impressions || 0;
-
-    const advancedPost: AdvancedPost = {
-      ...findPost,
-      User: user,
-      Hearts,
-      Reposts,
-      Comments,
-      Bookmarks,
-      _count: {
-        Hearts: Hearts.length,
-        Reposts: totalReposts.length,
-        Comments: totalComments.length,
-        Bookmarks: Bookmarks.length,
-        Views,
-      },
-      Parent: null,
-      Original: null,
-    };
-
-    return advancedPost;
+    try {
+      const queryConfig = selectQuery({ table: 'reactions', wheres: [where] });
+      console.log('[getReactions]\n', queryConfig.text);
+      const reaction = (await this.client.query<Reactions>(queryConfig))
+        .rows[0];
+      return reaction;
+    } catch (error) {
+      console.error(error);
+    }
   }
 
-  getLists({
+  async getView({ postid }: { postid: Schemas['views']['postid'] }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'views',
+        wheres: [[{ field: 'postid', value: postid }]],
+      });
+      console.log('[getView]\n', queryConfig);
+      const view = (await this.client.query<Views>(queryConfig)).rows[0];
+      return view;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getLists({
+    sessionid,
     id,
-    sessionId,
     userid,
     make,
   }: {
-    id: Lists['id'];
-    sessionId: User['id'];
-    userid?: User['id'];
-    make?: Lists['make'];
+    sessionid: string;
+    id: Schemas['lists']['id'];
+    userid?: Schemas['lists']['userid'];
+    make?: Schemas['lists']['make'];
   }) {
-    const findList = this.lists.find((l) => {
-      let condition = l.id === id;
-      if (typeof userid !== 'undefined') {
-        condition = condition && l.userid === userid;
-      }
-      if (typeof make !== 'undefined') {
-        condition = condition && l.make === make;
-      }
-      return condition;
-    });
-    if (!findList) return;
+    await this.init();
+    if (!this.client) return;
 
-    const User = this.getSafeUser(findList.userid);
-    if (!User) return;
-
-    const Member = this.listsDetail
-      .filter((l) => l.type === 'member' && l.listid === findList.id)
-      .map((l) => ({ id: l.userid }));
-    const Follower = this.listsDetail
-      .filter((l) => l.type === 'follower' && l.listid === findList.id)
-      .map((l) => ({ id: l.userid }));
-    const UnShow = this.listsDetail
-      .filter((l) => l.type === 'unshow' && l.listid === findList.id)
-      .map((l) => ({ id: l.userid }));
-    const memberIds = Member.map((m) => m.id);
-    const unpostids = this.listsDetail
-      .filter(
-        (l): l is Required<ListsDetail> =>
-          l.type === 'unpost' && l.listid === findList.id && !!l.postid
-      )
-      .map((ld) => ld.postid);
-    const Posts = this.postList
-      .filter(
-        (p) => memberIds.includes(p.userid) && !unpostids.includes(p.postid)
-      )
-      .map((p) => p.postid);
-    Posts.push(
-      ...this.listsDetail
-        .filter(
-          (
-            l
-          ): l is Omit<ListsDetail, 'postid'> & {
-            postid: number;
-          } => l.type === 'post' && l.listid === findList.id && !!l.postid
-        )
-        .map((l) => l.postid)
-    );
-    const Pinned = !!this.listsDetail.find(
-      (ld) =>
-        ld.listid === findList.id &&
-        ld.type === 'pinned' &&
-        ld.userid === sessionId
-    );
-
-    const advancedLists: AdvancedLists = {
-      ...findList,
-      User,
-      Member,
-      Follower,
-      Posts,
-      UnShow,
-      Pinned,
-    };
-
-    return advancedLists;
+    try {
+      const queryConfig = selectListsQuery({
+        sessionid,
+        id,
+        userid,
+        make,
+      });
+      console.log('[getLists]\n', queryConfig.text);
+      const lists = (await this.client.query<AdvancedLists>(queryConfig))
+        .rows[0];
+      return lists;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  getListsDetail({
+  async getListsDetail({
     listid,
     type,
     userid,
     postid,
   }: {
-    listid: ListsDetail['listid'];
-    type: ListsDetail['type'];
-    userid?: User['id'];
-    postid?: Post['postid'];
-  }): ListsDetail | undefined {
-    const findListsDetail = this.listsDetail.find((ld) => {
-      let condition = ld.listid === listid && ld.type === type;
-      if (typeof userid !== 'undefined') {
-        condition = condition && ld.userid === userid;
-      }
-      if (typeof postid !== 'undefined') {
-        condition = condition && ld.postid === postid;
-      }
-      return condition;
-    });
+    listid: Schemas['listsdetail']['listid'];
+    type: Schemas['listsdetail']['type'];
+    userid?: Schemas['listsdetail']['userid'];
+    postid?: Schemas['listsdetail']['postid'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+    const where: Where<Schemas['listsdetail']>[] = [
+      { field: 'listid', value: listid },
+      { field: 'type', value: type },
+    ];
+    if (typeof userid !== 'undefined') {
+      where.push({ field: 'userid', value: userid });
+    }
+    if (typeof postid !== 'undefined') {
+      where.push({ field: 'postid', value: postid });
+    }
 
-    return findListsDetail;
+    try {
+      const queryConfig = selectQuery({
+        table: 'listsdetail',
+        wheres: [where],
+      });
+      const listsDetail = (await this.client.query(queryConfig)).rows[0];
+      return listsDetail;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  getRepostPost({
-    originalid,
+  async getHashTag({
+    type,
+    title,
+  }: {
+    type: Schemas['hashtags']['type'];
+    title: Schemas['hashtags']['title'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'hashtags',
+        wheres: [
+          [
+            { field: 'type', value: type },
+            {
+              field: 'title',
+              value: title,
+            },
+          ],
+        ],
+      });
+      console.log('[getHashTag]\n', queryConfig.text);
+      const hashtag = (await this.client.query<HashTags>(queryConfig)).rows[0];
+      return hashtag;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getUserList({
+    q,
+  }: {
+    q?: string;
+  }): Promise<AdvancedUser[] | undefined> {
+    await this.init();
+    if (!this.client) return;
+    const wheres: Where<Schemas['users']>[][] = [];
+    if (typeof q !== 'undefined') {
+      const where: Where<Schemas['users']>[] = [];
+      where.push({
+        field: 'id',
+        operator: 'ilike',
+        value: `%${decodeURIComponent(q)}%`,
+      });
+      where.push({
+        field: 'nickname',
+        operator: 'ilike',
+        value: `%${decodeURIComponent(q)}%`,
+        logic: 'OR',
+      });
+      wheres.push(where);
+    }
+
+    try {
+      const queryConfig = selectUsersQuery({
+        wheres,
+        order: [{ field: 'regist' }],
+      });
+      console.log('[getUserList]\n', queryConfig.text);
+      const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
+        .rows;
+      return queryResult;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getUserListWithIds({ userids }: { userids: string[] }) {
+    await this.init();
+    if (!this.client) return;
+
+    if (userids.length == 0) {
+      return [];
+    }
+    const where: Where<Schemas['users']>[] = [];
+    userids.forEach((userid) => {
+      where.push({ field: 'id', value: userid, logic: 'OR' });
+    });
+
+    try {
+      const queryConfig = selectUsersQuery({
+        wheres: [where],
+        order: [{ field: 'regist' }],
+      });
+      console.log('[getUserListWithIds]\n', queryConfig.text);
+      const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
+        .rows;
+      return queryResult;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getFollowList({
+    source,
+    target,
+  }: {
+    source?: string;
+    target?: string;
+  }): Promise<Follow[] | undefined> {
+    await this.init();
+    if (!this.client) return;
+    const wheres: Where<Schemas['follow']>[][] = [];
+    let index = 0;
+    if (source) {
+      if (typeof wheres[index] === 'undefined') {
+        wheres.push([]);
+      }
+      wheres[index].push({ field: 'source', value: source });
+      index++;
+    }
+    if (target) {
+      if (typeof wheres[index] === 'undefined') {
+        wheres.push([]);
+      }
+      wheres[index].push({ field: 'target', value: target });
+      index++;
+    }
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'follow',
+        wheres,
+      });
+      console.log('[getFollowList]\n', queryConfig.text);
+      const queryResult = (await this.client.query<Follow>(queryConfig)).rows;
+      return queryResult;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getPostList({
     userid,
+    parentid,
+    originalid,
     quote,
   }: {
-    originalid: Post['postid'];
-    userid?: User['id'];
+    userid?: string;
+    parentid?: number;
+    originalid?: number;
     quote?: boolean;
-  }): Post | undefined {
-    const findPost = this.postList.find((p) => {
-      let condition = p.originalid === originalid && !!p.quote === !!quote;
-      if (typeof userid !== 'undefined') {
-        condition = condition && p.userid === userid;
-      }
-      return condition;
-    });
-    return findPost;
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectPostsQuery({
+        userid,
+        parentid,
+        originalid,
+        quote,
+      });
+      console.log('[getPostList]\n', queryConfig.text);
+      const postList = (await this.client.query<AdvancedPost>(queryConfig))
+        .rows;
+
+      return postList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  getFullPost({
-    userid,
+  async getPostListWithIds({
+    postids,
+    userids,
+  }: {
+    postids?: number[];
+    userids?: string[];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    const wheres: Where<Schemas['advancedPost']>[][] = [];
+    if (typeof postids !== 'undefined') {
+      if (postids.length === 0) {
+        return [] as AdvancedPost[];
+      }
+      const where: Where<Schemas['advancedPost']>[] = [];
+      postids.forEach((postid) => {
+        where.push({ field: 'postid', value: postid, logic: 'OR' });
+      });
+      wheres.push(where);
+    } else if (typeof userids !== 'undefined') {
+      if (userids.length === 0) {
+        return [] as AdvancedPost[];
+      }
+      const where: Where<Schemas['advancedPost']>[] = [];
+      userids.forEach((userid) => {
+        where.push({ field: 'userid', value: userid, logic: 'OR' });
+      });
+      wheres.push(where);
+    }
+
+    try {
+      const queryConfig = selectQuery({ table: 'advancedPost', wheres });
+      console.log('[getPostListWithIds]\n', queryConfig.text);
+      const postListWithIds = (
+        await this.client.query<AdvancedPost>(queryConfig)
+      ).rows;
+      return postListWithIds;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getReactionList({
+    type,
     postid,
   }: {
+    type: Schemas['reactions']['type'];
+    postid: Schemas['reactions']['postid'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'reactions',
+        wheres: [
+          [
+            { field: 'type', value: type },
+            { field: 'postid', value: postid },
+          ],
+        ],
+      });
+      console.log('[getReactionList]\n', queryConfig.text);
+      const reactionList = (await this.client.query<Reactions>(queryConfig))
+        .rows;
+      return reactionList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getBookmarkPostList({ userid }: { userid: Schemas['post']['userid'] }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'advancedPost',
+      });
+
+      queryConfig.text += 'WHERE\n';
+      queryConfig.text += `\t"Bookmarks"::text like '%"${userid}"%'`;
+      console.log('[getBookmarkPosts]\n', queryConfig.text);
+      const postList = (await this.client.query<AdvancedPost>(queryConfig))
+        .rows;
+      return postList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getLikeList({ userid, postid }: { userid?: string; postid?: number }) {
+    await this.init();
+    if (!this.client) return;
+
+    const wheres: Where<Schemas['reactions']>[][] = [
+      [{ field: 'type', value: 'Heart' }],
+    ];
+    if (typeof userid !== 'undefined') {
+      wheres[0].push({ field: 'userid', value: userid });
+    }
+    if (typeof postid !== 'undefined') {
+      wheres[0].push({ field: 'postid', value: postid });
+    }
+
+    try {
+      const queryConfig = selectQuery({ table: 'reactions', wheres });
+      console.log('[getLikeList]\n', queryConfig.text);
+      const likeList = (await this.client.query<Reactions>(queryConfig)).rows;
+      return likeList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getListsList({
+    sessionid,
+    userid,
+    make,
+    filter,
+    q,
+  }: {
+    sessionid: string;
     userid?: string;
-    postid: number;
-  }): AdvancedPost | undefined {
-    const findPost = this.getPost({ userid: userid, postid: postid });
-    if (!findPost) return;
+    make?: Schemas['lists']['make'];
+    filter?: 'all' | 'own' | 'memberships';
+    q?: string;
+  }) {
+    await this.init();
+    if (!this.client) return;
 
-    if (findPost.parentid) {
-      const Parent = this.getPost({ postid: findPost.parentid });
-      if (Parent) {
-        findPost.Parent = {
-          postid: Parent.postid,
-          User: Parent.User,
-          images: Parent.images,
-        };
-      }
+    try {
+      const queryConfig = selectListsQuery({
+        sessionid,
+        userid,
+        make,
+        filter,
+        q,
+      });
+      console.log('getListsList', queryConfig.text);
+
+      const listsList = (await this.client.query<AdvancedLists>(queryConfig))
+        .rows;
+      return listsList;
+    } catch (error) {
+      console.error(error);
+      return;
     }
-
-    if (findPost.originalid) {
-      const Original = this.getPost({ postid: findPost.originalid });
-      if (Original) {
-        findPost.Original = Original;
-
-        if (Original.quote && Original.originalid) {
-          const quote = this.getPost({ postid: Original.originalid });
-          if (quote) {
-            findPost.Original.Original = quote;
-          }
-        }
-      }
-    }
-
-    return findPost;
   }
 
-  getView({ postid }: { postid: Post['postid'] }) {
-    return this.viewList.find((v) => v.postid === postid);
+  async getListsDetailList({
+    type,
+    userid,
+  }: {
+    type?: Schemas['listsdetail']['type'];
+    userid?: Schemas['listsdetail']['userid'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    const wheres: Where<Schemas['listsdetail']>[][] = [];
+    let index = 0;
+    if (typeof type !== 'undefined') {
+      if (typeof wheres[index] === 'undefined') {
+        wheres.push([]);
+      }
+      wheres[index].push({ field: 'type', value: type });
+      index++;
+    }
+    if (typeof userid !== 'undefined') {
+      if (typeof wheres[index] === 'undefined') {
+        wheres.push([]);
+      }
+      wheres[index].push({ field: 'userid', value: userid });
+      index++;
+    }
+
+    try {
+      const queryConfig = selectQuery({ table: 'listsdetail', wheres });
+      console.log('[getListsDetailList]\n', queryConfig.text);
+      const listsDetailList = (
+        await this.client.query<ListsDetail>(queryConfig)
+      ).rows;
+
+      return listsDetailList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  createUser({
+  async getHashTagList(): Promise<HashTags[] | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'hashtags',
+        order: [{ field: 'count', by: 'DESC' }],
+      });
+      console.log('[getHashTagList]\n', queryConfig.text);
+      const hashtagList = (await this.client.query(queryConfig)).rows;
+      return hashtagList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getRoomsList({
+    userid,
+    roomid,
+  }: {
+    userid: string;
+    roomid?: string;
+  }): Promise<AdvancedRooms[] | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'advancedRooms',
+        wheres: [
+          [
+            { field: 'receiverid', value: userid },
+            { field: 'senderid', value: userid, logic: 'OR' },
+          ],
+          typeof roomid !== 'undefined' ? [{ field: 'id', value: roomid }] : [],
+        ],
+      });
+      console.log('[getRoomList]\n', queryConfig.text);
+      const roomsList = (await this.client.query<AdvancedRooms>(queryConfig))
+        .rows;
+      return roomsList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getMessagesList({ roomid }: { roomid: string }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'advancedMessages',
+        wheres: [[{ field: 'roomid', value: roomid }]],
+        order: [{ field: 'createat', by: 'DESC' }],
+      });
+      console.log('[getMessagesList]\n', queryConfig.text);
+      const messagesList = (
+        await this.client.query<AdvancedMessages>(queryConfig)
+      ).rows;
+      return messagesList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async createUser({
     id,
     password,
     nickname,
     birth,
     image,
   }: Pick<
-    User,
+    Schemas['users'],
     'id' | 'password' | 'nickname' | 'birth' | 'image'
-  >): AdvancedUser {
-    const regist = new Date();
-    const newUser: User = {
-      id,
-      password,
-      nickname,
-      birth,
-      image,
-      regist,
-      banner: null,
-      desc: null,
-      location: null,
-      refer: null,
-      verified: null,
-    };
-    this.userList.push(newUser);
-    this.writeDatabase('userList');
-    return {
-      id: newUser.id,
-      nickname: newUser.nickname,
-      birth: newUser.birth,
-      image: newUser.image,
-      regist,
-      banner: newUser.banner,
-      desc: newUser.desc,
-      location: newUser.location,
-      refer: newUser.refer,
-      verified: newUser.verified,
-      Followers: [],
-      Followings: [],
-      _count: {
-        Followers: 0,
-        Followings: 0,
-      },
-    };
+  >) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = insertUsersQuery({
+        id,
+        password,
+        nickname,
+        birth,
+        image,
+      });
+      console.log('[createUser]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+      const user = await this.getUser({ id });
+      return user;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  createPost({
+  async createPost({
     userid,
     content = '',
     files,
     media,
-    parentId,
+    parentid,
     originalid,
     quote,
   }: {
-    userid: User['id'];
-    content?: Post['content'];
+    userid: Schemas['post']['userid'];
+    content?: Schemas['post']['content'];
     files?:
       | { [fieldname: string]: Express.Multer.File[] }
       | Express.Multer.File[];
     media?: (GifType | ImageType)[];
-    parentId?: Post['postid'];
-    originalid?: Post['postid'];
-    quote?: boolean;
-  }): AdvancedPost | undefined {
-    this.hashtagsAnalysis(content);
+    parentid?: Schemas['post']['parentid'];
+    originalid?: Schemas['post']['originalid'];
+    quote?: Schemas['post']['quote'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    this.hashtagAnalysis(content);
     this.morphologyAnalysis(content);
-    const nextId = Math.max(...this.postList.map((p) => p.postid)) + 1;
     const images: PostImage[] = media
       ? media.map((m, i) => {
           if (m.type === 'gif') {
             return {
-              link: m.link,
               imageId: i + 1,
+              link: m.link,
               width: m.width,
               height: m.height,
             };
           }
           const file = files
-            ? (Object.values(files).find(
-                (v: Express.Multer.File) => v.originalname === m.fileName
-              ) as Express.Multer.File)
+            ? Object.values(files).find((v) => v.originalname === m.fileName)
             : undefined;
           return {
-            link: file ? file.filename : '',
             imageId: i + 1,
+            link: file ? file.filename : '',
             width: m.width,
             height: m.height,
           };
         })
       : [];
-    const newPost: Post = {
-      postid: isFinite(nextId) ? nextId : 1,
-      userid: userid,
-      content,
-      images,
-      createat: new Date(),
-      parentid: typeof parentId !== 'undefined' ? parentId : null,
-      originalid: typeof originalid !== 'undefined' ? originalid : null,
-      quote: typeof quote !== 'undefined' ? quote : false,
-      pinned: false,
-      scope: 'every',
-    };
-    this.postList.push(newPost);
-    this.viewsHandler({ postid: newPost.postid, create: true });
-    this.writeDatabase('postList');
 
-    return this.getFullPost({ postid: newPost.postid });
+    try {
+      const queryConfig = insertQuery({
+        table: 'post',
+        fields: [
+          'userid',
+          'content',
+          'images',
+          'parentid',
+          'originalid',
+          'quote',
+        ],
+        values: [
+          userid,
+          content,
+          JSON.stringify(images),
+          typeof parentid !== 'undefined' ? parentid : null,
+          typeof originalid !== 'undefined' ? originalid : null,
+          typeof quote !== 'undefined' ? quote : false,
+        ],
+      });
+      console.log('[createPost]\n', queryConfig);
+      const inserted = (await this.client.query<Schemas['post']>(queryConfig))
+        .rows[0];
+      this.viewsHandler({ postid: inserted.postid, create: true });
+      const updatedPost = await this.getPost({ postid: inserted.postid });
+      return updatedPost;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  createList({
+  async createList({
+    sessionid,
     userid,
     name,
-    description = '',
+    description,
     banner,
     thumbnail,
     make,
   }: {
-    userid: User['id'];
-    name: string;
-    description?: string;
-    banner: string;
-    thumbnail: string;
-    make: 'private' | 'public';
-  }): AdvancedLists | undefined {
-    const nextId = Math.max(...this.lists.map((l) => l.id)) + 1;
-    const newList: Lists = {
-      id: isFinite(nextId) ? nextId : 1,
-      userid,
-      name,
-      description,
-      banner,
-      thumbnail,
-      make,
-      createat: new Date(),
-    };
-    this.lists.push(newList);
-    this.writeDatabase('lists');
+    sessionid: string;
+    userid: Schemas['lists']['userid'];
+    name: Schemas['lists']['name'];
+    description?: Schemas['lists']['description'];
+    banner: Schemas['lists']['banner'];
+    thumbnail: Schemas['lists']['thumbnail'];
+    make: Schemas['lists']['make'];
+  }): Promise<AdvancedLists | undefined> {
+    await this.init();
+    if (!this.client) return;
 
-    return this.getLists({ id: newList.id, sessionId: userid });
-  }
-
-  updateUser({
-    id,
-    nickname,
-    desc,
-    location,
-    birth,
-    refer,
-    image,
-    banner,
-    verified,
-  }: {
-    id: User['id'];
-    nickname?: User['nickname'];
-    desc?: User['desc'];
-    location?: User['location'];
-    birth?: User['birth'];
-    refer?: User['refer'];
-    image?: User['image'];
-    banner?: User['banner'];
-    verified?: User['verified'];
-  }) {
-    const findUserRaw = this.userList.find((u) => u.id === id);
-    if (!findUserRaw) return;
-
-    const updatedUserRaow: User = {
-      ...findUserRaw,
-      nickname:
-        typeof nickname !== 'undefined' ? nickname : findUserRaw.nickname,
-      desc: typeof desc !== 'undefined' ? desc : findUserRaw.desc,
-      location:
-        typeof location !== 'undefined' ? location : findUserRaw.location,
-      birth: typeof birth !== 'undefined' ? birth : findUserRaw.birth,
-      refer: typeof refer !== 'undefined' ? refer : findUserRaw.refer,
-      image: typeof image !== 'undefined' ? image : findUserRaw.image,
-      banner:
-        typeof banner !== 'undefined'
-          ? banner === ''
-            ? null
-            : banner
-          : findUserRaw.banner,
-      verified:
-        typeof verified !== 'undefined' ? verified : findUserRaw.verified,
-    };
-
-    const index = this.userList.findIndex((u) => u.id === id);
-    if (index > -1) {
-      this.userList[index] = updatedUserRaow;
-      this.writeDatabase('userList');
+    try {
+      const queryConfig = insertQuery({
+        table: 'lists',
+        fields: [
+          'userid',
+          'name',
+          'description',
+          'banner',
+          'thumbnail',
+          'make',
+        ],
+        values: [
+          userid,
+          name,
+          typeof description !== 'undefined' ? description : null,
+          banner,
+          thumbnail,
+          make,
+        ],
+      });
+      console.log('[createList]\n', queryConfig);
+      const inserted = (await this.client.query<Schemas['lists']>(queryConfig))
+        .rows[0];
+      const createLists = await this.getLists({ sessionid, id: inserted.id });
+      return createLists;
+    } catch (error) {
+      console.error(error);
+      return;
     }
-
-    return this.getUser({ id });
   }
 
-  updatePost({
-    userid,
+  async updateUser(config: {
+    id: string;
+    nickname?: string;
+    desc?: string;
+    location?: string;
+    birth?: Birth;
+    refer?: string;
+    image?: string;
+    banner?: string;
+    verified?: Verified;
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = updateUsersQuery(config);
+      console.log('[updateUser]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+      const user = await this.getUser({ id: config.id });
+      return user;
+    } catch (error) {
+      console.log(error);
+      return;
+    }
+  }
+
+  async updatePost({
     postid,
+    userid,
     content,
     images,
     pinned,
     scope,
   }: {
-    postid: Post['postid'];
-    userid: User['id'];
-    content?: Post['content'];
-    images?: PostImage[];
-    pinned?: Post['pinned'];
-    scope?: Post['scope'];
-  }): AdvancedPost | undefined {
-    const findPostRaw = this.postList.find(
-      (p) => p.userid === userid && p.postid === postid
-    );
-    if (!findPostRaw) return;
-
-    const updatedPostRaw: Post = {
-      ...findPostRaw,
-      content: typeof content !== 'undefined' ? content : findPostRaw.content,
-      images: typeof images !== 'undefined' ? images : findPostRaw.images,
-      pinned: !!pinned,
-      scope: typeof scope !== 'undefined' ? scope : findPostRaw.scope,
+    postid: Schemas['post']['postid'];
+    userid: Schemas['post']['userid'];
+    content?: Schemas['post']['content'];
+    images?: Schemas['post']['images'];
+    pinned?: Schemas['post']['pinned'];
+    scope?: Schemas['post']['scope'];
+  }): Promise<AdvancedPost | undefined> {
+    await this.init();
+    if (!this.client) return;
+    const update: { fields: (keyof Schemas['post'])[]; values: any[] } = {
+      fields: [],
+      values: [],
     };
 
-    const index = this.postList.findIndex((p) => p === findPostRaw);
-    if (index > -1) {
-      this.postList[index] = updatedPostRaw;
-      this.writeDatabase('postList');
+    if (typeof content !== 'undefined') {
+      update.fields.push('content');
+      update.values.push(content);
+    }
+    if (typeof images !== 'undefined') {
+      update.fields.push('images');
+      update.values.push(JSON.stringify(images));
+    }
+    if (typeof pinned !== 'undefined') {
+      update.fields.push('pinned');
+      update.values.push(pinned);
+    }
+    if (typeof scope !== 'undefined') {
+      update.fields.push('scope');
+      update.values.push(scope);
     }
 
-    return this.getPost({ userid, postid });
+    if (update.fields.length === 0 || update.values.length === 0) {
+      throw Error('The fields and values​ to be updated are empty.');
+    }
+
+    try {
+      const queryConfig = updateQuery({
+        table: 'post',
+        update,
+        wheres: [
+          [
+            { field: 'postid', value: postid },
+            { field: 'userid', value: userid },
+          ],
+        ],
+      });
+      console.log('[updatePost]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+      const updatedPost = await this.getPost({ userid, postid });
+      return updatedPost;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  updateLists({
+  async updateLists({
     id,
     userid,
     name,
@@ -829,92 +957,134 @@ class DAO {
     thumbnail,
     make,
   }: {
-    id: Lists['id'];
-    userid: Lists['userid'];
-    name?: Lists['name'];
-    description?: Lists['description'];
-    banner?: Lists['banner'];
-    thumbnail?: Lists['thumbnail'];
-    make?: Lists['make'];
-  }) {
-    const findListsRaw = this.lists.find(
-      (l) => l.id === id && l.userid === userid
-    );
-    if (!findListsRaw) return;
-
-    const updatedListRaw: Lists = {
-      ...findListsRaw,
-      name: typeof name !== 'undefined' ? name : findListsRaw.name,
-      description:
-        typeof description !== 'undefined'
-          ? description
-          : findListsRaw.description,
-      banner: typeof banner !== 'undefined' ? banner : findListsRaw.banner,
-      thumbnail:
-        typeof thumbnail !== 'undefined' ? thumbnail : findListsRaw.thumbnail,
-      make: typeof make !== 'undefined' ? make : findListsRaw.make,
+    id: Schemas['lists']['id'];
+    userid: Schemas['lists']['userid'];
+    name?: Schemas['lists']['name'];
+    description?: Schemas['lists']['description'];
+    banner?: Schemas['lists']['banner'];
+    thumbnail?: Schemas['lists']['thumbnail'];
+    make?: Schemas['lists']['make'];
+  }): Promise<AdvancedLists | undefined> {
+    await this.init();
+    if (!this.client) return;
+    const update: { fields: (keyof Schemas['lists'])[]; values: any[] } = {
+      fields: [],
+      values: [],
     };
-
-    const index = this.lists.findIndex((l) => l === findListsRaw);
-    if (index > -1) {
-      this.lists[index] = updatedListRaw;
-      this.writeDatabase('lists');
+    if (typeof name !== 'undefined') {
+      update.fields.push('name');
+      update.values.push(name);
+    }
+    if (typeof description !== 'undefined') {
+      update.fields.push('description');
+      update.values.push(description !== '' ? description : null);
+    }
+    if (typeof banner !== 'undefined') {
+      update.fields.push('banner');
+      update.values.push(banner);
+    }
+    if (typeof thumbnail !== 'undefined') {
+      update.fields.push('thumbnail');
+      update.values.push(thumbnail);
+    }
+    if (typeof make !== 'undefined') {
+      update.fields.push('make');
+      update.values.push(make);
     }
 
-    return this.getLists({ id, userid, sessionId: userid });
+    try {
+      const queryConfig = updateQuery({
+        table: 'lists',
+        update,
+        wheres: [
+          [
+            { field: 'id', value: id },
+            { field: 'userid', value: userid },
+          ],
+        ],
+      });
+      console.log('[updateLists]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+      return await this.getLists({ sessionid: userid, id, userid: userid });
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  deleteBirth({ id }: { id: User['id'] }) {
-    const index = this.userList.findIndex((u) => u.id === id);
-    if (index === -1) return;
+  async deleteBirth({ id }: { id: string }) {
+    await this.init();
+    if (!this.client) return;
 
-    this.userList[index] = {
-      ...this.userList[index],
-      birth: null,
-    };
-    this.writeDatabase('userList');
-
-    return this.getUser({ id });
+    try {
+      const queryConfig = updateUsersQuery({ id, birth: null });
+      console.log(queryConfig);
+      await this.client.query(queryConfig);
+      const user = await this.getUser({ id });
+      return user;
+    } catch (error) {
+      console.log(error);
+      return;
+    }
   }
 
-  deletePost({ postid }: { postid: number }): void {
-    const newPostList = this.postList.filter((p) => p.postid !== postid);
-    this.postList = newPostList;
-    this.writeDatabase('postList');
+  async deletePost({
+    postid,
+    postids,
+  }: {
+    postid?: Schemas['post']['postid'];
+    postids?: Schemas['post']['postid'][];
+  }) {
+    await this.init();
+    if (!this.client) return false;
+
+    const where: Where<Schemas['post']>[] = [];
+    if (typeof postids !== 'undefined') {
+      if (postids.length === 0) {
+        return false;
+      }
+      postids.forEach((id) => {
+        where.push({ field: 'postid', value: id, logic: 'OR' });
+      });
+    } else if (typeof postid !== 'undefined') {
+      where.push({ field: 'postid', value: postid });
+    } else {
+      return false;
+    }
+
+    try {
+      const queryConfig = deleteQuery({
+        table: 'post',
+        wheres: [where],
+      });
+      console.log('[deletePost]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
   }
 
-  deleteReaction({ postid }: { postid: Post['postid'] }): void {
-    const newReactionList = this.reactionList.filter(
-      (r) => r.postid !== postid
-    );
-    this.reactionList = newReactionList;
-    this.writeDatabase('reactionList');
+  async deleteLists({ id }: { id: Schemas['lists']['id'] }) {
+    await this.init();
+    if (!this.client) return false;
+
+    try {
+      const queryConfig = deleteQuery({
+        table: 'lists',
+        wheres: [[{ field: 'id', value: id }]],
+      });
+      console.log('[deleteLists]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
   }
 
-  deleteView({ postid }: { postid: Post['postid'] }): void {
-    const newViewList = this.viewList.filter((v) => v.postid !== postid);
-    this.viewList = newViewList;
-    this.writeDatabase('viewList');
-  }
-
-  deleteLists({ id, userid }: { id: Lists['id']; userid: Lists['userid'] }) {
-    const newListslist = this.lists.filter(
-      (l) => l.id !== id || l.userid !== userid
-    );
-    this.lists = newListslist;
-    this.writeDatabase('lists');
-    this.deleteListsDetail({ listid: id });
-  }
-
-  deleteListsDetail({ listid }: { listid: Lists['id'] }) {
-    const newListsDetailList = this.listsDetail.filter(
-      (ld) => ld.listid !== listid
-    );
-    this.listsDetail = newListsDetailList;
-    this.writeDatabase('listsDetail');
-  }
-
-  followHandler({
+  async followHandler({
     type,
     source,
     target,
@@ -922,41 +1092,61 @@ class DAO {
     type: 'follow' | 'unfollow';
     source: string;
     target: string;
-  }): AdvancedUser | undefined {
-    const isFollow = !!this.followList.find(
-      (f) => f.source === source && f.target === target
-    );
+  }) {
+    await this.init();
+    if (!this.client) return;
 
-    switch (type) {
-      case 'follow':
-        if (!isFollow) {
-          const nextId = Math.max(...this.followList.map((f) => f.id)) + 1;
-          this.followList.push({
-            id: !isFinite(nextId) ? 1 : nextId,
-            source,
-            target,
-            createat: new Date(),
-          });
-        }
-        break;
-      case 'unfollow':
-        if (isFollow) {
-          const newFollowList = this.followList.filter((f) => {
-            return f.source !== source || f.target !== target;
-          });
-          this.followList = newFollowList;
-        }
-        break;
-      default:
-        throw new Error('unexpected type in followHander method');
+    try {
+      const selectQueryConfig = selectQuery({
+        table: 'follow',
+        wheres: [
+          [
+            { field: 'source', value: source },
+            { field: 'target', value: target },
+          ],
+        ],
+      });
+      console.log('[followHandler]\n', selectQueryConfig.text);
+      const isFollow = (await this.client.query<Follow>(selectQueryConfig))
+        .rows[0];
+
+      switch (type) {
+        case 'follow':
+          if (!isFollow) {
+            const insertQueryConfig = insertQuery({
+              table: 'follow',
+              fields: ['source', 'target'],
+              values: [source, target],
+            });
+            console.log(insertQueryConfig.text);
+            await this.client.query(insertQueryConfig);
+          }
+          break;
+        case 'unfollow':
+          if (isFollow) {
+            const deleteQueryConfig = deleteQuery({
+              table: 'follow',
+              wheres: [
+                [
+                  { field: 'source', value: source },
+                  { field: 'target', value: target },
+                ],
+              ],
+            });
+            console.log(deleteQueryConfig.text);
+            await this.client.query(deleteQueryConfig);
+          }
+      }
+
+      const updatedUser = await this.getUser({ id: target });
+      return updatedUser;
+    } catch (error) {
+      console.error(error);
+      return;
     }
-    this.writeDatabase('followList');
-
-    const updatedUser = this.getUser({ id: target });
-    return updatedUser;
   }
 
-  reactionHandler({
+  async reactionHandler({
     type,
     method,
     userid,
@@ -964,280 +1154,319 @@ class DAO {
     commentid,
     quote,
   }: {
-    type: 'Heart' | 'Repost' | 'Comment' | 'Bookmark';
+    type: Schemas['reactions']['type'];
     method: 'post' | 'delete';
-    userid: User['id'];
-    postid: Post['postid'];
-    commentid?: Post['postid'];
+    userid: string;
+    postid: number;
+    commentid?: number;
     quote?: boolean;
-  }): AdvancedPost | undefined {
-    const isReaction = !!this.reactionList.find((r) => {
-      const condition =
-        r.type === type && r.userid === userid && r.postid === postid;
-      if (type === 'Comment') return condition && r.commentid === commentid;
-      if (type === 'Repost' && quote) return condition && r.quote;
-      if (type === 'Repost' && !quote)
-        return condition && typeof r.quote === 'undefined';
+  }) {
+    await this.init();
+    if (!this.client) return;
 
-      return condition;
+    const isReaction = await this.getReactions({
+      type,
+      userid,
+      postid,
+      commentid,
+      quote,
     });
 
-    if (method === 'post' && !isReaction) {
-      const nextId = Math.max(...this.reactionList.map((r) => r.id)) + 1;
-      const newReaction: Reactions = {
-        id: isFinite(nextId) ? nextId : 1,
-        type,
-        postid,
-        userid,
-        commentid:
-          type === 'Comment'
-            ? typeof commentid !== 'undefined'
-              ? commentid
-              : null
-            : null,
-        quote: typeof quote !== 'undefined' ? quote : false,
-      };
-      this.reactionList.push(newReaction);
-      this.writeDatabase('reactionList');
-    } else if (method === 'delete' && isReaction) {
-      this.reactionList = this.reactionList.filter(
-        (r) =>
-          r.type !== type ||
-          r.postid !== postid ||
-          r.userid !== userid ||
-          r.quote !== quote
-      );
-      this.writeDatabase('reactionList');
-    }
+    try {
+      switch (method) {
+        case 'post': {
+          if (!isReaction) {
+            const fields: (keyof Schemas['reactions'])[] = [
+              'type',
+              'userid',
+              'postid',
+            ];
+            const values: any[] = [type, userid, postid];
+            if (typeof commentid !== 'undefined') {
+              fields.push('commentid');
+              values.push(commentid);
+            }
+            if (typeof quote !== 'undefined') {
+              fields.push('quote');
+              values.push(quote);
+            }
+            const insertQueryConfig = insertQuery({
+              table: 'reactions',
+              fields,
+              values,
+            });
+            console.log('[reactionHandler][post]\n', insertQueryConfig.text);
 
-    const updatedPost = this.getFullPost({ postid: postid });
-    return updatedPost;
+            await this.client.query(insertQueryConfig);
+            break;
+          }
+        }
+        case 'delete': {
+          if (isReaction) {
+            const where: Where<Schemas['reactions']>[] = [
+              { field: 'type', value: type },
+              { field: 'userid', value: userid },
+              { field: 'postid', value: postid },
+            ];
+            if (typeof commentid !== 'undefined') {
+              where.push({ field: 'commentid', value: commentid });
+            }
+            if (typeof quote !== 'undefined') {
+              where.push({ field: 'quote', value: quote });
+            }
+
+            const deleteQueryConfig = deleteQuery({
+              table: 'reactions',
+              wheres: [where],
+            });
+            console.log('[reactionHandler][delete]\n', deleteQueryConfig.text);
+
+            await this.client.query(deleteQueryConfig);
+          }
+          break;
+        }
+      }
+
+      const updatedPost = await this.getPost({ postid });
+      return updatedPost;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  viewsHandler({
-    key = 'impressions',
+  async viewsHandler({
     postid,
+    key,
     create,
   }: {
-    key?: keyof Omit<Views, 'postid'>;
-    postid: Post['postid'];
+    postid: Schemas['views']['postid'];
+    key?: keyof Omit<Schemas['views'], 'postid'>;
     create?: boolean;
   }) {
-    const findViewIndex = this.viewList.findIndex((v) => v.postid === postid);
-    if (findViewIndex > -1) {
-      this.viewList[findViewIndex][key]++;
-    } else {
-      const newView: Views = {
-        postid,
-        impressions: create ? 0 : 1,
-        engagements: 0,
-        detailexpands: 0,
-        newfollowers: 0,
-        profilevisit: 0,
-      };
-      this.viewList.push(newView);
-    }
-    this.writeDatabase('viewList');
+    await this.init();
+    if (!this.client) return;
 
-    const updatedPost = this.getFullPost({ postid });
-    return updatedPost;
+    const findView = await this.getView({ postid });
+    try {
+      if (findView) {
+        const updateQueryConfig = updateQuery({
+          table: 'views',
+          update: {
+            fields: [typeof key !== 'undefined' ? key : 'impressions'],
+            values: [
+              typeof key !== 'undefined'
+                ? findView[key] + 1
+                : findView.impressions + 1,
+            ],
+          },
+          wheres: [[{ field: 'postid', value: findView.postid }]],
+        });
+        console.log('[viewsHandler][update]\n', updateQueryConfig.text);
+        await this.client.query(updateQueryConfig);
+      } else {
+        const insertQueryConfig = insertQuery({
+          table: 'views',
+          fields: ['postid', 'impressions'],
+          values: [postid, create ? 0 : 1],
+        });
+        console.log('[viewsHandler][insert]\n', insertQueryConfig.text);
+        await this.client.query(insertQueryConfig);
+      }
+
+      const updatedPost = await this.getPost({ postid });
+      return updatedPost;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
   }
 
-  listsDetailHandler({
+  async listsDetailHandler({
     method,
-    type,
     listid,
+    type,
     userid,
     postid,
   }: {
     method: 'post' | 'delete';
-    type: ListsDetail['type']; // member | post | unpost | follow | pinned | unshow;
-    listid: Lists['id'];
-    userid: User['id'];
-    postid?: Post['postid'];
+    listid: Schemas['listsdetail']['listid'];
+    type: Schemas['listsdetail']['type'];
+    userid: Schemas['listsdetail']['userid'];
+    postid?: Schemas['listsdetail']['postid'];
   }) {
-    const already = !!this.getListsDetail({ listid, type, userid, postid });
+    await this.init();
+    if (!this.client) return false;
 
-    if (method === 'post' && !already) {
-      const nextId = Math.max(...this.listsDetail.map((ld) => ld.id)) + 1;
-      const newListsDetail: ListsDetail = {
-        id: isFinite(nextId) ? nextId : 1,
-        listid,
-        type,
-        userid,
-        postid: typeof postid !== 'undefined' ? postid : null,
-      };
-      this.listsDetail.push(newListsDetail);
-      this.writeDatabase('listsDetail');
-    } else if (method === 'delete' && already) {
-      this.listsDetail = this.listsDetail.filter((ld) => {
-        let condition =
-          ld.type === type && ld.listid === listid && ld.userid === userid;
-        if (typeof postid !== 'undefined') {
-          condition = condition && ld.postid === postid;
+    try {
+      switch (method) {
+        case 'post': {
+          const queryConfig = insertQuery({
+            table: 'listsdetail',
+            fields: ['listid', 'type', 'userid', 'postid'],
+            values: [
+              listid,
+              type,
+              userid,
+              typeof postid !== 'undefined' ? postid : null,
+            ],
+          });
+          console.log('[listsDetailHandler][post]\n', queryConfig.text);
+          await this.client.query(queryConfig);
+          return true;
         }
-        return !condition;
-      });
-      this.writeDatabase('listsDetail');
+        case 'delete': {
+          const queryConfig = deleteQuery({
+            table: 'listsdetail',
+            wheres: [
+              [
+                { field: 'listid', value: listid },
+                { field: 'userid', value: userid },
+                { field: 'type', value: type },
+              ],
+            ],
+          });
+          console.log('[listsDetailHandler][delete]\n', queryConfig.text);
+          await this.client.query(queryConfig);
+          return true;
+        }
+        default: {
+          throw new Error('An incorrect method argument was entered.');
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      return false;
     }
   }
 
-  hashtagsAnalysis(content: string): void {
+  async hashtagAnalysis(content: string) {
+    await this.init();
+    if (!this.client) return;
     if (!content || !content.trim()) return;
 
     const regex = /#[^\s#)\]]+/g;
     const hashtags = content.match(regex);
     if (hashtags) {
       const already: string[] = [];
-      hashtags.forEach((t) => {
+      for (let t of hashtags) {
         const tag = t.replace(/#/, '');
-        if (tag === '') return;
-        if (already.includes(t)) return;
+        if (tag === '') continue;
+        if (already.includes(t)) continue;
 
-        const findTag = this.tagList.find(
-          (t) => t.title.toLowerCase() === tag.toLowerCase()
-        );
+        const findTag = await this.getHashTag({ type: 'tag', title: tag });
 
-        if (findTag) {
-          findTag.count++;
-        } else {
-          const nextId = Math.max(...this.tagList.map((t) => t.id)) + 1;
-          const newTag: Tag = {
-            id: isFinite(nextId) ? nextId : 1,
-            type: 'tag',
-            title: tag,
-            count: 1,
-          };
-          this.tagList.push(newTag);
+        try {
+          if (findTag) {
+            const updateQueryConfig = updateQuery({
+              table: 'hashtags',
+              update: { fields: ['count'], values: [findTag.count + 1] },
+              wheres: [
+                [
+                  { field: 'type', value: findTag.type },
+                  { field: 'title', value: findTag.title },
+                ],
+              ],
+            });
+            console.log('[hashtagAnalysis]\n', updateQueryConfig.text);
+
+            this.client.query(updateQueryConfig);
+          } else {
+            const insertQueryConfig = insertQuery({
+              table: 'hashtags',
+              fields: ['type', 'title'],
+              values: ['tag', tag],
+            });
+
+            console.log('[hashtagAnalysis]\n', insertQueryConfig.text);
+
+            this.client.query(insertQueryConfig);
+          }
+        } catch (error) {
+          console.error(error);
+          continue;
+        } finally {
+          already.push(t);
         }
-        already.push(t);
-      });
-      this.writeDatabase('tagList');
+      }
     }
   }
 
-  async morphologyAnalysis(content: string): Promise<void> {
-    if (!content) return;
-
+  async morphologyAnalysis(content: string) {
+    await this.init();
+    if (!this.client) return;
+    const API_URL = process.env.AI_OPEN_ETRI_API_URL;
     const API_KEY = process.env.AI_OPEN_ETRI_API_KEY;
-    if (!content || !content.trim() || !API_KEY) return;
+    if (!content || !content.trim() || !API_URL || !API_KEY) return;
 
     try {
-      const requestUrl = 'http://aiopen.etri.re.kr:8000/WiseNLU_spoken';
-      const body = {
-        argument: {
-          analysis_code: 'morp',
-          text: content,
-        },
-      };
       const requestOptions: RequestInit = {
         method: 'POST',
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          argument: {
+            analysis_code: 'morp',
+            text: content,
+          },
+        }),
         headers: {
           'Content-Type': 'application/json',
           Authorization: API_KEY,
         },
       };
 
-      const response = await fetch(requestUrl, requestOptions);
-      const data: Morpheme = await response.json();
+      const response = await fetch(API_URL, requestOptions);
+      if (!response.ok) {
+        throw new Error('Failed to fetch data from AI_OPEN_ETRI_API');
+      }
 
+      const data: Morpheme = await response.json();
       const already: string[] = [];
-      data.return_object.sentence.forEach((sentence) => {
-        sentence.morp.forEach((morp) => {
-          if (!['NNG', 'NNP', 'NNB', 'SL'].includes(morp.type)) return;
-          if (already.includes(morp.lemma.toLowerCase())) return;
-          const findWord = this.tagList.find(
-            (t) =>
-              t.type === 'word' &&
-              t.title.toLowerCase() === morp.lemma.toLowerCase()
-          );
-          if (findWord) {
-            findWord.count++;
-          } else {
-            const nextId = Math.max(...this.tagList.map((t) => t.id)) + 1;
-            const newWord: Word = {
-              id: isFinite(nextId) ? nextId : 1,
+      for (let sentence of data.return_object.sentence) {
+        for (let morp of sentence.morp) {
+          try {
+            if (!['NNG', 'NNP', 'NNB', 'SL'].includes(morp.type)) return;
+            if (already.includes(morp.lemma.toLowerCase())) return;
+            const findWord = await this.getHashTag({
               type: 'word',
               title: morp.lemma,
-              count: 1,
-              weight: morp.weight,
-            };
-            this.tagList.push(newWord);
-          }
-          already.push(morp.lemma.toLowerCase());
-        });
-      });
-      this.writeDatabase('tagList');
-    } catch (error) {
-      console.error(error);
-    }
-  }
+            });
 
-  writeDatabase(
-    type:
-      | 'userList'
-      | 'postList'
-      | 'tagList'
-      | 'roomList'
-      | 'messageList'
-      | 'followList'
-      | 'reactionList'
-      | 'viewList'
-      | 'lists'
-      | 'listsDetail'
-  ): void {
-    console.time(type);
-    try {
-      const dbPath = path.join(__dirname, '../data/');
-      switch (type) {
-        case 'userList':
-          fs.writeJSONSync(dbPath + '/user.json', { data: this.userList });
-          break;
-        case 'postList':
-          fs.writeJSONSync(dbPath + '/post.json', { data: this.postList });
-          break;
-        case 'tagList':
-          fs.writeJSONSync(dbPath + '/hashtag.json', { data: this.tagList });
-          break;
-        case 'roomList':
-          fs.writeJSONSync(dbPath + '/room.json', { data: this.roomList });
-          break;
-        case 'messageList':
-          fs.writeJSONSync(dbPath + '/message.json', {
-            data: this.messageList,
-          });
-          break;
-        case 'followList':
-          fs.writeJSONSync(dbPath + '/follow.json', { data: this.followList });
-          break;
-        case 'reactionList':
-          fs.writeJSONSync(dbPath + '/reaction.json', {
-            data: this.reactionList,
-          });
-          break;
-        case 'viewList':
-          fs.writeJsonSync(dbPath + '/views.json', {
-            data: this.viewList,
-          });
-          break;
-        case 'lists':
-          fs.writeJsonSync(dbPath + '/lists.json', {
-            data: this.lists,
-          });
-          break;
-        case 'listsDetail':
-          fs.writeJsonSync(dbPath + '/listsdetail.json', {
-            data: this.listsDetail,
-          });
-          break;
-        default:
-          throw new Error('The writeDB function received an unexpected type.');
+            if (findWord) {
+              const updateQueryConfig = updateQuery({
+                table: 'hashtags',
+                update: { fields: ['count'], values: [findWord.count + 1] },
+                wheres: [
+                  [
+                    { field: 'type', value: findWord.type },
+                    { field: 'title', value: findWord.title },
+                  ],
+                ],
+              });
+              console.log('[morphologyAnalysis]\n', updateQueryConfig.text);
+              this.client.query(updateQueryConfig);
+            } else {
+              const insertQueryConfig = insertQuery({
+                table: 'hashtags',
+                fields: ['type', 'title', 'weight'],
+                values: ['word', morp.lemma, morp.weight],
+              });
+              console.log('[morphologyAnalysis]\n', insertQueryConfig.text);
+              this.client.query(insertQueryConfig);
+            }
+          } catch (error) {
+            console.error(error);
+            continue;
+          }
+        }
       }
     } catch (error) {
       console.error(error);
+      return;
     }
-    console.timeEnd(type);
+  }
+
+  async release() {
+    this.client?.release();
   }
 }
 

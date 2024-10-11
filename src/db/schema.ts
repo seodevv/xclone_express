@@ -67,7 +67,17 @@ export interface Schemas {
     pinned: boolean;
     scope: 'every' | 'follow' | 'verified' | 'only';
   };
-  advancedPost: Schemas['post'] & {
+  advancedPost: {
+    postid: number;
+    userid: string;
+    content: string;
+    images: PostImage[];
+    createat: Date;
+    parentid: number | null;
+    originalid: number | null;
+    quote: boolean;
+    pinned: boolean;
+    scope: 'every' | 'follow' | 'verified' | 'only';
     User: SafeUser;
     Parent: {
       postid: number;
@@ -96,6 +106,7 @@ export interface Schemas {
     profilevisit: number;
   };
   hashtags: {
+    id: number;
     type: 'tag' | 'word';
     title: string;
     count: number;
@@ -111,7 +122,15 @@ export interface Schemas {
     make: 'private' | 'public';
     createat: Date;
   };
-  advancedLists: Schemas['lists'] & {
+  advancedLists: {
+    id: number;
+    userid: string;
+    name: string;
+    description: string | null;
+    banner: string;
+    thumbnail: string;
+    make: 'private' | 'public';
+    createat: Date;
     User: SafeUser;
     Member: UserId[];
     Follower: UserId[];
@@ -132,7 +151,12 @@ export interface Schemas {
     createat: Date;
     lastmessageid: number | null;
   };
-  advancedRooms: Schemas['rooms'] & {
+  advancedRooms: {
+    id: string;
+    receiverid: string;
+    senderid: string;
+    createat: Date;
+    lastmessageid: number | null;
     Receiver: SafeUser;
     Sender: SafeUser;
     content: string | null;
@@ -145,7 +169,12 @@ export interface Schemas {
     content: string;
     createat: Date;
   };
-  advancedMessages: Schemas['messages'] & {
+  advancedMessages: {
+    id: number;
+    roomid: string;
+    senderid: string;
+    content: string;
+    createat: Date;
     Sender: SafeUser;
   };
 }
@@ -159,12 +188,14 @@ export type Operator =
   | '>='
   | 'in'
   | 'not in'
-  | '~~'
-  | '!~~';
+  | 'like'
+  | 'ilike'
+  | 'not like';
 
 export type Field<TableSchema> = keyof TableSchema;
 
 export interface Where<TableSchema> {
+  tableAlias?: string;
   field: keyof TableSchema;
   operator?: Operator;
   value: any;

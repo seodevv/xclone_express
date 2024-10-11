@@ -1,4 +1,4 @@
-import { Schemas } from '@/db/schema';
+import { PostImage, SafeUser, Schemas, UserId } from '@/db/schema';
 
 export type Post = Schemas['post'];
 export type AdvancedPost = Schemas['advancedPost'];

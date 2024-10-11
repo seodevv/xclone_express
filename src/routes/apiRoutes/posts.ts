@@ -6,6 +6,7 @@ import {
   httpBadRequestResponse,
   httpCreatedResponse,
   httpForbiddenResponse,
+  httpInternalServerErrorResponse,
   httpNoContentRepsonse,
   httpNotFoundResponse,
   httpSuccessResponse,
@@ -18,7 +19,6 @@ import {
   removingFiles,
   storage,
 } from '@/lib/common';
-import DAO from '@/lib/DAO';
 import {
   TypedRequestBody,
   TypedRequestBodyParams,
@@ -33,6 +33,7 @@ import { Views } from '@/model/Views';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 import { AdvancedUser } from '@/model/User';
 import { PostImage } from '@/db/schema';
+import DAO from '@/lib/DAO';
 
 const apiPostsRouter = express.Router();
 const upload = multer({ storage });
@@ -68,7 +69,12 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    let searchPostList = dao.getPostList({});
+    let searchPostList = await dao.getPostList({});
+
+    if (!searchPostList) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
 
     if (q) {
       const decode = decodeURIComponent(q);
@@ -116,14 +122,17 @@ apiPostsRouter.get(
     }
 
     if (pf) {
-      const followingList = dao
-        .getFollowList({ source: currentUser.id })
-        .map((f) => f.target);
-      searchPostList = searchPostList.filter((p) => {
-        if (followingList.includes(p.User.id)) return true;
-        return false;
-      });
+      const followingList = (
+        await dao.getFollowList({ source: currentUser.id })
+      )?.map((f) => f.target);
+      if (followingList) {
+        searchPostList = searchPostList.filter((p) => {
+          if (followingList.includes(p.User.id)) return true;
+          return false;
+        });
+      }
     }
+    dao.release();
 
     const regex = /^[0-9]*$/;
     if (cursor && regex.test(cursor)) {
@@ -180,7 +189,7 @@ apiPostsRouter.post(
 
     const dao = new DAO();
     if (repostid) {
-      dao.reactionHandler({
+      await dao.reactionHandler({
         method: 'post',
         type: 'Repost',
         postid: ~~repostid,
@@ -188,7 +197,7 @@ apiPostsRouter.post(
         quote: true,
       });
     }
-    const newPost = dao.createPost({
+    const newPost = await dao.createPost({
       userid: currentUser.id,
       content,
       files,
@@ -196,6 +205,7 @@ apiPostsRouter.post(
       originalid: repostid ? ~~repostid : undefined,
       quote: !!repostid,
     });
+    dao.release();
 
     return httpCreatedResponse(res, { data: newPost });
   }
@@ -218,8 +228,11 @@ apiPostsRouter.get(
     const pageSize = 10;
 
     const dao = new DAO();
-    let recommendsList = dao.getPostList({});
-    recommendsList.sort((a, b) => (a.createat < b.createat ? 1 : -1));
+    let recommendsList = await dao.getPostList({});
+    dao.release();
+    if (!recommendsList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
     const regex = /^[0-9]+$/;
     if (cursor && regex.test(cursor)) {
@@ -266,18 +279,30 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    const followingList = dao
-      .getFollowList({ source: currentUser.id })
-      .map((f) => f.target);
+    const followingList = (
+      await dao.getFollowList({ source: currentUser.id })
+    )?.map((f) => f.target);
+    if (!followingList) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
 
-    const filterdList = dao.getPostList({ followIds: followingList });
-    filterdList.sort((a, b) => (a.createat > b.createat ? -1 : 1));
+    const filterdList = await dao.getPostListWithIds({
+      userids: followingList,
+    });
+    dao.release();
+    if (!filterdList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
-    if (cursor && !Number.isNaN(parseInt(cursor))) {
+    const regex = /^[0-9]+$/;
+    if (cursor && regex.test(cursor)) {
       const findIndex = filterdList.findIndex(
         (p) => p.postid === parseInt(cursor)
       );
-      filterdList.splice(0, findIndex + 1);
+      if (findIndex > -1) {
+        filterdList.splice(0, findIndex + 1);
+      }
     }
 
     const prevLength = filterdList.length;
@@ -315,10 +340,18 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    let postList = dao.getPostList({});
-    let likeList = dao
-      .getLikeList({ userid: findUser.id })
-      .map((l) => l.postid);
+    let postList = await dao.getPostList({});
+    if (!postList) {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
+    let likeList = (await dao.getLikeList({ userid: findUser.id }))?.map(
+      (l) => l.postid
+    );
+    dao.release();
+    if (!likeList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
     postList = postList.filter((p) => likeList.includes(p.postid));
 
@@ -363,10 +396,11 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    let postList = dao
-      .getPostList({})
-      .filter((p) => p.Bookmarks.some((u) => u.id === currentUser.id))
-      .sort((a, b) => (a.createat > b.createat ? -1 : 1));
+    let postList = await dao.getBookmarkPostList({ userid: currentUser.id });
+    dao.release();
+    if (!postList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
     if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
       const findIndex = postList.findIndex((p) => p.postid === ~~cursor);
@@ -391,7 +425,7 @@ apiPostsRouter.get(
 // 특정 게시글 조회
 apiPostsRouter.get(
   '/:id',
-  (
+  async (
     req: TypedRequestQueryParams<{ userid?: string }, { id?: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
@@ -401,7 +435,7 @@ apiPostsRouter.get(
     if (!id || !regex.test(id) || !userid) return httpBadRequestResponse(res);
 
     const dao = new DAO();
-    const findPost = dao.getFullPost({ userid: userid, postid: ~~id });
+    const findPost = await dao.getPost({ userid: userid, postid: ~~id });
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }
@@ -431,34 +465,33 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.getFullPost({ userid: currentUser.id, postid: ~~id });
+    const findPost = await dao.getPost({
+      userid: currentUser.id,
+      postid: ~~id,
+    });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res, 'Post not found');
     }
 
+    const repostList = await dao.getPostList({
+      originalid: findPost.postid,
+      quote: false,
+    });
+    if (repostList && repostList.length !== 0) {
+      await dao.deletePost({ postids: repostList.map((p) => p.postid) });
+    }
+
+    await dao.deletePost({ postid: findPost.postid });
+    dao.release();
     if (findPost.images.length) {
-      try {
-        findPost.images.forEach((image) => {
+      findPost.images.forEach((image) => {
+        try {
           const imagePath = path.join(uploadPath, '/', image.link);
           fs.removeSync(imagePath);
-        });
-      } catch (error) {
-        console.error(error);
-      }
-    }
-    dao.deletePost({ postid: findPost.postid });
-    dao.deleteReaction({ postid: findPost.postid });
-    dao.deleteView({ postid: findPost.postid });
-
-    const repostList = dao
-      .getPostList({
-        originalid: findPost.postid,
-      })
-      .filter((p) => !p.quote);
-    if (repostList.length !== 0) {
-      repostList.forEach((p) => {
-        dao.deletePost({ postid: p.postid });
-        dao.deleteView({ postid: p.postid });
+        } catch (error) {
+          console.error(error);
+        }
       });
     }
 
@@ -487,22 +520,25 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postid: ~~id });
+    const findPost = await dao.getPost({ postid: ~~id });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res, 'Post not found');
     }
 
     const isHeart = !!findPost.Hearts.find((u) => u.id === currentUser.id);
     if (isHeart) {
+      dao.release();
       return httpForbiddenResponse(res, 'This post is already liked.');
     }
 
-    const updatedPost = dao.reactionHandler({
+    const updatedPost = await dao.reactionHandler({
       method: 'post',
       type: 'Heart',
       postid: findPost.postid,
       userid: currentUser.id,
     });
+    dao.release();
 
     return httpCreatedResponse(res, { data: updatedPost });
   }
@@ -529,22 +565,25 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postid: ~~id });
+    const findPost = await dao.getPost({ postid: ~~id });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res, 'Post not found');
     }
 
     const isHeart = !!findPost.Hearts.find((u) => u.id === currentUser.id);
     if (!isHeart) {
+      dao.release();
       return httpForbiddenResponse(res, 'This post is already unliked.');
     }
 
-    const updatedPost = dao.reactionHandler({
+    const updatedPost = await dao.reactionHandler({
       method: 'delete',
       type: 'Heart',
       postid: findPost.postid,
       userid: currentUser.id,
     });
+    dao.release();
 
     return httpSuccessResponse(res, { data: updatedPost });
   }
@@ -571,28 +610,31 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getFullPost({ postid: ~~id });
+    const findPost = await dao.getPost({ postid: ~~id });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res, 'Post not found');
     }
 
     const isRepost = !!findPost.Reposts.find((u) => u.id === currentUser.id);
     if (isRepost) {
+      dao.release();
       return httpForbiddenResponse(res, 'This post has been reposted.');
     }
 
-    dao.reactionHandler({
+    await dao.reactionHandler({
       method: 'post',
       type: 'Repost',
       postid: findPost.postid,
       userid: currentUser.id,
     });
 
-    const newRepost = dao.createPost({
+    const newRepost = await dao.createPost({
       userid: currentUser.id,
       content: '',
       originalid: findPost.postid,
     });
+    dao.release();
 
     return httpCreatedResponse(res, { data: newRepost });
   }
@@ -619,23 +661,24 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.getRepostPost({
+    const findPost = await dao.getRepostPost({
       originalid: ~~id,
       userid: currentUser.id,
       quote: false,
     });
     if (!findPost || !findPost.originalid) {
+      dao.release();
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    dao.reactionHandler({
+    await dao.reactionHandler({
       method: 'delete',
       type: 'Repost',
       postid: findPost.originalid,
       userid: currentUser.id,
     });
-    dao.deletePost({ postid: findPost.postid });
-    dao.deleteView({ postid: findPost.postid });
+    await dao.deletePost({ postid: findPost.postid });
+    dao.release();
 
     return httpNoContentRepsonse(res);
   }
@@ -645,7 +688,7 @@ apiPostsRouter.delete(
 // 특정 게시글 댓글 조회
 apiPostsRouter.get(
   '/:id/comments',
-  (
+  async (
     req: TypedRequestQueryParams<
       { cursor?: string; userid?: string },
       { id?: string }
@@ -658,24 +701,29 @@ apiPostsRouter.get(
   ) => {
     const { cursor, userid } = req.query;
     const { id } = req.params;
-    const regex = /^[0-9]*$/;
     const pageSize = 10;
-    if (!id || !regex.test(id) || !userid) return httpBadRequestResponse(res);
+    if (!id || !REGEX_NUMBER_ONLY.test(id) || !userid) {
+      return httpBadRequestResponse(res);
+    }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userid, postid: ~~id });
+    const findPost = await dao.getPost({ userid, postid: ~~id });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    const commentList = dao.getPostList({ parentId: findPost.postid });
-    commentList.sort((a, b) => (a.createat > b.createat ? 1 : -1));
+    const commentList = await dao.getPostList({ parentid: findPost.postid });
+    dao.release();
+    if (!commentList) {
+      return httpInternalServerErrorResponse(res);
+    }
 
-    if (cursor && regex.test(cursor)) {
+    if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
       const findIndex = commentList.findIndex(
         (p) => p.postid === parseInt(cursor)
       );
-      if (findIndex >= 0) {
+      if (findIndex > -1) {
         commentList.splice(0, findIndex + 1);
       }
     }
@@ -729,26 +777,28 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postid: ~~id });
+    const findPost = await dao.getPost({ postid: ~~id });
     if (!findPost) {
+      dao.release();
       removingFiles(files);
       return httpNotFoundResponse(res, 'Post not found');
     }
 
-    const newComment = dao.createPost({
+    const newComment = await dao.createPost({
       userid: currentUser.id,
       content,
       files,
       media,
-      parentId: findPost.postid,
+      parentid: findPost.postid,
     });
-    dao.reactionHandler({
+    await dao.reactionHandler({
       method: 'post',
       type: 'Comment',
       userid: currentUser.id,
       postid: findPost.postid,
       commentid: newComment?.postid,
     });
+    dao.release();
 
     return httpCreatedResponse(res, { data: newComment });
   }
@@ -775,20 +825,26 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postid: ~~id });
+    const findPost = await dao.getPost({ postid: ~~id });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     if (findPost.userid !== currentUser.id) {
+      dao.release();
       return httpForbiddenResponse(res);
     }
 
-    let findView = dao.getView({ postid: ~~id });
-    if (!findView) {
-      dao.viewsHandler({ postid: findPost.postid, create: true });
-      findView = dao.getView({ postid: findPost.postid });
+    let findView = await dao.getView({ postid: ~~id });
+    if (findView) {
+      dao.release();
+      return httpSuccessResponse(res, { data: findView });
     }
+
+    await dao.viewsHandler({ postid: findPost.postid, create: true });
+    findView = await dao.getView({ postid: findPost.postid });
+    dao.release();
 
     return httpSuccessResponse(res, { data: findView });
   }
@@ -819,8 +875,9 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postid: ~~id, userid });
+    const findPost = await dao.getPost({ postid: ~~id, userid });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res, 'Post not found');
     }
 
@@ -835,10 +892,11 @@ apiPostsRouter.post(
     };
     const key = isViews(type) ? type : 'impressions';
 
-    const updatedPost = dao.viewsHandler({
+    const updatedPost = await dao.viewsHandler({
       key,
       postid: ~~id,
     });
+    dao.release();
 
     return httpCreatedResponse(res, { data: updatedPost });
   }
@@ -865,22 +923,25 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postid: ~~id });
+    const findPost = await dao.getPost({ postid: ~~id });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     const isBookmark = findPost.Bookmarks.some((u) => u.id === currentUser.id);
     if (isBookmark) {
+      dao.release();
       return httpForbiddenResponse(res, 'Already bookmarked');
     }
 
-    const updatedPost = dao.reactionHandler({
+    const updatedPost = await dao.reactionHandler({
       type: 'Bookmark',
       method: 'post',
       userid: currentUser.id,
       postid: ~~id,
     });
+    dao.release();
 
     return httpCreatedResponse(res, { data: updatedPost });
   }
@@ -907,22 +968,25 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postid: ~~id });
+    const findPost = await dao.getPost({ postid: ~~id });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     const isBookmark = findPost.Bookmarks.some((u) => u.id === currentUser.id);
     if (!isBookmark) {
+      dao.release();
       return httpForbiddenResponse(res, 'Not already bookmarked');
     }
 
-    const updatedPost = dao.reactionHandler({
+    const updatedPost = await dao.reactionHandler({
       type: 'Bookmark',
       method: 'delete',
       userid: currentUser.id,
       postid: ~~id,
     });
+    dao.release();
     return httpSuccessResponse(res, { data: updatedPost });
   }
 );
@@ -963,19 +1027,22 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userid, postid: ~~id });
+    const findPost = await dao.getPost({ userid, postid: ~~id });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     switch (filter) {
       case 'quotes': {
-        const postList = dao
-          .getPostList({
-            originalid: findPost.postid,
-            quote: true,
-          })
-          .sort((a, b) => (a.createat > b.createat ? -1 : 1));
+        const postList = await dao.getPostList({
+          originalid: findPost.postid,
+          quote: true,
+        });
+        dao.release();
+        if (!postList) {
+          return httpInternalServerErrorResponse(res);
+        }
         if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
           const findIndex = postList.findIndex((p) => p.postid === ~~cursor);
           if (findIndex > -1) {
@@ -993,12 +1060,24 @@ apiPostsRouter.get(
         });
       }
       case 'retweets': {
-        const repostList = dao
-          .getRepostList({ postid: ~~id })
-          .map((r) => r.userid);
-        const userList = dao
-          .getUserList()
-          .filter((u) => repostList.includes(u.id));
+        const repostList = (
+          await dao.getReactionList({ type: 'Repost', postid: ~~id })
+        )?.map((r) => r.userid);
+        if (!repostList) {
+          dao.release();
+          return httpInternalServerErrorResponse(res);
+        }
+        if (repostList.length === 0) {
+          dao.release();
+          return httpSuccessResponse(res, { data: [] });
+        }
+
+        const userList = await dao.getUserListWithIds({ userids: repostList });
+        dao.release();
+        if (!userList) {
+          return httpInternalServerErrorResponse(res);
+        }
+
         if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
           const findIndex = userList.findIndex((u) => u.id === cursor);
           if (findIndex > -1) {
@@ -1016,10 +1095,24 @@ apiPostsRouter.get(
         });
       }
       case 'likes': {
-        const likeList = dao.getLikeList({ postid: ~~id }).map((r) => r.userid);
-        const userList = dao
-          .getUserList()
-          .filter((u) => likeList.includes(u.id));
+        const likeList = (await dao.getLikeList({ postid: ~~id }))?.map(
+          (r) => r.userid
+        );
+        if (!likeList) {
+          dao.release();
+          return httpInternalServerErrorResponse(res);
+        }
+        if (likeList.length === 0) {
+          dao.release();
+          return httpSuccessResponse(res, { data: [] });
+        }
+
+        const userList = await dao.getUserListWithIds({ userids: likeList });
+        dao.release();
+        if (!userList) {
+          return httpInternalServerErrorResponse(res);
+        }
+
         if (cursor && REGEX_NUMBER_ONLY.test(cursor)) {
           const findIndex = userList.findIndex((u) => u.id === cursor);
           if (findIndex > -1) {
@@ -1062,19 +1155,25 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userid: currentUser.id, postid: ~~id });
+    const findPost = await dao.getPost({
+      userid: currentUser.id,
+      postid: ~~id,
+    });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res, 'post not found');
     }
     if (findPost.pinned) {
+      dao.release();
       return httpForbiddenResponse(res, 'already pinned');
     }
 
-    const updatedPost = dao.updatePost({
+    const updatedPost = await dao.updatePost({
       userid: currentUser.id,
       postid: ~~id,
       pinned: true,
     });
+    dao.release();
 
     return httpSuccessResponse(res, { data: updatedPost });
   }
@@ -1100,19 +1199,25 @@ apiPostsRouter.delete(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userid: currentUser.id, postid: ~~id });
+    const findPost = await dao.getPost({
+      userid: currentUser.id,
+      postid: ~~id,
+    });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res, 'post not found');
     }
     if (!findPost.pinned) {
+      dao.release();
       return httpForbiddenResponse(res, 'already unPinned');
     }
 
-    const updatedPost = dao.updatePost({
+    const updatedPost = await dao.updatePost({
       userid: currentUser.id,
       postid: ~~id,
       pinned: false,
     });
+    dao.release();
 
     return httpSuccessResponse(res, { data: updatedPost });
   }
@@ -1147,21 +1252,26 @@ apiPostsRouter.post(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ userid: currentUser.id, postid: ~~id });
+    const findPost = await dao.getPost({
+      userid: currentUser.id,
+      postid: ~~id,
+    });
     if (!findPost) {
+      dao.release();
       return httpNotFoundResponse(res);
     }
 
     if (findPost.scope === scope) {
+      dao.release();
       return httpForbiddenResponse(res, 'already set up');
     }
 
-    const updatedPost = dao.updatePost({
+    const updatedPost = await dao.updatePost({
       userid: currentUser.id,
       postid: ~~id,
       scope,
     });
-
+    dao.release();
     return httpSuccessResponse(res, { data: updatedPost });
   }
 );
@@ -1170,7 +1280,7 @@ apiPostsRouter.post(
 // 특정 게시글 이미지 조회
 apiPostsRouter.get(
   '/:id/photos/:imageId',
-  (
+  async (
     req: TypedRequestParams<{ id?: string; imageId?: string }>,
     res: TypedResponse<{ data?: PostImage; message: string }>
   ) => {
@@ -1181,7 +1291,8 @@ apiPostsRouter.get(
     }
 
     const dao = new DAO();
-    const findPost = dao.getPost({ postid: ~~id });
+    const findPost = await dao.getPost({ postid: ~~id });
+    dao.release();
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }

@@ -4,7 +4,7 @@ import fs from 'fs-extra';
 import { uploadPath } from '@/app';
 import { AdvancedUser } from '@/model/User';
 import { CookieOptions } from 'express';
-import NEW_DAO from '@/lib/dao_n';
+import DAO from '@/lib/DAO';
 import { SafeUser } from '@/db/schema';
 
 export const COOKIE_OPTIONS: CookieOptions = {
@@ -58,8 +58,7 @@ export const decodingUserToken = async (
     const options: jwt.VerifyOptions = {};
     const decode = jwt.verify(token, secret, options) as SafeUser;
 
-    const dao = new NEW_DAO();
-    // const dao = new DAO();
+    const dao = new DAO();
     const user = await dao.getUser({ id: decode.id });
     dao.release();
 

@@ -33,7 +33,7 @@ import { AdvancedUser } from '@/model/User';
 import { Message } from '@/model/Message';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 import { AdvancedLists } from '@/model/Lists';
-import NEW_DAO from '@/lib/dao_n';
+import DAO from '@/lib/DAO';
 import { Birth } from '@/db/schema';
 import { AdvancedRooms } from '@/model/Room';
 
@@ -42,7 +42,6 @@ const upload = multer({ storage });
 
 // "GET /api/users"
 // 내 정보 조회
-// release
 apiUsersRouter.get(
   '/',
   async (
@@ -64,7 +63,6 @@ apiUsersRouter.get(
 
 // "POST /api/users"
 // 회원 가입
-// release
 apiUsersRouter.post(
   '/',
   upload.single('image'),
@@ -85,7 +83,7 @@ apiUsersRouter.post(
       return httpBadRequestResponse(res);
     }
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findUser = await dao.getUser({ id });
     if (findUser) {
       dao.release();
@@ -127,7 +125,6 @@ apiUsersRouter.post(
 
 // "GET /api/users/search"
 // 유저 검색
-// release
 apiUsersRouter.get(
   '/search',
   async (
@@ -155,7 +152,7 @@ apiUsersRouter.get(
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     let searchUserList = await dao.getUserList({ q });
     if (!searchUserList) {
       return httpInternalServerErrorResponse(res);
@@ -167,18 +164,18 @@ apiUsersRouter.get(
     }
 
     if (pf) {
-      const followList = await dao.getFollowList({ target: currentUser.id });
-      const followingList = await dao.getFollowList({ source: currentUser.id });
+      const followList = (
+        await dao.getFollowList({ target: currentUser.id })
+      )?.map((u) => u.source);
+      const followingList = (
+        await dao.getFollowList({ source: currentUser.id })
+      )?.map((u) => u.target);
       if (!followList || !followingList) {
         return httpInternalServerErrorResponse(res);
       }
 
-      const mappedFollowList = followList.map((u) => u.source);
-      const mappedFollowingList = followingList.map((u) => u.target);
-
       searchUserList = searchUserList.filter(
-        (u) =>
-          mappedFollowList.includes(u.id) || mappedFollowingList.includes(u.id)
+        (u) => followList.includes(u.id) || followingList.includes(u.id)
       );
     }
 
@@ -197,7 +194,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/followRecommends"
 // 팔로우 추천인 조회
-// release
 apiUsersRouter.get(
   '/followRecommends',
   async (
@@ -213,7 +209,7 @@ apiUsersRouter.get(
       req.query.size && ~~req.query.size !== 0 ? ~~req.query.size : 10;
     const { 'connect.sid': token } = req.cookies;
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const recommendsList = await dao.getUserList({});
     if (!recommendsList) {
       dao.release();
@@ -247,18 +243,17 @@ apiUsersRouter.get(
 
     const followist = await dao.getFollowList({ source: currentUser.id });
     dao.release();
-    if (!followist) {
-      return httpInternalServerErrorResponse(res);
+    if (followist) {
+      followist.forEach((f) => {
+        const index = recommendsList.findIndex((u) => u.id === f.target);
+        if (index > -1) {
+          recommendsList.splice(index, 1);
+        }
+      });
     }
-    followist.forEach((f) => {
-      const index = recommendsList.findIndex((u) => u.id === f.target);
-      if (index > -1) {
-        recommendsList.splice(index, 1);
-      }
-    });
 
     if (cursor) {
-      const index = recommendsList.findIndex((r) => (r.id = cursor));
+      const index = recommendsList.findIndex((r) => r.id === cursor);
       if (index > -1) {
         recommendsList.splice(0, index + 1);
       }
@@ -276,7 +271,6 @@ apiUsersRouter.get(
 
 // "POST /api/users/edit"
 // 프로필 수정
-// release
 apiUsersRouter.post(
   '/edit',
   upload.fields([
@@ -337,7 +331,7 @@ apiUsersRouter.post(
     const image = imageFiles ? imageFiles[0].filename : undefined;
     const banner = bannerFiles ? bannerFiles[0].filename : undefined;
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const updatedUser = await dao.updateUser({
       id: currentUser.id,
       nickname: updated.nickname ? nickname : undefined,
@@ -370,7 +364,6 @@ apiUsersRouter.post(
 
 // "DELETE /api/users/birth"
 // 유저 생일 삭제
-// release
 apiUsersRouter.delete(
   '/birth',
   async (
@@ -393,7 +386,7 @@ apiUsersRouter.delete(
       );
     }
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const updatedUser = await dao.deleteBirth({
       id: currentUser.id,
     });
@@ -405,7 +398,6 @@ apiUsersRouter.delete(
 
 // "GET /api/users/:id"
 // 특정 유저 정보 조회
-// release
 apiUsersRouter.get(
   '/:id',
   async (
@@ -415,7 +407,7 @@ apiUsersRouter.get(
     const { id } = req.params;
     if (!id) return httpBadRequestResponse(res);
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findUser = await dao.getUser({ id });
     dao.release();
     if (!findUser) {
@@ -428,12 +420,11 @@ apiUsersRouter.get(
 
 // "GET /api/users/:id/posts"
 // 특정 유저의 게시물 조회
-// release
 apiUsersRouter.get(
   '/:id/posts',
   async (
     req: TypedRequestQueryParams<
-      { cursor?: string; filter?: 'all' | 'reply' | 'media' | 'like' },
+      { cursor?: string; filter?: 'all' | 'reply' | 'media' },
       { id?: string }
     >,
     res: TypedResponse<{
@@ -447,7 +438,7 @@ apiUsersRouter.get(
     const pageSize = filter === 'media' ? 12 : 10;
     if (!id) return httpBadRequestResponse(res);
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findUser = await dao.getUser({ id });
     if (!findUser) {
       dao.release();
@@ -500,7 +491,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/:id/lists"
 // 특정 유저의 리스트 조회
-// release
 apiUsersRouter.get(
   '/:id/lists',
   async (
@@ -528,7 +518,7 @@ apiUsersRouter.get(
       return httpUnAuthorizedResponse(res);
     }
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findUser = await dao.getUser({ id });
     if (!findUser) {
       dao.release();
@@ -566,7 +556,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/:id/posts/count"
 // 특정 유저의 전체 게시물 카운트 조회
-// release
 apiUsersRouter.get(
   '/:id/posts/count',
   async (
@@ -580,7 +569,7 @@ apiUsersRouter.get(
     const { id } = req.params;
     if (!id) return httpBadRequestResponse(res);
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findUser = await dao.getUser({ id });
     if (!findUser) {
       dao.release();
@@ -610,7 +599,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/:id/follow"
 // 특정 유저 팔로우 정보
-// release
 apiUsersRouter.get(
   '/:id/follow',
   async (
@@ -638,7 +626,7 @@ apiUsersRouter.get(
     }
     if (!token) return httpUnAuthorizedResponse(res);
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findUser = await dao.getUser({ id });
     if (!findUser) {
       dao.release();
@@ -688,7 +676,6 @@ apiUsersRouter.get(
 
 // "POST /api/users/:id/follow"
 // 특정 유저 팔로우
-// release
 apiUsersRouter.post(
   '/:id/follow',
   async (
@@ -706,7 +693,7 @@ apiUsersRouter.post(
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const targetUser = await dao.getUser({ id });
     if (!targetUser) {
       dao.release();
@@ -739,7 +726,6 @@ apiUsersRouter.post(
 
 // "DELETE /api/users/:id/follow"
 // 특정 유저 언팔로우
-// release
 apiUsersRouter.delete(
   '/:id/follow',
   async (
@@ -757,7 +743,7 @@ apiUsersRouter.delete(
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const targetUser = await dao.getUser({ id });
     if (!targetUser) {
       dao.release();
@@ -793,7 +779,6 @@ apiUsersRouter.delete(
 
 // "GET /api/users/:id/rooms"
 // 특정 유저가 참여중인 채팅 리스트
-// release
 apiUsersRouter.get(
   '/:id/rooms',
   async (
@@ -813,7 +798,7 @@ apiUsersRouter.get(
 
     if (id !== currentUser.id) return httpForbiddenResponse(res);
 
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const roomList = await dao.getRoomsList({ userid: currentUser.id });
     dao.release();
     return httpSuccessResponse(res, { data: roomList });
@@ -823,7 +808,6 @@ apiUsersRouter.get(
 // "GET /api/users/:id/rooms/:target"
 // 특정 유저가 참여중인 채팅방의 메시지 조회
 // target : 상대방 아이디
-// release
 apiUsersRouter.get(
   '/:id/rooms/:target',
   async (
@@ -851,7 +835,7 @@ apiUsersRouter.get(
     if (id !== currentUser.id) return httpForbiddenResponse(res);
 
     const roomid = [id, target].sort().join('-');
-    const dao = new NEW_DAO();
+    const dao = new DAO();
     const findRoom = await dao.getRoomsList({ userid: currentUser.id, roomid });
     if (!findRoom) {
       dao.release();
