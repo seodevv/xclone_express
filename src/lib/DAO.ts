@@ -176,7 +176,11 @@ class DAO {
     }
   }
 
-  async getView({ postid }: { postid: Schemas['views']['postid'] }) {
+  async getView({
+    postid,
+  }: {
+    postid: Schemas['views']['postid'];
+  }): Promise<Views | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -204,7 +208,7 @@ class DAO {
     id: Schemas['lists']['id'];
     userid?: Schemas['lists']['userid'];
     make?: Schemas['lists']['make'];
-  }) {
+  }): Promise<AdvancedLists | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -235,7 +239,7 @@ class DAO {
     type: Schemas['listsdetail']['type'];
     userid?: Schemas['listsdetail']['userid'];
     postid?: Schemas['listsdetail']['postid'];
-  }) {
+  }): Promise<ListsDetail | undefined> {
     await this.init();
     if (!this.client) return;
     const where: Where<Schemas['listsdetail']>[] = [
@@ -254,7 +258,8 @@ class DAO {
         table: 'listsdetail',
         wheres: [where],
       });
-      const listsDetail = (await this.client.query(queryConfig)).rows[0];
+      const listsDetail = (await this.client.query<ListsDetail>(queryConfig))
+        .rows[0];
       return listsDetail;
     } catch (error) {
       console.error(error);
@@ -268,7 +273,7 @@ class DAO {
   }: {
     type: Schemas['hashtags']['type'];
     title: Schemas['hashtags']['title'];
-  }) {
+  }): Promise<HashTags | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -333,7 +338,11 @@ class DAO {
     }
   }
 
-  async getUserListWithIds({ userids }: { userids: string[] }) {
+  async getUserListWithIds({
+    userids,
+  }: {
+    userids: string[];
+  }): Promise<AdvancedUser[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -410,7 +419,7 @@ class DAO {
     parentid?: number;
     originalid?: number;
     quote?: boolean;
-  }) {
+  }): Promise<AdvancedPost[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -438,7 +447,7 @@ class DAO {
   }: {
     postids?: number[];
     userids?: string[];
-  }) {
+  }): Promise<AdvancedPost[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -482,7 +491,7 @@ class DAO {
   }: {
     type: Schemas['reactions']['type'];
     postid: Schemas['reactions']['postid'];
-  }) {
+  }): Promise<Reactions[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -506,7 +515,11 @@ class DAO {
     }
   }
 
-  async getBookmarkPostList({ userid }: { userid: Schemas['post']['userid'] }) {
+  async getBookmarkPostList({
+    userid,
+  }: {
+    userid: Schemas['post']['userid'];
+  }): Promise<AdvancedPost[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -527,7 +540,13 @@ class DAO {
     }
   }
 
-  async getLikeList({ userid, postid }: { userid?: string; postid?: number }) {
+  async getLikeList({
+    userid,
+    postid,
+  }: {
+    userid?: string;
+    postid?: number;
+  }): Promise<Reactions[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -564,7 +583,7 @@ class DAO {
     make?: Schemas['lists']['make'];
     filter?: 'all' | 'own' | 'memberships';
     q?: string;
-  }) {
+  }): Promise<AdvancedLists[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -593,7 +612,7 @@ class DAO {
   }: {
     type?: Schemas['listsdetail']['type'];
     userid?: Schemas['listsdetail']['userid'];
-  }) {
+  }): Promise<ListsDetail[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -677,7 +696,11 @@ class DAO {
     }
   }
 
-  async getMessagesList({ roomid }: { roomid: string }) {
+  async getMessagesList({
+    roomid,
+  }: {
+    roomid: string;
+  }): Promise<AdvancedMessages[] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -707,7 +730,7 @@ class DAO {
   }: Pick<
     Schemas['users'],
     'id' | 'password' | 'nickname' | 'birth' | 'image'
-  >) {
+  >): Promise<AdvancedUser | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -747,7 +770,7 @@ class DAO {
     parentid?: Schemas['post']['parentid'];
     originalid?: Schemas['post']['originalid'];
     quote?: Schemas['post']['quote'];
-  }) {
+  }): Promise<AdvancedPost | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -868,7 +891,7 @@ class DAO {
     image?: string;
     banner?: string;
     verified?: Verified;
-  }) {
+  }): Promise<AdvancedUser | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -1012,7 +1035,7 @@ class DAO {
     }
   }
 
-  async deleteBirth({ id }: { id: string }) {
+  async deleteBirth({ id }: { id: string }): Promise<AdvancedUser | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -1034,7 +1057,7 @@ class DAO {
   }: {
     postid?: Schemas['post']['postid'];
     postids?: Schemas['post']['postid'][];
-  }) {
+  }): Promise<boolean | undefined> {
     await this.init();
     if (!this.client) return false;
 
@@ -1066,7 +1089,11 @@ class DAO {
     }
   }
 
-  async deleteLists({ id }: { id: Schemas['lists']['id'] }) {
+  async deleteLists({
+    id,
+  }: {
+    id: Schemas['lists']['id'];
+  }): Promise<boolean | undefined> {
     await this.init();
     if (!this.client) return false;
 
@@ -1092,7 +1119,7 @@ class DAO {
     type: 'follow' | 'unfollow';
     source: string;
     target: string;
-  }) {
+  }): Promise<AdvancedUser | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -1160,7 +1187,7 @@ class DAO {
     postid: number;
     commentid?: number;
     quote?: boolean;
-  }) {
+  }): Promise<AdvancedPost | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -1243,7 +1270,7 @@ class DAO {
     postid: Schemas['views']['postid'];
     key?: keyof Omit<Schemas['views'], 'postid'>;
     create?: boolean;
-  }) {
+  }): Promise<AdvancedPost | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -1294,7 +1321,7 @@ class DAO {
     type: Schemas['listsdetail']['type'];
     userid: Schemas['listsdetail']['userid'];
     postid?: Schemas['listsdetail']['postid'];
-  }) {
+  }): Promise<boolean | undefined> {
     await this.init();
     if (!this.client) return false;
 
@@ -1340,7 +1367,7 @@ class DAO {
     }
   }
 
-  async hashtagAnalysis(content: string) {
+  async hashtagAnalysis(content: string): Promise<void> {
     await this.init();
     if (!this.client) return;
     if (!content || !content.trim()) return;
@@ -1392,7 +1419,7 @@ class DAO {
     }
   }
 
-  async morphologyAnalysis(content: string) {
+  async morphologyAnalysis(content: string): Promise<void> {
     await this.init();
     if (!this.client) return;
     const API_URL = process.env.AI_OPEN_ETRI_API_URL;
