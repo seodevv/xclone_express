@@ -67,7 +67,7 @@ export interface Schemas {
     pinned: boolean;
     scope: 'every' | 'follow' | 'verified' | 'only';
   };
-  advancedPost: {
+  advancedpost: {
     postid: number;
     userid: string;
     content: string;
@@ -84,7 +84,7 @@ export interface Schemas {
       User: SafeUser;
       images: PostImage[];
     } | null;
-    Original: Schemas['advancedPost'] | null;
+    Original: Schemas['advancedpost'] | null;
     Hearts: UserId[];
     Reposts: UserId[];
     Comments: UserId[];
@@ -122,7 +122,7 @@ export interface Schemas {
     make: 'private' | 'public';
     createat: Date;
   };
-  advancedLists: {
+  advancedlists: {
     id: number;
     userid: string;
     name: string;
@@ -151,7 +151,7 @@ export interface Schemas {
     createat: Date;
     lastmessageid: number | null;
   };
-  advancedRooms: {
+  advancedrooms: {
     id: string;
     receiverid: string;
     senderid: string;
@@ -169,7 +169,7 @@ export interface Schemas {
     content: string;
     createat: Date;
   };
-  advancedMessages: {
+  advancedmessages: {
     id: number;
     roomid: string;
     senderid: string;

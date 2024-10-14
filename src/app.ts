@@ -8,6 +8,7 @@ import https from 'https';
 import apiRouter from '@/routes/api';
 import morgan from 'morgan';
 import { Pool } from 'pg';
+import initializeDatabase from '@/db/initilizer';
 
 const app = express();
 const host = process.env.SERVER_HOST || '0.0.0.0';
@@ -17,17 +18,10 @@ if (!fs.pathExistsSync(uploadPath)) {
   fs.mkdirSync(uploadPath);
 }
 
-export const pool = new Pool({
-  host: 'localhost',
-  port: 5432,
-  user: 'xclone',
-  password: 'xclone',
-  database: 'xclone',
-});
+export const pool = new Pool();
 
 pool.on('error', (err) => {
-  console.error('[pg][error event]\n', err);
-  process.exit(-1);
+  console.error('[node-postgres][error]\n', err);
 });
 
 app.use(
@@ -53,7 +47,8 @@ const options: https.ServerOptions = {
 };
 
 const server = https.createServer(options, app);
-server.listen(port, host, () => {
+server.listen(port, host, async () => {
+  await initializeDatabase(pool);
   console.log(`server is running on : https://${host}:${port}`);
 });
 

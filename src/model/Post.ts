@@ -1,7 +1,7 @@
 import { PostImage, SafeUser, Schemas, UserId } from '@/db/schema';
 
 export type Post = Schemas['post'];
-export type AdvancedPost = Schemas['advancedPost'];
+export type AdvancedPost = Schemas['advancedpost'];
 
 export interface GifType {
   type: 'gif';

@@ -70,7 +70,6 @@ apiPostsRouter.get(
 
     const dao = new DAO();
     let searchPostList = await dao.getPostList({});
-
     if (!searchPostList) {
       dao.release();
       return httpInternalServerErrorResponse(res);
@@ -436,6 +435,7 @@ apiPostsRouter.get(
 
     const dao = new DAO();
     const findPost = await dao.getPost({ userid: userid, postid: ~~id });
+    dao.release();
     if (!findPost) {
       return httpNotFoundResponse(res, 'Post not found');
     }

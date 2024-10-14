@@ -155,10 +155,12 @@ apiUsersRouter.get(
     const dao = new DAO();
     let searchUserList = await dao.getUserList({ q });
     if (!searchUserList) {
+      dao.release();
       return httpInternalServerErrorResponse(res);
     }
 
     if (cursor) {
+      dao.release();
       const findIndex = searchUserList.findIndex((u) => u.id === cursor);
       searchUserList.splice(0, findIndex + 1);
     }
@@ -170,7 +172,9 @@ apiUsersRouter.get(
       const followingList = (
         await dao.getFollowList({ source: currentUser.id })
       )?.map((u) => u.target);
+
       if (!followList || !followingList) {
+        dao.release();
         return httpInternalServerErrorResponse(res);
       }
 
@@ -178,6 +182,7 @@ apiUsersRouter.get(
         (u) => followList.includes(u.id) || followingList.includes(u.id)
       );
     }
+    dao.release();
 
     searchUserList.sort((a, b) =>
       a._count.Followers > b._count.Followers ? -1 : 1

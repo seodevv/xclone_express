@@ -83,7 +83,7 @@ class DAO {
     await this.init();
     if (!this.client) return;
 
-    const where: Where<Schemas['advancedPost']>[] = [
+    const where: Where<Schemas['advancedpost']>[] = [
       { field: 'postid', value: postid },
     ];
     if (typeof userid !== 'undefined') {
@@ -92,7 +92,7 @@ class DAO {
 
     try {
       const selectQueryConfig = selectQuery({
-        table: 'advancedPost',
+        table: 'advancedpost',
         wheres: [where],
       });
       console.log('[getPost]\n', selectQueryConfig.text);
@@ -451,12 +451,12 @@ class DAO {
     await this.init();
     if (!this.client) return;
 
-    const wheres: Where<Schemas['advancedPost']>[][] = [];
+    const wheres: Where<Schemas['advancedpost']>[][] = [];
     if (typeof postids !== 'undefined') {
       if (postids.length === 0) {
         return [] as AdvancedPost[];
       }
-      const where: Where<Schemas['advancedPost']>[] = [];
+      const where: Where<Schemas['advancedpost']>[] = [];
       postids.forEach((postid) => {
         where.push({ field: 'postid', value: postid, logic: 'OR' });
       });
@@ -465,7 +465,7 @@ class DAO {
       if (userids.length === 0) {
         return [] as AdvancedPost[];
       }
-      const where: Where<Schemas['advancedPost']>[] = [];
+      const where: Where<Schemas['advancedpost']>[] = [];
       userids.forEach((userid) => {
         where.push({ field: 'userid', value: userid, logic: 'OR' });
       });
@@ -473,7 +473,7 @@ class DAO {
     }
 
     try {
-      const queryConfig = selectQuery({ table: 'advancedPost', wheres });
+      const queryConfig = selectQuery({ table: 'advancedpost', wheres });
       console.log('[getPostListWithIds]\n', queryConfig.text);
       const postListWithIds = (
         await this.client.query<AdvancedPost>(queryConfig)
@@ -525,7 +525,7 @@ class DAO {
 
     try {
       const queryConfig = selectQuery({
-        table: 'advancedPost',
+        table: 'advancedpost',
       });
 
       queryConfig.text += 'WHERE\n';
@@ -677,7 +677,7 @@ class DAO {
 
     try {
       const queryConfig = selectQuery({
-        table: 'advancedRooms',
+        table: 'advancedrooms',
         wheres: [
           [
             { field: 'receiverid', value: userid },
@@ -706,7 +706,7 @@ class DAO {
 
     try {
       const queryConfig = selectQuery({
-        table: 'advancedMessages',
+        table: 'advancedmessages',
         wheres: [[{ field: 'roomid', value: roomid }]],
         order: [{ field: 'createat', by: 'DESC' }],
       });

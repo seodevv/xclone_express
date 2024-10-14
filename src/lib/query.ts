@@ -311,7 +311,7 @@ export const selectPostsQuery = ({
     text: '',
     values: [],
   };
-  const wheres: Where<Schemas['advancedPost']>[][] = [[]];
+  const wheres: Where<Schemas['advancedpost']>[][] = [[]];
   let index = 0;
 
   if (typeof userid !== 'undefined') {
@@ -327,7 +327,7 @@ export const selectPostsQuery = ({
     wheres[index].push({ field: 'quote', value: quote });
   }
 
-  queryConfig.text = makeSelectField('advancedPost');
+  queryConfig.text = makeSelectField('advancedpost');
   const { text, values } = makeWhere(queryConfig, wheres);
   queryConfig.text = text;
   queryConfig.values = values;
@@ -387,7 +387,7 @@ left outer join (
 	ld.listid = al.id
 `;
 
-  const where: Where<Schemas['advancedLists']>[] = [];
+  const where: Where<Schemas['advancedlists']>[] = [];
   if (typeof id !== 'undefined') {
     where.push({ tableAlias: 'al', field: 'id', value: id });
   }
