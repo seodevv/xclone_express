@@ -13,7 +13,7 @@ import {
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
 import {
-  COOKIE_OPTIONS,
+  COOKIE_CLEAR_OPTIONS,
   decodingUserToken,
   delay,
   removingFiles,
@@ -64,7 +64,7 @@ apiPostsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -182,7 +182,7 @@ apiPostsRouter.post(
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -215,7 +215,7 @@ apiPostsRouter.post(
 apiPostsRouter.get(
   '/recommends',
   async (
-    req: TypedRequestQuery<{ cursor?: string }>,
+    req: TypedRequestQuery<{ cursor?: string; size?: string; filter?: string }>,
     res: TypedResponse<{
       data?: AdvancedPost[];
       nextCursor?: number;
@@ -223,11 +223,17 @@ apiPostsRouter.get(
     }>
   ) => {
     await delay(1000);
-    const { cursor = '' } = req.query;
-    const pageSize = 10;
+    const { cursor = '', filter = 'all', size = '10' } = req.query;
+    const pageSize = REGEX_NUMBER_ONLY.test(size)
+      ? ~~size !== 0
+        ? ~~size
+        : 10
+      : 10;
 
     const dao = new DAO();
-    let recommendsList = await dao.getPostList({});
+    let recommendsList = await dao.getPostList({
+      filter: filter === 'media' ? 'media' : 'all',
+    });
     dao.release();
     if (!recommendsList) {
       return httpInternalServerErrorResponse(res);
@@ -273,7 +279,7 @@ apiPostsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -334,7 +340,7 @@ apiPostsRouter.get(
 
     const findUser = await decodingUserToken(token);
     if (!findUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpNotFoundResponse(res);
     }
 
@@ -390,7 +396,7 @@ apiPostsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -460,7 +466,7 @@ apiPostsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -515,7 +521,7 @@ apiPostsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -560,7 +566,7 @@ apiPostsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -605,7 +611,7 @@ apiPostsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -656,7 +662,7 @@ apiPostsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -772,7 +778,7 @@ apiPostsRouter.post(
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -820,7 +826,7 @@ apiPostsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -870,7 +876,7 @@ apiPostsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -918,7 +924,7 @@ apiPostsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -963,7 +969,7 @@ apiPostsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1022,7 +1028,7 @@ apiPostsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1150,7 +1156,7 @@ apiPostsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1194,7 +1200,7 @@ apiPostsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1247,7 +1253,7 @@ apiPostsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 

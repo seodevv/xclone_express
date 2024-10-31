@@ -95,7 +95,7 @@ class DAO {
         table: 'advancedpost',
         wheres: [where],
       });
-      console.log('[getPost]\n', selectQueryConfig.text);
+      // console.log('[getPost]\n', selectQueryConfig.text);
       const post = (await this.client.query<AdvancedPost>(selectQueryConfig))
         .rows[0];
 
@@ -129,7 +129,7 @@ class DAO {
           ],
         ],
       });
-      console.log('[getRepostPost]\n', queryConfig.text);
+      // console.log('[getRepostPost]\n', queryConfig.text);
       const repost = (await this.client.query<Post>(queryConfig)).rows[0];
       return repost;
     } catch (error) {
@@ -167,7 +167,7 @@ class DAO {
 
     try {
       const queryConfig = selectQuery({ table: 'reactions', wheres: [where] });
-      console.log('[getReactions]\n', queryConfig.text);
+      // console.log('[getReactions]\n', queryConfig.text);
       const reaction = (await this.client.query<Reactions>(queryConfig))
         .rows[0];
       return reaction;
@@ -189,7 +189,7 @@ class DAO {
         table: 'views',
         wheres: [[{ field: 'postid', value: postid }]],
       });
-      console.log('[getView]\n', queryConfig);
+      // console.log('[getView]\n', queryConfig);
       const view = (await this.client.query<Views>(queryConfig)).rows[0];
       return view;
     } catch (error) {
@@ -219,7 +219,7 @@ class DAO {
         userid,
         make,
       });
-      console.log('[getLists]\n', queryConfig.text);
+      // console.log('[getLists]\n', queryConfig.text);
       const lists = (await this.client.query<AdvancedLists>(queryConfig))
         .rows[0];
       return lists;
@@ -290,7 +290,7 @@ class DAO {
           ],
         ],
       });
-      console.log('[getHashTag]\n', queryConfig.text);
+      // console.log('[getHashTag]\n', queryConfig.text);
       const hashtag = (await this.client.query<HashTags>(queryConfig)).rows[0];
       return hashtag;
     } catch (error) {
@@ -301,8 +301,10 @@ class DAO {
 
   async getUserList({
     q,
+    verified,
   }: {
     q?: string;
+    verified?: boolean;
   }): Promise<AdvancedUser[] | undefined> {
     await this.init();
     if (!this.client) return;
@@ -323,12 +325,18 @@ class DAO {
       wheres.push(where);
     }
 
+    if (typeof verified !== 'undefined') {
+      const where: Where<Schemas['users']>[] = [];
+      where.push({ field: 'verified', operator: 'is not null' });
+      wheres.push(where);
+    }
+
     try {
       const queryConfig = selectUsersQuery({
         wheres,
         order: [{ field: 'regist' }],
       });
-      console.log('[getUserList]\n', queryConfig.text);
+      // console.log('[getUserList]\n', queryConfig.text);
       const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
         .rows;
       return queryResult;
@@ -359,7 +367,7 @@ class DAO {
         wheres: [where],
         order: [{ field: 'regist' }],
       });
-      console.log('[getUserListWithIds]\n', queryConfig.text);
+      // console.log('[getUserListWithIds]\n', queryConfig.text);
       const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
         .rows;
       return queryResult;
@@ -400,7 +408,7 @@ class DAO {
         table: 'follow',
         wheres,
       });
-      console.log('[getFollowList]\n', queryConfig.text);
+      // console.log('[getFollowList]\n', queryConfig.text);
       const queryResult = (await this.client.query<Follow>(queryConfig)).rows;
       return queryResult;
     } catch (error) {
@@ -414,11 +422,13 @@ class DAO {
     parentid,
     originalid,
     quote,
+    filter = 'all',
   }: {
     userid?: string;
     parentid?: number;
     originalid?: number;
     quote?: boolean;
+    filter?: 'all' | 'media';
   }): Promise<AdvancedPost[] | undefined> {
     await this.init();
     if (!this.client) return;
@@ -429,8 +439,9 @@ class DAO {
         parentid,
         originalid,
         quote,
+        filter,
       });
-      console.log('[getPostList]\n', queryConfig.text);
+      // console.log('[getPostList]\n', queryConfig.text);
       const postList = (await this.client.query<AdvancedPost>(queryConfig))
         .rows;
 
@@ -474,7 +485,7 @@ class DAO {
 
     try {
       const queryConfig = selectQuery({ table: 'advancedpost', wheres });
-      console.log('[getPostListWithIds]\n', queryConfig.text);
+      // console.log('[getPostListWithIds]\n', queryConfig.text);
       const postListWithIds = (
         await this.client.query<AdvancedPost>(queryConfig)
       ).rows;
@@ -505,7 +516,7 @@ class DAO {
           ],
         ],
       });
-      console.log('[getReactionList]\n', queryConfig.text);
+      // console.log('[getReactionList]\n', queryConfig.text);
       const reactionList = (await this.client.query<Reactions>(queryConfig))
         .rows;
       return reactionList;
@@ -530,7 +541,7 @@ class DAO {
 
       queryConfig.text += 'WHERE\n';
       queryConfig.text += `\t"Bookmarks"::text like '%"${userid}"%'`;
-      console.log('[getBookmarkPosts]\n', queryConfig.text);
+      // console.log('[getBookmarkPosts]\n', queryConfig.text);
       const postList = (await this.client.query<AdvancedPost>(queryConfig))
         .rows;
       return postList;
@@ -562,7 +573,7 @@ class DAO {
 
     try {
       const queryConfig = selectQuery({ table: 'reactions', wheres });
-      console.log('[getLikeList]\n', queryConfig.text);
+      // console.log('[getLikeList]\n', queryConfig.text);
       const likeList = (await this.client.query<Reactions>(queryConfig)).rows;
       return likeList;
     } catch (error) {
@@ -595,7 +606,7 @@ class DAO {
         filter,
         q,
       });
-      console.log('getListsList', queryConfig.text);
+      // console.log('getListsList', queryConfig.text);
 
       const listsList = (await this.client.query<AdvancedLists>(queryConfig))
         .rows;
@@ -635,7 +646,7 @@ class DAO {
 
     try {
       const queryConfig = selectQuery({ table: 'listsdetail', wheres });
-      console.log('[getListsDetailList]\n', queryConfig.text);
+      // console.log('[getListsDetailList]\n', queryConfig.text);
       const listsDetailList = (
         await this.client.query<ListsDetail>(queryConfig)
       ).rows;
@@ -656,7 +667,7 @@ class DAO {
         table: 'hashtags',
         order: [{ field: 'count', by: 'DESC' }],
       });
-      console.log('[getHashTagList]\n', queryConfig.text);
+      // console.log('[getHashTagList]\n', queryConfig.text);
       const hashtagList = (await this.client.query(queryConfig)).rows;
       return hashtagList;
     } catch (error) {
@@ -686,7 +697,7 @@ class DAO {
           typeof roomid !== 'undefined' ? [{ field: 'id', value: roomid }] : [],
         ],
       });
-      console.log('[getRoomList]\n', queryConfig.text);
+      // console.log('[getRoomList]\n', queryConfig.text);
       const roomsList = (await this.client.query<AdvancedRooms>(queryConfig))
         .rows;
       return roomsList;
@@ -710,7 +721,7 @@ class DAO {
         wheres: [[{ field: 'roomid', value: roomid }]],
         order: [{ field: 'createat', by: 'DESC' }],
       });
-      console.log('[getMessagesList]\n', queryConfig.text);
+      // console.log('[getMessagesList]\n', queryConfig.text);
       const messagesList = (
         await this.client.query<AdvancedMessages>(queryConfig)
       ).rows;
@@ -742,7 +753,7 @@ class DAO {
         birth,
         image,
       });
-      console.log('[createUser]\n', queryConfig.text);
+      // console.log('[createUser]\n', queryConfig.text);
       await this.client.query(queryConfig);
       const user = await this.getUser({ id });
       return user;
@@ -818,7 +829,7 @@ class DAO {
           typeof quote !== 'undefined' ? quote : false,
         ],
       });
-      console.log('[createPost]\n', queryConfig);
+      // console.log('[createPost]\n', queryConfig);
       const inserted = (await this.client.query<Schemas['post']>(queryConfig))
         .rows[0];
       this.viewsHandler({ postid: inserted.postid, create: true });
@@ -870,7 +881,7 @@ class DAO {
           make,
         ],
       });
-      console.log('[createList]\n', queryConfig);
+      // console.log('[createList]\n', queryConfig);
       const inserted = (await this.client.query<Schemas['lists']>(queryConfig))
         .rows[0];
       const createLists = await this.getLists({ sessionid, id: inserted.id });
@@ -897,12 +908,31 @@ class DAO {
 
     try {
       const queryConfig = updateUsersQuery(config);
-      console.log('[updateUser]\n', queryConfig.text);
+      // console.log('[updateUser]\n', queryConfig.text);
       await this.client.query(queryConfig);
       const user = await this.getUser({ id: config.id });
       return user;
     } catch (error) {
-      console.log(error);
+      console.error(error);
+      return;
+    }
+  }
+
+  async updatePassword({ id, password }: { id: string; password: string }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = updateQuery({
+        table: 'users',
+        update: { fields: ['password'], values: [password] },
+        wheres: [[{ field: 'id', value: id }]],
+      });
+      console.log(queryConfig.text);
+      await this.client.query(queryConfig);
+      return await this.getUser({ id });
+    } catch (error) {
+      console.error(error);
       return;
     }
   }
@@ -961,7 +991,7 @@ class DAO {
           ],
         ],
       });
-      console.log('[updatePost]\n', queryConfig.text);
+      // console.log('[updatePost]\n', queryConfig.text);
       await this.client.query(queryConfig);
       const updatedPost = await this.getPost({ userid, postid });
       return updatedPost;
@@ -1026,7 +1056,7 @@ class DAO {
           ],
         ],
       });
-      console.log('[updateLists]\n', queryConfig.text);
+      // console.log('[updateLists]\n', queryConfig.text);
       await this.client.query(queryConfig);
       return await this.getLists({ sessionid: userid, id, userid: userid });
     } catch (error) {
@@ -1041,12 +1071,12 @@ class DAO {
 
     try {
       const queryConfig = updateUsersQuery({ id, birth: null });
-      console.log(queryConfig);
+      // console.log(queryConfig);
       await this.client.query(queryConfig);
       const user = await this.getUser({ id });
       return user;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return;
     }
   }
@@ -1080,7 +1110,7 @@ class DAO {
         table: 'post',
         wheres: [where],
       });
-      console.log('[deletePost]\n', queryConfig.text);
+      // console.log('[deletePost]\n', queryConfig.text);
       await this.client.query(queryConfig);
       return true;
     } catch (error) {
@@ -1102,7 +1132,7 @@ class DAO {
         table: 'lists',
         wheres: [[{ field: 'id', value: id }]],
       });
-      console.log('[deleteLists]\n', queryConfig.text);
+      // console.log('[deleteLists]\n', queryConfig.text);
       await this.client.query(queryConfig);
       return true;
     } catch (error) {
@@ -1133,7 +1163,7 @@ class DAO {
           ],
         ],
       });
-      console.log('[followHandler]\n', selectQueryConfig.text);
+      // console.log('[followHandler]\n', selectQueryConfig.text);
       const isFollow = (await this.client.query<Follow>(selectQueryConfig))
         .rows[0];
 
@@ -1145,7 +1175,7 @@ class DAO {
               fields: ['source', 'target'],
               values: [source, target],
             });
-            console.log(insertQueryConfig.text);
+            // console.log(insertQueryConfig.text);
             await this.client.query(insertQueryConfig);
           }
           break;
@@ -1160,7 +1190,7 @@ class DAO {
                 ],
               ],
             });
-            console.log(deleteQueryConfig.text);
+            // console.log(deleteQueryConfig.text);
             await this.client.query(deleteQueryConfig);
           }
       }
@@ -1222,7 +1252,7 @@ class DAO {
               fields,
               values,
             });
-            console.log('[reactionHandler][post]\n', insertQueryConfig.text);
+            // console.log('[reactionHandler][post]\n', insertQueryConfig.text);
 
             await this.client.query(insertQueryConfig);
             break;
@@ -1246,7 +1276,7 @@ class DAO {
               table: 'reactions',
               wheres: [where],
             });
-            console.log('[reactionHandler][delete]\n', deleteQueryConfig.text);
+            // console.log('[reactionHandler][delete]\n', deleteQueryConfig.text);
 
             await this.client.query(deleteQueryConfig);
           }
@@ -1289,7 +1319,7 @@ class DAO {
           },
           wheres: [[{ field: 'postid', value: findView.postid }]],
         });
-        console.log('[viewsHandler][update]\n', updateQueryConfig.text);
+        // console.log('[viewsHandler][update]\n', updateQueryConfig.text);
         await this.client.query(updateQueryConfig);
       } else {
         const insertQueryConfig = insertQuery({
@@ -1297,7 +1327,7 @@ class DAO {
           fields: ['postid', 'impressions'],
           values: [postid, create ? 0 : 1],
         });
-        console.log('[viewsHandler][insert]\n', insertQueryConfig.text);
+        // console.log('[viewsHandler][insert]\n', insertQueryConfig.text);
         await this.client.query(insertQueryConfig);
       }
 
@@ -1338,7 +1368,7 @@ class DAO {
               typeof postid !== 'undefined' ? postid : null,
             ],
           });
-          console.log('[listsDetailHandler][post]\n', queryConfig.text);
+          // console.log('[listsDetailHandler][post]\n', queryConfig.text);
           await this.client.query(queryConfig);
           return true;
         }
@@ -1353,7 +1383,7 @@ class DAO {
               ],
             ],
           });
-          console.log('[listsDetailHandler][delete]\n', queryConfig.text);
+          // console.log('[listsDetailHandler][delete]\n', queryConfig.text);
           await this.client.query(queryConfig);
           return true;
         }
@@ -1395,7 +1425,7 @@ class DAO {
                 ],
               ],
             });
-            console.log('[hashtagAnalysis]\n', updateQueryConfig.text);
+            // console.log('[hashtagAnalysis]\n', updateQueryConfig.text);
 
             this.client.query(updateQueryConfig);
           } else {
@@ -1405,7 +1435,7 @@ class DAO {
               values: ['tag', tag],
             });
 
-            console.log('[hashtagAnalysis]\n', insertQueryConfig.text);
+            // console.log('[hashtagAnalysis]\n', insertQueryConfig.text);
 
             this.client.query(insertQueryConfig);
           }
@@ -1469,7 +1499,7 @@ class DAO {
                   ],
                 ],
               });
-              console.log('[morphologyAnalysis]\n', updateQueryConfig.text);
+              // console.log('[morphologyAnalysis]\n', updateQueryConfig.text);
               this.client.query(updateQueryConfig);
             } else {
               const insertQueryConfig = insertQuery({
@@ -1477,7 +1507,7 @@ class DAO {
                 fields: ['type', 'title', 'weight'],
                 values: ['word', morp.lemma, morp.weight],
               });
-              console.log('[morphologyAnalysis]\n', insertQueryConfig.text);
+              // console.log('[morphologyAnalysis]\n', insertQueryConfig.text);
               this.client.query(insertQueryConfig);
             }
           } catch (error) {

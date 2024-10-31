@@ -12,10 +12,13 @@ import {
   httpInternalServerErrorResponse,
   httpNotFoundResponse,
   httpSuccessResponse,
+  httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
 import { uploadPath } from '@/app';
 import {
+  COOKIE_CLEAR_OPTIONS,
   COOKIE_OPTIONS,
+  decodingUserToken,
   delay,
   encodingString,
   generateUserToken,
@@ -149,9 +152,68 @@ apiRouter.post(
 apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
-    res.cookie('connect.sid', '', COOKIE_OPTIONS);
-    res.clearCookie('connect.sid');
+    res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
     return httpSuccessResponse(res, { message: 'Logout successful' });
+  }
+);
+
+// "POST /api/confirm"
+// 패스워드 체크
+apiRouter.post(
+  '/confirm',
+  async (
+    req: TypedRequestBody<{ password?: string }>,
+    res: TypedResponse<{ data?: AdvancedUser; message: string }>
+  ) => {
+    await delay(1000);
+    const password = req.body.password;
+    const { 'connect.sid': token } = req.cookies;
+    if (!password) return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = await decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.clearCookie('connect.sid', COOKIE_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const checkUser = await dao.getUser({ id: currentUser.id, password });
+    dao.release();
+    if (checkUser) {
+      return httpSuccessResponse(res, { data: checkUser });
+    } else {
+      return httpNotFoundResponse(res);
+    }
+  }
+);
+
+// "POST /api/password"
+// 패스워드 변경
+apiRouter.post(
+  '/password',
+  async (
+    req: TypedRequestBody<{ password?: string }>,
+    res: TypedResponse<{ message: string }>
+  ) => {
+    const password = req.body.password;
+    const { 'connect.sid': token } = req.cookies;
+    if (!password) return httpBadRequestResponse(res);
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = await decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      return httpUnAuthorizedResponse(res);
+    }
+
+    const dao = new DAO();
+    const updatedUser = await dao.updatePassword({
+      id: currentUser.id,
+      password,
+    });
+    return httpSuccessResponse(res, {});
   }
 );
 

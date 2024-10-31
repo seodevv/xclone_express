@@ -6,7 +6,7 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc && tsc-alias",
-    "build:restart": "xcopy .\\dist\\data .\\src\\data /Y && tsc && tsc-alias && pm2 restart pm2.config.js && pm2 logs",
+    "build:restart": "tsc && tsc-alias && pm2 restart pm2.config.js && pm2 logs",
     "start": "node ./dist/app.js",
     "dev": "npx tsx watch ./src/app.ts",
     "pm2": "pm2 start pm2.config.js",
@@ -23,7 +23,8 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "socket.io": "^4.8.0"
   },
   "devDependencies": {
     "@types/cookie-parser": "^1.4.7",

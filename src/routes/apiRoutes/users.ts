@@ -20,6 +20,7 @@ import {
   delay,
   COOKIE_OPTIONS,
   removingFiles,
+  COOKIE_CLEAR_OPTIONS,
 } from '@/lib/common';
 import {
   TypedRequestBody,
@@ -53,7 +54,7 @@ apiUsersRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -148,7 +149,7 @@ apiUsersRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -202,7 +203,7 @@ apiUsersRouter.get(
 apiUsersRouter.get(
   '/followRecommends',
   async (
-    req: TypedRequestQuery<{ cursor?: string; size?: string }>,
+    req: TypedRequestQuery<{ cursor?: string; size?: string; mode?: string }>,
     res: TypedResponse<{
       data?: AdvancedUser[];
       nextCursor?: string;
@@ -210,12 +211,15 @@ apiUsersRouter.get(
     }>
   ) => {
     const cursor = req.query.cursor;
+    const mode = req.query.mode || 'all';
     const pageSize =
       req.query.size && ~~req.query.size !== 0 ? ~~req.query.size : 10;
     const { 'connect.sid': token } = req.cookies;
 
     const dao = new DAO();
-    const recommendsList = await dao.getUserList({});
+    const recommendsList = await dao.getUserList({
+      verified: mode === 'creator' ? true : undefined,
+    });
     if (!recommendsList) {
       dao.release();
       return httpInternalServerErrorResponse(res);
@@ -233,7 +237,7 @@ apiUsersRouter.get(
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       dao.release();
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       res.clearCookie('connect.sid');
       recommendsList.splice(pageSize);
       return httpSuccessResponse(res, { data: recommendsList });
@@ -322,7 +326,7 @@ apiUsersRouter.post(
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -380,7 +384,7 @@ apiUsersRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -519,7 +523,7 @@ apiUsersRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -694,7 +698,7 @@ apiUsersRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -744,7 +748,7 @@ apiUsersRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -797,7 +801,7 @@ apiUsersRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -834,7 +838,7 @@ apiUsersRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
     if (id !== currentUser.id) return httpForbiddenResponse(res);

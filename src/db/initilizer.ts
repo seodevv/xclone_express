@@ -11,7 +11,8 @@ export default async function initializeDatabase(pool: Pool) {
   for (const table in SCHEMA_INIT) {
     if (!isTable(table)) continue;
 
-    Object.entries(SCHEMA_INIT[table].columns).forEach(([k, v]) => {
+    const tableSchema = SCHEMA_INIT[table];
+    Object.entries(tableSchema.columns).forEach(([k, v]) => {
       if (v.fkey) {
         fkeys.push({ source: { table: table, column: k }, target: v.fkey });
       }
@@ -20,11 +21,11 @@ export default async function initializeDatabase(pool: Pool) {
     const checkTable = await getTable(pool, table);
     if (checkTable) continue;
 
-    if (SCHEMA_INIT[table].type) {
-      const { name, values } = SCHEMA_INIT[table].type;
-      const checkType = await getType(pool, name);
+    if (typeof tableSchema.type !== 'undefined') {
+      const type = tableSchema.type;
+      const checkType = await getType(pool, type.name);
       if (!checkType) {
-        await createType(pool, { name, values });
+        await createType(pool, { name: type.name, values: type.values });
       }
     }
 

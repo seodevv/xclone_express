@@ -4,7 +4,7 @@ import {
   httpSuccessResponse,
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
-import { COOKIE_OPTIONS, decodingUserToken } from '@/lib/common';
+import { COOKIE_CLEAR_OPTIONS, decodingUserToken } from '@/lib/common';
 import { TypedRequestQuery } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
 import { HashTags } from '@/model/Hashtag';
@@ -27,7 +27,7 @@ apiHashtagsRouter.get(
 
     const currentUser = decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 

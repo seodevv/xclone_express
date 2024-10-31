@@ -15,6 +15,14 @@ export const COOKIE_OPTIONS: CookieOptions = {
   secure: true,
 };
 
+export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
+  maxAge: 0,
+  httpOnly: true,
+  path: '/',
+  sameSite: 'none',
+  secure: true,
+};
+
 export const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadPath);

@@ -190,7 +190,9 @@ export type Operator =
   | 'not in'
   | 'like'
   | 'ilike'
-  | 'not like';
+  | 'not like'
+  | 'is null'
+  | 'is not null';
 
 export type Field<TableSchema> = keyof TableSchema;
 
@@ -198,7 +200,7 @@ export interface Where<TableSchema> {
   tableAlias?: string;
   field: keyof TableSchema;
   operator?: Operator;
-  value: any;
+  value?: any;
   logic?: 'AND' | 'OR';
 }
 

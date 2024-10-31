@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'path';
 import { AdvancedLists } from '@/model/Lists';
 import {
-  COOKIE_OPTIONS,
+  COOKIE_CLEAR_OPTIONS,
   decodingUserToken,
   delay,
   IMAGE_DEFAULT_LISTS,
@@ -56,7 +56,7 @@ apiListsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -139,7 +139,7 @@ apiListsRouter.post(
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -182,7 +182,7 @@ apiListsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -244,7 +244,7 @@ apiListsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -278,7 +278,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -353,7 +353,7 @@ apiListsRouter.post(
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
       removingFiles(files);
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -424,7 +424,7 @@ apiListsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -497,7 +497,7 @@ apiListsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -570,7 +570,7 @@ apiListsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -639,7 +639,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -714,7 +714,7 @@ apiListsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -783,7 +783,7 @@ apiListsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -850,7 +850,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -920,7 +920,7 @@ apiListsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -991,7 +991,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1059,7 +1059,7 @@ apiListsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1120,7 +1120,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1182,7 +1182,7 @@ apiListsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1235,7 +1235,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_OPTIONS);
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 

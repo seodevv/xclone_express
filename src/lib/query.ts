@@ -64,7 +64,7 @@ function makeUpdateField<T extends keyof Schemas>(
   wheres: Where<Schemas[T]>[][]
 ) {
   const queryConfig: RequiredQueryConfig = {
-    text: `UPDATE ${table} SET `,
+    text: `UPDATE\n\t${table}\nSET`,
     values: update.values,
   };
 
@@ -77,11 +77,11 @@ function makeUpdateField<T extends keyof Schemas>(
   }
 
   update.fields.forEach((field, i) => {
-    queryConfig.text += `${i === 0 ? '' : ','}"${field.toString()}" = $${
+    queryConfig.text += `${i === 0 ? '' : ','}\n\t"${field.toString()}" = $${
       i + 1
     }`;
   });
-  queryConfig.text += ' ';
+  queryConfig.text += '\n';
 
   const { text, values } = makeWhere(
     queryConfig,
@@ -123,13 +123,20 @@ function makeWhere<T>(
 
       queryConfig.text += ` ${i === 0 ? '' : 'AND '}(\n`;
       where.forEach(({ tableAlias, field, operator, value, logic }, j) => {
+        const isParam = operator !== 'is null' && operator !== 'is not null';
+
         queryConfig.text += `\t${j === 0 ? '' : `${logic || 'AND'} `}${
           tableAlias ? `${tableAlias}.` : ''
         }${field.toString()} ${operator || '='} ${
           operator === 'in' || operator === 'not in' ? '(' : ''
-        }$${index}${operator === 'in' || operator === 'not in' ? ')' : ''}\n`;
-        queryConfig.values?.push(value);
-        index++;
+        }${isParam ? `$${index}` : ''}${
+          operator === 'in' || operator === 'not in' ? ')' : ''
+        }\n`;
+
+        if (isParam) {
+          queryConfig.values?.push(value);
+          index++;
+        }
       });
       queryConfig.text += ' )\n';
     });
@@ -301,11 +308,13 @@ export const selectPostsQuery = ({
   parentid,
   originalid,
   quote,
+  filter,
 }: {
   userid?: string;
   parentid?: number;
   originalid?: number;
   quote?: boolean;
+  filter?: 'all' | 'media';
 }) => {
   const queryConfig: RequiredQueryConfig = {
     text: '',
@@ -325,6 +334,9 @@ export const selectPostsQuery = ({
   }
   if (typeof quote !== 'undefined') {
     wheres[index].push({ field: 'quote', value: quote });
+  }
+  if (filter === 'media') {
+    wheres[index].push({ field: 'images', operator: '<>', value: '[]' });
   }
 
   queryConfig.text = makeSelectField('advancedpost');
