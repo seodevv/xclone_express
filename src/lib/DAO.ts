@@ -5,9 +5,11 @@ import {
   deleteQuery,
   insertQuery,
   insertUsersQuery,
+  selectAdvancedRoomListQuery,
   selectListsQuery,
   selectPostsQuery,
   selectQuery,
+  selectRoomsNotification,
   selectUsersQuery,
   updateQuery,
   updateUsersQuery,
@@ -15,12 +17,12 @@ import {
 import { Follow } from '@/model/Follow';
 import { HashTags } from '@/model/Hashtag';
 import { AdvancedLists, ListsDetail } from '@/model/Lists';
-import { AdvancedMessages } from '@/model/Message';
+import { AdvancedMessages, MessagesDetail } from '@/model/Message';
 import { Morpheme } from '@/model/Morpheme';
 import { AdvancedPost } from '@/model/Post';
 import { Reactions } from '@/model/Reaction';
-import { AdvancedRooms } from '@/model/Room';
-import { AdvancedUser } from '@/model/User';
+import { AdvancedRooms, Room, RoomsNotifications } from '@/model/Room';
+import { AdvancedUser, User } from '@/model/User';
 import { Views } from '@/model/Views';
 import { PoolClient } from 'pg';
 
@@ -64,9 +66,8 @@ class DAO {
 
     try {
       const queryConfig = selectUsersQuery({ wheres });
-      const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
-        .rows;
-      return queryResult[0];
+      const user = (await this.client.query<AdvancedUser>(queryConfig)).rows[0];
+      return user;
     } catch (error) {
       console.error(error);
       return;
@@ -293,6 +294,191 @@ class DAO {
       // console.log('[getHashTag]\n', queryConfig.text);
       const hashtag = (await this.client.query<HashTags>(queryConfig)).rows[0];
       return hashtag;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getRoom({
+    roomid,
+    senderid,
+    receiverid,
+    findUserid,
+  }: {
+    roomid: AdvancedRooms['id'];
+    senderid?: AdvancedRooms['senderid'];
+    receiverid?: AdvancedRooms['receiverid'];
+    findUserid?: string;
+  }): Promise<Room | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'rooms',
+        wheres: [
+          [{ field: 'id', value: roomid }],
+          typeof senderid !== 'undefined'
+            ? [{ field: 'senderid', value: senderid }]
+            : [],
+          typeof receiverid !== 'undefined'
+            ? [{ field: 'receiverid', value: receiverid }]
+            : [],
+          typeof findUserid !== 'undefined'
+            ? [
+                { field: 'senderid', value: findUserid },
+                { logic: 'OR', field: 'receiverid', value: findUserid },
+              ]
+            : [],
+        ],
+      });
+      // console.log('[getRoom]\n', queryConfig.text);
+      const room = (await this.client.query<Room>(queryConfig)).rows[0];
+      return room;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getAdvancedRoom({
+    sessionid,
+    roomid,
+    senderid,
+    receiverid,
+    findUserid,
+  }: {
+    sessionid: string;
+    roomid: string;
+    senderid?: string;
+    receiverid?: string;
+    findUserid?: string;
+  }): Promise<AdvancedRooms | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectAdvancedRoomListQuery({
+        sessionid,
+        roomid,
+        senderid,
+        receiverid,
+        findUserid,
+      });
+      // console.log('[getRoom]\n', queryConfig.text);
+      const room = (await this.client.query<AdvancedRooms>(queryConfig))
+        .rows[0];
+      return room;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getMessage({
+    id,
+  }: {
+    id: Schemas['messages']['id'];
+  }): Promise<AdvancedMessages | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'advancedmessages',
+        wheres: [[{ field: 'id', value: id }]],
+      });
+      const message = (await this.client.query<AdvancedMessages>(queryConfig))
+        .rows[0];
+      return message;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getRoomsNotification({ sessionid }: { sessionid: AdvancedUser['id'] }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectRoomsNotification({
+        sessionid,
+      });
+      const notifications = (
+        await this.client.query<RoomsNotifications>(queryConfig)
+      ).rows;
+      return notifications;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getRoomsDetail({
+    id,
+    type,
+    userid,
+    roomid,
+  }: {
+    id?: Schemas['roomsdetail']['id'];
+    type: Schemas['roomsdetail']['type'];
+    userid: Schemas['roomsdetail']['userid'];
+    roomid: Schemas['roomsdetail']['roomid'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'roomsdetail',
+        wheres: [
+          [
+            { field: 'id', value: id },
+            { field: 'type', value: type },
+            { field: 'userid', value: userid },
+            { field: 'roomid', value: roomid },
+          ],
+        ],
+      });
+      // console.log('[getRoomsDetail]\n', queryConfig.text);
+      const detail = (
+        await this.client.query<Schemas['messagesdetail']>(queryConfig)
+      ).rows[0];
+      return detail;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getMessagesdetail({
+    type,
+    messageid,
+    userid,
+  }: {
+    type: Schemas['messagesdetail']['type'];
+    messageid: Schemas['messagesdetail']['messageid'];
+    userid: Schemas['messagesdetail']['userid'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'messagesdetail',
+        wheres: [
+          [
+            { field: 'type', value: type },
+            { field: 'messageid', value: messageid },
+            { field: 'userid', value: userid },
+          ],
+        ],
+      });
+      const detail = (await this.client.query<MessagesDetail>(queryConfig))
+        .rows[0];
+      return detail;
     } catch (error) {
       console.error(error);
       return;
@@ -677,27 +863,24 @@ class DAO {
   }
 
   async getRoomsList({
-    userid,
+    sessionid,
     roomid,
+    findUserid,
   }: {
-    userid: string;
+    sessionid: string;
     roomid?: string;
+    findUserid?: string;
   }): Promise<AdvancedRooms[] | undefined> {
     await this.init();
     if (!this.client) return;
 
     try {
-      const queryConfig = selectQuery({
-        table: 'advancedrooms',
-        wheres: [
-          [
-            { field: 'receiverid', value: userid },
-            { field: 'senderid', value: userid, logic: 'OR' },
-          ],
-          typeof roomid !== 'undefined' ? [{ field: 'id', value: roomid }] : [],
-        ],
+      const queryConfig = selectAdvancedRoomListQuery({
+        sessionid,
+        roomid,
+        findUserid,
       });
-      // console.log('[getRoomList]\n', queryConfig.text);
+      // console.log('[getRoomList]\n', queryConfig);
       const roomsList = (await this.client.query<AdvancedRooms>(queryConfig))
         .rows;
       return roomsList;
@@ -709,23 +892,35 @@ class DAO {
 
   async getMessagesList({
     roomid,
+    cursor,
+    limit,
   }: {
     roomid: string;
+    cursor?: number;
+    limit?: number;
   }): Promise<AdvancedMessages[] | undefined> {
     await this.init();
     if (!this.client) return;
 
+    const where: Where<AdvancedMessages>[] = [
+      { field: 'roomid', value: roomid },
+    ];
+    if (typeof cursor !== 'undefined' && cursor !== 0) {
+      where.push({ logic: 'AND', field: 'id', operator: '<', value: cursor });
+    }
+
     try {
       const queryConfig = selectQuery({
         table: 'advancedmessages',
-        wheres: [[{ field: 'roomid', value: roomid }]],
+        wheres: [where],
         order: [{ field: 'createat', by: 'DESC' }],
+        limit,
       });
       // console.log('[getMessagesList]\n', queryConfig.text);
       const messagesList = (
         await this.client.query<AdvancedMessages>(queryConfig)
       ).rows;
-      return messagesList;
+      return messagesList.reverse();
     } catch (error) {
       console.error(error);
       return;
@@ -892,6 +1087,67 @@ class DAO {
     }
   }
 
+  async createRoom({
+    roomid,
+    senderid,
+    receiverid,
+  }: {
+    roomid: string;
+    senderid: string;
+    receiverid: string;
+  }): Promise<Room | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = insertQuery({
+        table: 'rooms',
+        fields: ['id', 'senderid', 'receiverid'],
+        values: [roomid, senderid, receiverid],
+      });
+      // console.log('[createRoom]\n', queryConfig);
+      const inserted = (await this.client.query<Schemas['rooms']>(queryConfig))
+        .rows[0];
+      const createRoom = await this.getRoom({ roomid: inserted.id });
+      return createRoom;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async createMessage({
+    roomid,
+    senderid,
+    content,
+    parentid,
+  }: {
+    roomid: Schemas['messages']['roomid'];
+    senderid: Schemas['messages']['senderid'];
+    content: Schemas['messages']['content'];
+    parentid: Schemas['messages']['parentid'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = insertQuery({
+        table: 'messages',
+        fields: ['roomid', 'senderid', 'content', 'parentid'],
+        values: [roomid, senderid, content, parentid],
+      });
+      // console.log('[createMessage]\n', queryConfig);
+      const inserted = (
+        await this.client.query<Schemas['messages']>(queryConfig)
+      ).rows[0];
+      const createdMessage = await this.getMessage({ id: inserted.id });
+      return createdMessage;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
   async updateUser(config: {
     id: string;
     nickname?: string;
@@ -910,8 +1166,8 @@ class DAO {
       const queryConfig = updateUsersQuery(config);
       // console.log('[updateUser]\n', queryConfig.text);
       await this.client.query(queryConfig);
-      const user = await this.getUser({ id: config.id });
-      return user;
+      const updateUser = await this.getUser({ id: config.id });
+      return updateUser;
     } catch (error) {
       console.error(error);
       return;
@@ -930,7 +1186,8 @@ class DAO {
       });
       console.log(queryConfig.text);
       await this.client.query(queryConfig);
-      return await this.getUser({ id });
+      const updatedUser = await this.getUser({ id });
+      return updatedUser;
     } catch (error) {
       console.error(error);
       return;
@@ -1058,7 +1315,55 @@ class DAO {
       });
       // console.log('[updateLists]\n', queryConfig.text);
       await this.client.query(queryConfig);
-      return await this.getLists({ sessionid: userid, id, userid: userid });
+      const updatedLists = await this.getLists({
+        sessionid: userid,
+        id,
+        userid: userid,
+      });
+      return updatedLists;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async updateSeen({
+    roomid,
+    sessionid,
+  }: {
+    roomid: Schemas['messages']['roomid'];
+    sessionid: User['id'];
+  }): Promise<AdvancedRooms | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = updateQuery({
+        table: 'messages',
+        update: {
+          fields: ['seen'],
+          values: [true],
+        },
+        wheres: [
+          [
+            { field: 'roomid', value: roomid },
+            {
+              logic: 'AND',
+              field: 'senderid',
+              operator: '<>',
+              value: sessionid,
+            },
+          ],
+        ],
+      });
+      // console.log('[updateSeen]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+
+      return await this.getAdvancedRoom({
+        sessionid,
+        roomid,
+        findUserid: sessionid,
+      });
     } catch (error) {
       console.error(error);
       return;
@@ -1133,6 +1438,31 @@ class DAO {
         wheres: [[{ field: 'id', value: id }]],
       });
       // console.log('[deleteLists]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  }
+
+  async disableMessage({
+    messageid,
+    userid,
+  }: {
+    messageid: Schemas['messagesdetail']['messageid'];
+    userid: Schemas['messagesdetail']['userid'];
+  }) {
+    await this.init();
+    if (!this.client) return false;
+
+    try {
+      const queryConfig = insertQuery({
+        table: 'messagesdetail',
+        fields: ['type', 'messageid', 'userid'],
+        values: ['disable', messageid, userid],
+      });
+      // console.log(`[disableMessage]\n`, queryConfig.text);
       await this.client.query(queryConfig);
       return true;
     } catch (error) {
@@ -1394,6 +1724,188 @@ class DAO {
     } catch (error) {
       console.error(error);
       return false;
+    }
+  }
+
+  async roomsDetailHandler({
+    method,
+    type,
+    userid,
+    roomid,
+  }: {
+    method: 'post' | 'delete';
+    type: Schemas['roomsdetail']['type'];
+    userid: Schemas['roomsdetail']['userid'];
+    roomid: Schemas['roomsdetail']['roomid'];
+  }): Promise<boolean> {
+    await this.init();
+    if (!this.client) return false;
+
+    try {
+      const check = await this.getRoomsDetail({ type, userid, roomid });
+
+      switch (method) {
+        case 'post': {
+          if (typeof check !== 'undefined') {
+            throw new Error(
+              'Cannot insert into roomsdetail table because row already exists.'
+            );
+          }
+
+          const queryConfig = insertQuery({
+            table: 'roomsdetail',
+            fields: ['type', 'userid', 'roomid'],
+            values: [type, userid, roomid],
+          });
+
+          await this.client.query(queryConfig);
+          return true;
+        }
+        case 'delete': {
+          if (typeof check === 'undefined') {
+            throw new Error(
+              'Cannot delete table roomsdetail because row does not exist already.'
+            );
+          }
+
+          const queryConfig = deleteQuery({
+            table: 'roomsdetail',
+            wheres: [
+              [
+                { field: 'type', value: type },
+                { field: 'userid', value: userid },
+                { field: 'roomid', value: roomid },
+              ],
+            ],
+          });
+          await this.client.query(queryConfig);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  }
+
+  async messagesDetailHandler({
+    type,
+    payload,
+  }: {
+    type: 'disable' | 'addReact' | 'updateReact' | 'removeReact';
+    payload: {
+      messageid: Schemas['messagesdetail']['messageid'];
+      userid: Schemas['messagesdetail']['userid'];
+      content?: Schemas['messagesdetail']['content'];
+    };
+  }) {
+    await this.init();
+    if (!this.client) return false;
+
+    try {
+      switch (type) {
+        case 'disable': {
+          const queryConfig = insertQuery({
+            table: 'messagesdetail',
+            fields: ['type', 'messageid', 'userid'],
+            values: ['disable', payload.messageid, payload.userid],
+          });
+          // console.log('[disable]\n', queryConfig.text);
+          const result = await this.client.query(queryConfig);
+          return true;
+        }
+        case 'addReact': {
+          if (!payload.content) throw new Error('content is not null');
+          const queryConfig = insertQuery({
+            table: 'messagesdetail',
+            fields: ['type', 'messageid', 'userid', 'content'],
+            values: [
+              'react',
+              payload.messageid,
+              payload.userid,
+              payload.content,
+            ],
+          });
+          // console.log('[addReact]\n', queryConfig.text);
+          await this.client.query(queryConfig);
+          return true;
+        }
+        case 'updateReact': {
+          const queryConfig = updateQuery({
+            table: 'messagesdetail',
+            update: {
+              fields: ['content'],
+              values: [payload.content],
+            },
+            wheres: [
+              [
+                { field: 'type', value: 'react' },
+                { field: 'messageid', value: payload.messageid },
+                { field: 'userid', value: payload.userid },
+              ],
+            ],
+          });
+          // console.log('[updateReact]\n', queryConfig.text);
+          await this.client.query(queryConfig);
+          return true;
+        }
+        case 'removeReact': {
+          const select = await this.getMessagesdetail({
+            type: 'react',
+            messageid: payload.messageid,
+            userid: payload.userid,
+          });
+          if (!select) throw new Error('data not found');
+
+          const queryConfig = deleteQuery({
+            table: 'messagesdetail',
+            wheres: [
+              [
+                { field: 'type', value: 'react' },
+                { field: 'messageid', value: payload.messageid },
+                { field: 'userid', value: payload.userid },
+              ],
+            ],
+          });
+          // console.log('[removeReact]\n', queryConfig.text);
+          await this.client.query(queryConfig);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
+  }
+
+  async messagesMediaHandler({
+    type,
+    messageid,
+    url,
+    width,
+    height,
+  }: {
+    type: Schemas['messagesmedia']['type'];
+    messageid: Schemas['messagesmedia']['messageid'];
+    url: Schemas['messagesmedia']['url'];
+    width: Schemas['messagesmedia']['width'];
+    height: Schemas['messagesmedia']['height'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = insertQuery({
+        table: 'messagesmedia',
+        fields: ['type', 'messageid', 'url', 'width', 'height'],
+        values: [type, messageid, url, width, height],
+      });
+      // console.log('[messagesMediaHandler]\n', queryConfig.text);
+      await this.client.query(queryConfig);
+      return await this.getMessage({ id: messageid });
+    } catch (error) {
+      console.error(error);
+      return;
     }
   }
 

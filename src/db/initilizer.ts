@@ -3,8 +3,8 @@ import { Pool, QueryConfig } from 'pg';
 export default async function initializeDatabase(pool: Pool) {
   await aliveCheck(pool);
 
-  const fkeys: { source: { table: Table; column: string }; target: Fkey }[] =
-    [];
+  const pkeys: PKey[] = [];
+  const fkeys: FKey[] = [];
   const isTable = (table: string): table is keyof SchemaInit =>
     Object.keys(SCHEMA_INIT).includes(table);
 
@@ -12,11 +12,25 @@ export default async function initializeDatabase(pool: Pool) {
     if (!isTable(table)) continue;
 
     const tableSchema = SCHEMA_INIT[table];
+    const pkey: PKey = { type: 'P', table, fields: [] };
+    const unique: PKey = { type: 'U', table, fields: [] };
     Object.entries(tableSchema.columns).forEach(([k, v]) => {
       if (v.fkey) {
         fkeys.push({ source: { table: table, column: k }, target: v.fkey });
       }
+      if (v.pkey) {
+        pkey.fields.push(k);
+      }
+      if (v.unique) {
+        unique.fields.push(k);
+      }
     });
+    if (pkey.fields.length !== 0) {
+      pkeys.push(pkey);
+    }
+    if (unique.fields.length !== 0) {
+      pkeys.push(unique);
+    }
 
     const checkTable = await getTable(pool, table);
     if (checkTable) continue;
@@ -30,6 +44,15 @@ export default async function initializeDatabase(pool: Pool) {
     }
 
     await createTable(pool, table, SCHEMA_INIT[table].columns);
+  }
+
+  if (pkeys.length !== 0) {
+    for (const pkey of pkeys) {
+      const checkConstraint = await getConstraint(pool, pkey);
+      if (!checkConstraint) {
+        await createConstraint(pool, pkey);
+      }
+    }
   }
 
   if (fkeys.length !== 0) {
@@ -87,20 +110,34 @@ async function getType(pool: Pool, typeName: string) {
   }
 }
 
-async function getConstraint(
-  pool: Pool,
-  fkey: { source: { table: Table; column: string }; target: Fkey }
-) {
-  const { source, target } = fkey;
+function isPrimaryKey(key: PKey | FKey): key is PKey {
+  return Object.keys(key).includes('table');
+}
+
+async function getConstraint(pool: Pool, key: FKey | PKey) {
   try {
-    const result = await pool.query(
-      'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
-      [
-        'f',
-        `${source.table}_${target.table}_${source.column}_${target.column}_fkey`,
-      ]
-    );
-    return !!result.rows[0];
+    if (isPrimaryKey(key)) {
+      const result = await pool.query(
+        'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
+        [
+          key.type === 'P' ? 'p' : 'u',
+          key.type === 'P'
+            ? `${key.table}_pkey`
+            : `${key.table}_${key.fields.join('_')}_key`,
+        ]
+      );
+      return !!result.rows[0];
+    } else {
+      const { source, target } = key;
+      const result = await pool.query(
+        'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
+        [
+          'f',
+          `${source.table}_${target.table}_${source.column}_${target.column}_fkey`,
+        ]
+      );
+      return !!result.rows[0];
+    }
   } catch (error) {
     console.error(error);
     return false;
@@ -127,8 +164,6 @@ async function createTable<T extends Table>(
   columns: SchemaInit[T]['columns']
 ) {
   const keys = Object.keys(columns);
-  const pkeys = keys.filter((key) => columns[key].pkey);
-
   let query = `CREATE TABLE IF NOT EXISTS ${table} (\n`;
   keys.forEach((key, i) => {
     const { type, length, default: def, notNull } = columns[key];
@@ -136,12 +171,6 @@ async function createTable<T extends Table>(
       def ? `DEFAULT ${def === 'current_timestamp' ? def : `'${def}'`} ` : ''
     }${notNull ? 'NOT NULL' : 'NULL'}${keys.length - 1 !== i ? ',\n' : ''}`;
   });
-
-  if (pkeys.length !== 0) {
-    query += ',\n';
-    query += `\tCONSTRAINT ${table}_pkey PRIMARY KEY (${pkeys.join(', ')})`;
-  }
-
   query += '\n';
   query += ');';
 
@@ -155,26 +184,39 @@ async function createTable<T extends Table>(
   }
 }
 
-async function createConstraint(
-  pool: Pool,
-  fkey: { source: { table: Table; column: string }; target: Fkey }
-) {
-  const { source, target } = fkey;
-  const constraint_name = `${source.table}_${target.table}_${source.column}_${target.column}_fkey`;
+async function createConstraint(pool: Pool, key: FKey | PKey) {
   try {
-    const result = await pool.query(
-      `ALTER TABLE ${
-        source.table
-      } ADD CONSTRAINT ${constraint_name} FOREIGN KEY (${
-        source.column
-      }) REFERENCES ${target.table}(${target.column}) ${
-        target.delete ? `ON DELETE ${target.delete}` : ''
-      } ${target.update ? `ON UPDATE ${target.update}` : ''}`
-    );
-    console.log(
-      `[DATABASE][CONSTRAINT] The ${constraint_name} has been altered`
-    );
-    return !!result.rows[0];
+    if (isPrimaryKey(key)) {
+      const { table, fields } = key;
+      const constraint_name = `${table}_${
+        key.type === 'P' ? 'pkey' : `${key.fields.join('_')}_key`
+      }`;
+      await pool.query(
+        `ALTER TABLE ${table} ADD CONSTRAINT ${constraint_name} ${
+          key.type === 'P' ? 'PRIMARY KEY' : 'UNIQUE'
+        } (${fields.join(', ')})`
+      );
+      console.log(
+        `[DATABASE][CONSTRAINT] The ${constraint_name} has been altered`
+      );
+      return true;
+    } else {
+      const { source, target } = key;
+      const constraint_name = `${source.table}_${target.table}_${source.column}_${target.column}_fkey`;
+      await pool.query(
+        `ALTER TABLE ${
+          source.table
+        } ADD CONSTRAINT ${constraint_name} FOREIGN KEY (${
+          source.column
+        }) REFERENCES ${target.table}(${target.column}) ${
+          target.delete ? `ON DELETE ${target.delete}` : ''
+        } ${target.update ? `ON UPDATE ${target.update}` : ''}`
+      );
+      console.log(
+        `[DATABASE][CONSTRAINT] The ${constraint_name} has been altered`
+      );
+      return true;
+    }
   } catch (error) {
     console.error(error);
     return false;
@@ -207,7 +249,10 @@ type Table =
   | 'lists'
   | 'listsdetail'
   | 'rooms'
-  | 'messages';
+  | 'roomsdetail'
+  | 'messages'
+  | 'messagesdetail'
+  | 'messagesmedia';
 
 type ColumnTypes =
   | 'int4'
@@ -224,9 +269,14 @@ type CustomTypes =
   | 'reactions_type'
   | 'hashtags_type'
   | 'lists_make'
-  | 'listsdetail_type';
+  | 'listsdetail_type'
+  | 'roomsdetail_type'
+  | 'messagesdetail_type'
+  | 'messagesmedia_type';
 
-type Fkey = {
+type PKey = { type: 'P' | 'U'; table: Table; fields: string[] };
+type FKey = { source: { table: Table; column: string }; target: FKeyTarget };
+type FKeyTarget = {
   table: Table;
   column: string;
   delete?: 'RESTRICT' | 'CASCADE' | 'NO ACTION' | 'SET NULL';
@@ -246,7 +296,8 @@ type SchemaInit = {
         notNull?: true;
         default?: string;
         pkey?: true;
-        fkey?: Fkey;
+        fkey?: FKeyTarget;
+        unique?: true;
       };
     };
   };
@@ -398,7 +449,7 @@ const SCHEMA_INIT: SchemaInit = {
       postid: {
         type: 'int4',
         notNull: true,
-        pkey: true,
+        unique: true,
         fkey: {
           table: 'post',
           column: 'postid',
@@ -531,12 +582,34 @@ const SCHEMA_INIT: SchemaInit = {
         default: 'current_timestamp',
         notNull: true,
       },
-      lastmessageid: {
-        type: 'int4',
+    },
+  },
+  roomsdetail: {
+    type: { name: 'roomsdetail_type', values: ['disable'] },
+    columns: {
+      id: { type: 'serial4', notNull: true },
+      type: { type: 'roomsdetail_type', notNull: true, pkey: true },
+      userid: {
+        type: 'varchar',
+        length: 32,
+        notNull: true,
+        pkey: true,
         fkey: {
-          table: 'messages',
+          table: 'users',
           column: 'id',
-          delete: 'SET NULL',
+          delete: 'CASCADE',
+          update: 'CASCADE',
+        },
+      },
+      roomid: {
+        type: 'varchar',
+        length: 128,
+        notNull: true,
+        pkey: true,
+        fkey: {
+          table: 'rooms',
+          column: 'id',
+          delete: 'CASCADE',
           update: 'CASCADE',
         },
       },
@@ -573,6 +646,61 @@ const SCHEMA_INIT: SchemaInit = {
         default: 'current_timestamp',
         notNull: true,
       },
+    },
+  },
+  messagesdetail: {
+    type: {
+      name: 'messagesdetail_type',
+      values: ['react', 'disable', 'image', 'gif'],
+    },
+    columns: {
+      id: { type: 'serial4', notNull: true },
+      type: { type: 'messagesdetail_type', notNull: true, pkey: true },
+      messageid: {
+        type: 'int4',
+        notNull: true,
+        pkey: true,
+        fkey: {
+          table: 'messages',
+          column: 'id',
+          delete: 'CASCADE',
+          update: 'CASCADE',
+        },
+      },
+      userid: {
+        type: 'varchar',
+        length: 32,
+        notNull: true,
+        pkey: true,
+        fkey: {
+          table: 'users',
+          column: 'id',
+          delete: 'CASCADE',
+          update: 'CASCADE',
+        },
+      },
+      content: { type: 'varchar', length: 256, default: '', notNull: true },
+    },
+  },
+  messagesmedia: {
+    type: { name: 'messagesmedia_type', values: ['image', 'gif'] },
+    columns: {
+      id: { type: 'serial4', notNull: true },
+      type: { type: 'messagesmedia_type', notNull: true, pkey: true },
+      messageid: {
+        type: 'int4',
+        notNull: true,
+        pkey: true,
+        fkey: {
+          table: 'messages',
+          column: 'id',
+          delete: 'CASCADE',
+          update: 'CASCADE',
+        },
+      },
+      url: { type: 'varchar', length: 256, notNull: true },
+      width: { type: 'int4', notNull: true },
+      height: { type: 'int4', notNull: true },
     },
   },
 };
@@ -1146,60 +1274,95 @@ left join (
 order by
 	follower.count,
 	member.count;`,
-  advancedrooms: `create or replace
-view public.advancedrooms
-as
-select
-	r.id,
-	r.receiverid,
-	row_to_json(receiver.*) as "Receiver",
-	r.senderid,
-	row_to_json(sender.*) as "Sender",
-	r.createat,
-	r.lastmessageid,
-	m.content,
-	m.createat as lastat
-from
-	rooms r
-join (
-	select
-		users.id,
-		users.nickname,
-		users.image,
-		users.verified
-	from
-		users) receiver on
-	receiver.id::text = r.receiverid::text
-join (
-	select
-		users.id,
-		users.nickname,
-		users.image,
-		users.verified
-	from
-		users) sender on
-	sender.id::text = r.receiverid::text
-left join messages m on
-	m.id = r.lastmessageid;`,
-  advancedmessages: `create or replace
-view public.advancedmessages
-as
-select
-	m.id,
-	m.roomid,
-	m.senderid,
-	row_to_json(u.*) as "Sender",
-	m.content,
-	m.createat
-from
-	messages m
-join (
-	select
-		users.id,
-		users.nickname,
-		users.image,
-		users.verified
-	from
-		users) u on
-	u.id::text = m.senderid::text;`,
+  advancedrooms: `CREATE OR REPLACE VIEW public.advancedrooms
+AS SELECT r.id,
+    r.receiverid,
+    row_to_json(receiver.*) AS "Receiver",
+    r.senderid,
+    row_to_json(sender.*) AS "Sender",
+    r.createat,
+        CASE
+            WHEN n.sent IS NULL THEN '[]'::json
+            ELSE n.sent
+        END AS sent,
+        CASE
+            WHEN rd.value IS NULL THEN '[]'::json
+            ELSE rd.value
+        END AS "Disabled"
+   FROM rooms r
+     JOIN ( SELECT users.id,
+            users.nickname,
+            users.image,
+            users.verified
+           FROM users) receiver ON receiver.id::text = r.receiverid::text
+     JOIN ( SELECT users.id,
+            users.nickname,
+            users.image,
+            users.verified
+           FROM users) sender ON sender.id::text = r.senderid::text
+     LEFT JOIN ( SELECT a.roomid,
+            json_agg(row_to_json(a.*)::jsonb - 'roomid'::text) AS sent
+           FROM ( SELECT m_1.roomid,
+                    m_1.senderid AS id,
+                    count(m_1.senderid) AS count
+                   FROM messages m_1
+                  WHERE m_1.seen = false
+                  GROUP BY m_1.roomid, m_1.senderid) a
+          GROUP BY a.roomid) n ON n.roomid::text = r.id::text
+     LEFT JOIN ( SELECT s2_rd.roomid,
+            json_agg(s2_rd.value) AS value
+           FROM ( SELECT s1_rd.roomid,
+                    json_build_object('id', s1_rd.userid) AS value
+                   FROM roomsdetail s1_rd
+                  GROUP BY s1_rd.roomid, s1_rd.userid) s2_rd
+          GROUP BY s2_rd.roomid) rd ON rd.roomid::text = r.id::text;`,
+  advancedmessages: `CREATE OR REPLACE VIEW public.advancedmessages
+AS SELECT m.id,
+    m.roomid,
+    m.senderid,
+    row_to_json(u.*) AS "Sender",
+    m.content,
+    m.createat,
+    m.seen,
+    m.parentid,
+    row_to_json(m2.*) AS "Parent",
+        CASE
+            WHEN md_1.value IS NULL THEN '[]'::json
+            ELSE md_1.value
+        END AS "Disable",
+        CASE
+            WHEN md_2.value IS NULL THEN '[]'::json
+            ELSE md_2.value
+        END AS "React",
+    mm.value AS "Media"
+   FROM messages m
+     JOIN ( SELECT users.id,
+            users.nickname,
+            users.image,
+            users.verified
+           FROM users) u ON u.id::text = m.senderid::text
+     LEFT JOIN messages m2 ON m2.id = m.parentid
+     LEFT JOIN ( SELECT unnamed_subquery.messageid,
+            json_agg(json_build_object('id', unnamed_subquery.userid)) AS value
+           FROM ( SELECT messagesdetail.messageid,
+                    messagesdetail.userid
+                   FROM messagesdetail
+                  WHERE messagesdetail.type = 'disable'::messagesdetail_type) unnamed_subquery
+          GROUP BY unnamed_subquery.messageid) md_1 ON md_1.messageid = m.id
+     LEFT JOIN ( SELECT s_2_md.messageid,
+            json_agg(row_to_json(s_2_md.*)::jsonb - 'messageid'::text) AS value
+           FROM ( SELECT s_md.messageid,
+                    s_md.userid AS id,
+                    s_u.nickname,
+                    s_u.image,
+                    s_u.verified,
+                    s_md.content
+                   FROM messagesdetail s_md
+                     JOIN users s_u ON s_u.id::text = s_md.userid::text
+                  WHERE s_md.type = 'react'::messagesdetail_type) s_2_md
+          GROUP BY s_2_md.messageid) md_2 ON md_2.messageid = m.id
+     LEFT JOIN ( SELECT s_mm.messageid,
+            (row_to_json(s_mm.*)::jsonb - 'messageid'::text)::json AS value
+           FROM messagesmedia s_mm) mm ON mm.messageid = m.id
+  ORDER BY m.id DESC;`,
 };

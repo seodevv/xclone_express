@@ -9,6 +9,14 @@ import apiRouter from '@/routes/api';
 import morgan from 'morgan';
 import { Pool } from 'pg';
 import initializeDatabase from '@/db/initilizer';
+import { Server } from 'socket.io';
+import { setupSocket } from '@/lib/socket';
+import {
+  ClientToServerEvents,
+  InterServerEvents,
+  ServerToClientEvents,
+  SocketData,
+} from '@/model/Socket';
 
 const app = express();
 const host = process.env.SERVER_HOST || '0.0.0.0';
@@ -47,6 +55,20 @@ const options: https.ServerOptions = {
 };
 
 const server = https.createServer(options, app);
+const io = new Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData
+>(server, {
+  cors: {
+    origin: ['http://localhost:3000', 'https://localhost:3000'],
+    methods: ['GET', 'POST'],
+  },
+  maxHttpBufferSize: 1e9,
+});
+setupSocket(io);
+
 server.listen(port, host, async () => {
   await initializeDatabase(pool);
   console.log(`server is running on : https://${host}:${port}`);

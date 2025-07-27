@@ -6,6 +6,8 @@ import {
   Birth,
   Verified,
 } from '@/db/schema';
+import { AdvancedRooms } from '@/model/Room';
+import { AdvancedUser } from '@/model/User';
 import { QueryConfig } from 'pg';
 
 function makeSelectField<T extends keyof Schemas>(
@@ -115,23 +117,34 @@ function makeWhere<T>(
   if (wheres && wheres.length !== 0) {
     let index = startIndex;
 
+    let first = true;
     wheres.forEach((where, i) => {
-      if (wheres[i].length === 0) return;
-      if (i === 0) {
+      if (typeof where === 'undefined') return;
+      if (where.length === 0) return;
+
+      if (first) {
         queryConfig.text += 'WHERE\n';
+        queryConfig.text += ` (\n`;
+        first = false;
+      } else {
+        queryConfig.text += ` AND (\n`;
       }
 
-      queryConfig.text += ` ${i === 0 ? '' : 'AND '}(\n`;
-      where.forEach(({ tableAlias, field, operator, value, logic }, j) => {
+      let second = true;
+      where.forEach((v, j) => {
+        if (typeof v === 'undefined') return;
+        if (typeof v.value === 'undefined') return;
+        const { tableAlias, field, operator, value, logic } = v;
         const isParam = operator !== 'is null' && operator !== 'is not null';
 
-        queryConfig.text += `\t${j === 0 ? '' : `${logic || 'AND'} `}${
+        queryConfig.text += `\t${second ? '' : `${logic || 'AND'} `}${
           tableAlias ? `${tableAlias}.` : ''
         }${field.toString()} ${operator || '='} ${
           operator === 'in' || operator === 'not in' ? '(' : ''
         }${isParam ? `$${index}` : ''}${
           operator === 'in' || operator === 'not in' ? ')' : ''
         }\n`;
+        second = false;
 
         if (isParam) {
           queryConfig.values?.push(value);
@@ -159,16 +172,28 @@ function makeOrder<T>(
   return text;
 }
 
+function makeLimit<T>(
+  text: RequiredQueryConfig['text'],
+  limit?: number
+): RequiredQueryConfig['text'] {
+  if (typeof limit !== 'undefined') {
+    text += `LIMIT ${limit}`;
+  }
+  return text;
+}
+
 export const selectQuery = <T extends keyof Schemas>({
   table,
   fields,
   wheres,
   order,
+  limit,
 }: {
   table: T;
   fields?: (keyof Schemas[T])[];
   wheres?: Where<Schemas[T]>[][];
   order?: Order<Schemas[T]>[];
+  limit?: number;
 }): QueryConfig => {
   const queryConfig: RequiredQueryConfig = {
     text: makeSelectField(table, fields),
@@ -180,6 +205,8 @@ export const selectQuery = <T extends keyof Schemas>({
   queryConfig.values = whereResult.values;
 
   queryConfig.text = makeOrder(queryConfig.text, order);
+
+  queryConfig.text = makeLimit(queryConfig.text, limit);
 
   return queryConfig;
 };
@@ -524,6 +551,121 @@ export const updateUsersQuery = ({
   }
 
   let queryConfig = makeUpdateField('users', { fields, values }, wheres);
+
+  return queryConfig;
+};
+
+export const selectAdvancedRoomListQuery = ({
+  sessionid,
+  roomid,
+  senderid,
+  receiverid,
+  findUserid,
+}: {
+  sessionid: AdvancedUser['id'];
+  roomid?: string;
+  senderid?: string;
+  receiverid?: string;
+  findUserid?: string;
+}) => {
+  let queryConfig: RequiredQueryConfig = {
+    text: `select
+	ar.id as id,
+	ar.receiverid as receiverid,
+	ar."Receiver" as "Receiver",
+	ar.senderid as senderid,
+	ar."Sender" as "Sender",
+	ar.createat as createat,
+	m.id as lastmessageid,
+	m.lastmessagesenderid as lastmessagesenderid,
+	m."type" as type,
+	m."content" as content,
+	m.lastat as lastat,
+	ar.sent as sent,
+	ar."Disabled" as Disabled
+from
+	advancedrooms ar
+left join (
+	select
+		max_m.roomid,
+		m.id,
+		m.senderid as lastmessagesenderid,
+		mm."type" ,
+		m."content",
+		m.createat as lastat
+	from
+		messages m
+left outer join messagesmedia mm on
+		mm.messageid = m.id
+inner join (
+		select
+			m.roomid,
+			max(m.id) as messageid
+		from
+			messages m
+		left outer join (
+			select
+				s_md."type",
+				s_md.messageid,
+				s_md.userid
+			from
+				messagesdetail s_md
+			where
+				s_md."type" = 'disable'
+				and s_md.userid = $1 ) md on
+			md.messageid = m.id
+		where
+			md."type" is null
+		group by
+			m.roomid) max_m on
+		max_m.messageid = m.id) m on
+	m.roomid = ar.id\n`,
+    values: [sessionid],
+  };
+
+  const wheres: Where<AdvancedRooms>[][] = [];
+  if (typeof roomid !== 'undefined') {
+    wheres.push([{ tableAlias: 'ar', field: 'id', value: roomid }]);
+  }
+  if (typeof senderid !== 'undefined') {
+    wheres.push([{ tableAlias: 'ar', field: 'senderid', value: senderid }]);
+  }
+  if (typeof receiverid !== 'undefined') {
+    wheres.push([{ tableAlias: 'ar', field: 'receiverid', value: receiverid }]);
+  }
+  if (typeof findUserid !== 'undefined') {
+    wheres.push([
+      { tableAlias: 'ar', field: 'receiverid', value: findUserid },
+      { logic: 'OR', tableAlias: 'ar', field: 'senderid', value: findUserid },
+    ]);
+  }
+
+  queryConfig = makeWhere<AdvancedRooms>(queryConfig, wheres, 2);
+
+  return queryConfig;
+};
+
+export const selectRoomsNotification = ({
+  sessionid,
+}: {
+  sessionid: AdvancedUser['id'];
+}) => {
+  let queryConfig: RequiredQueryConfig = {
+    text: `select
+	r.id,
+	count(*)::int as "Notifications"
+from
+	rooms r
+inner join messages m on
+	m.roomid = r.id
+where
+	(r.senderid = $1
+		or r.receiverid = $1)
+	and m.senderid <> $1
+	and m.seen = false
+group by r.id`,
+    values: [sessionid],
+  };
 
   return queryConfig;
 };

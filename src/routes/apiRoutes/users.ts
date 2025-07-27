@@ -31,12 +31,10 @@ import {
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
 import { AdvancedUser } from '@/model/User';
-import { Message } from '@/model/Message';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 import { AdvancedLists } from '@/model/Lists';
 import DAO from '@/lib/DAO';
 import { Birth } from '@/db/schema';
-import { AdvancedRooms } from '@/model/Room';
 
 const apiUsersRouter = express.Router();
 const upload = multer({ storage });
@@ -161,7 +159,7 @@ apiUsersRouter.get(
     }
 
     if (cursor) {
-      dao.release();
+      // dao.release();
       const findIndex = searchUserList.findIndex((u) => u.id === cursor);
       searchUserList.splice(0, findIndex + 1);
     }
@@ -783,98 +781,6 @@ apiUsersRouter.delete(
     dao.release();
 
     return httpSuccessResponse(res, { data: unFollowedUser });
-  }
-);
-
-// "GET /api/users/:id/rooms"
-// 특정 유저가 참여중인 채팅 리스트
-apiUsersRouter.get(
-  '/:id/rooms',
-  async (
-    req: TypedRequestParams<{ id?: string }>,
-    res: TypedResponse<{ data?: AdvancedRooms[]; message: string }>
-  ) => {
-    const { id } = req.params;
-    const { 'connect.sid': token } = req.cookies;
-    if (!id) return httpBadRequestResponse(res);
-    if (!token) return httpUnAuthorizedResponse(res);
-
-    const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
-      return httpUnAuthorizedResponse(res, 'The token has expired');
-    }
-
-    if (id !== currentUser.id) return httpForbiddenResponse(res);
-
-    const dao = new DAO();
-    const roomList = await dao.getRoomsList({ userid: currentUser.id });
-    dao.release();
-    return httpSuccessResponse(res, { data: roomList });
-  }
-);
-
-// "GET /api/users/:id/rooms/:target"
-// 특정 유저가 참여중인 채팅방의 메시지 조회
-// target : 상대방 아이디
-apiUsersRouter.get(
-  '/:id/rooms/:target',
-  async (
-    req: TypedRequestQueryParams<
-      { cursor?: string; size?: string },
-      { id?: string; target?: string }
-    >,
-    res: TypedResponse<{
-      data?: Message[];
-      nextCursor?: number;
-      message: string;
-    }>
-  ) => {
-    const { id, target } = req.params;
-    const { cursor, size = '10' } = req.query;
-    const { 'connect.sid': token } = req.cookies;
-    if (!id || !target) return httpBadRequestResponse(res);
-    if (!token) return httpUnAuthorizedResponse(res);
-
-    const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
-      return httpUnAuthorizedResponse(res, 'The token has expired');
-    }
-    if (id !== currentUser.id) return httpForbiddenResponse(res);
-
-    const roomid = [id, target].sort().join('-');
-    const dao = new DAO();
-    const findRoom = await dao.getRoomsList({ userid: currentUser.id, roomid });
-    if (!findRoom) {
-      dao.release();
-      return httpNotFoundResponse(res, 'Room not found');
-    }
-
-    let messageList = await dao.getMessagesList({ roomid });
-    dao.release();
-    if (!messageList) return httpInternalServerErrorResponse(res);
-
-    const regex = /^[0-9]+$/;
-    if (cursor && regex.test(cursor)) {
-      const findIndex = messageList.findIndex((m) => m.id === ~~cursor);
-      if (findIndex > -1) {
-        messageList.splice(findIndex);
-      }
-    }
-
-    const pageSize = regex.test(size) ? (~~size !== 0 ? ~~size : 10) : 10;
-    const isOver = messageList.length > pageSize;
-    if (isOver) {
-      messageList.splice(0, messageList.length - 10);
-    }
-
-    messageList.reverse();
-
-    return httpSuccessResponse(res, {
-      data: messageList,
-      nextCursor: isOver ? messageList.at(-1)?.id : undefined,
-    });
   }
 );
 

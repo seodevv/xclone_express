@@ -67,17 +67,7 @@ export interface Schemas {
     pinned: boolean;
     scope: 'every' | 'follow' | 'verified' | 'only';
   };
-  advancedpost: {
-    postid: number;
-    userid: string;
-    content: string;
-    images: PostImage[];
-    createat: Date;
-    parentid: number | null;
-    originalid: number | null;
-    quote: boolean;
-    pinned: boolean;
-    scope: 'every' | 'follow' | 'verified' | 'only';
+  advancedpost: Schemas['post'] & {
     User: SafeUser;
     Parent: {
       postid: number;
@@ -122,15 +112,7 @@ export interface Schemas {
     make: 'private' | 'public';
     createat: Date;
   };
-  advancedlists: {
-    id: number;
-    userid: string;
-    name: string;
-    description: string | null;
-    banner: string;
-    thumbnail: string;
-    make: 'private' | 'public';
-    createat: Date;
+  advancedlists: Schemas['lists'] & {
     User: SafeUser;
     Member: UserId[];
     Follower: UserId[];
@@ -149,18 +131,18 @@ export interface Schemas {
     receiverid: string;
     senderid: string;
     createat: Date;
-    lastmessageid: number | null;
   };
-  advancedrooms: {
-    id: string;
-    receiverid: string;
-    senderid: string;
-    createat: Date;
-    lastmessageid: number | null;
+  advancedrooms: Schemas['rooms'] & {
     Receiver: SafeUser;
     Sender: SafeUser;
-    content: string | null;
-    lastat: Date | null;
+    sent: { id: Schemas['users']['id']; count: number }[];
+    Disabled: UserId[];
+  };
+  roomsdetail: {
+    id: number;
+    type: 'disable';
+    userid: Schemas['users']['id'];
+    roomid: Schemas['rooms']['id'];
   };
   messages: {
     id: number;
@@ -168,14 +150,36 @@ export interface Schemas {
     senderid: string;
     content: string;
     createat: Date;
+    seen: boolean;
+    parentid: number | null;
   };
-  advancedmessages: {
-    id: number;
-    roomid: string;
-    senderid: string;
-    content: string;
-    createat: Date;
+  advancedmessages: Schemas['messages'] & {
     Sender: SafeUser;
+    Parent: Schemas['messages'] | null;
+    Disable: UserId[];
+    React: {
+      id: Schemas['users']['id'];
+      nickname: Schemas['users']['nickname'];
+      image: Schemas['users']['image'];
+      verified: Schemas['users']['verified'];
+      content: Schemas['messagesdetail']['content'];
+    }[];
+    Media: Omit<Schemas['messagesmedia'], 'messageid'>;
+  };
+  messagesdetail: {
+    id: number;
+    type: 'react' | 'disable';
+    messageid: number;
+    userid: Schemas['users']['id'];
+    content: string;
+  };
+  messagesmedia: {
+    id: number;
+    type: 'gif' | 'image';
+    messageid: number;
+    url: string;
+    width: number;
+    height: number;
   };
 }
 

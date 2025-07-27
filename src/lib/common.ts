@@ -116,3 +116,54 @@ export const removingFiles = (
     );
   }
 };
+
+export const hashString = (str: string) => {
+  const salt = 'secret';
+  const textToChars = (text: string) =>
+    text.split('').map((c) => c.charCodeAt(0));
+  const byteHex = (n: number) => ('0' + Number(n).toString(16)).substr(-2);
+  const applySaltToChar = (code: number) =>
+    textToChars(salt).reduce((a, b) => a ^ b, code);
+
+  return str
+    .split('')
+    .map((v) => v.charCodeAt(0))
+    .map(applySaltToChar)
+    .map(byteHex)
+    .join('');
+};
+
+export const unHashString = (encoded: string) => {
+  const salt = 'secret';
+  const textToChars = (text: string) =>
+    text.split('').map((c) => c.charCodeAt(0));
+  const applySaltToChar = (code: number) =>
+    textToChars(salt).reduce((a, b) => a ^ b, code);
+
+  return encoded
+    .match(/.{1,2}/g)!
+    .map((hex) => parseInt(hex, 16))
+    .map(applySaltToChar)
+    .map((charCode) => String.fromCharCode(charCode))
+    .join('');
+};
+
+export const encryptRoomId = (senderId: string, receiverId: string) => {
+  const a = hashString(senderId);
+  const b = hashString(receiverId);
+  return [a, b].sort().join('-');
+};
+
+export const decryptRoomId = ({
+  userid,
+  roomid,
+}: {
+  userid: string;
+  roomid: string;
+}) => {
+  const [a, b] = roomid.split('-');
+  const u1 = unHashString(a);
+  const u2 = unHashString(b);
+  const receiverId = userid === u1 ? u2 : u1;
+  return receiverId;
+};

@@ -6,17 +6,31 @@ import { Response } from 'express';
 export function httpSuccessResponse<ResBody, Cursor>(
   res: TypedResponse<{
     data?: ResBody;
+    prevCursor?: Cursor;
     nextCursor?: Cursor;
     message: string;
   }>,
   {
     data,
     message = 'ok',
+    prevCursor,
     nextCursor,
     ...rest
-  }: { data?: ResBody; nextCursor?: Cursor; message?: string }
-): TypedResponse<{ data?: ResBody; nextcursor?: Cursor; message: string }> {
-  return res.status(200).json({ data, nextCursor, message, ...rest });
+  }: {
+    data?: ResBody;
+    prevCursor?: Cursor;
+    nextCursor?: Cursor;
+    message?: string;
+  }
+): TypedResponse<{
+  data?: ResBody;
+  prevCursor?: Cursor;
+  nextcursor?: Cursor;
+  message: string;
+}> {
+  return res
+    .status(200)
+    .json({ data, prevCursor, nextCursor, message, ...rest });
 }
 
 // 201 Created

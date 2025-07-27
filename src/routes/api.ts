@@ -32,6 +32,8 @@ import {
 import { TypedResponse } from '@/model/Response';
 import { AdvancedUser } from '@/model/User';
 import DAO from '@/lib/DAO';
+import apiRoomsRouter from '@/routes/apiRoutes/rooms';
+import apiMessagesRouter from '@/routes/apiRoutes/messages';
 
 const apiRouter = express.Router();
 
@@ -39,6 +41,8 @@ apiRouter.use('/users', apiUsersRouter);
 apiRouter.use('/posts', apiPostsRouter);
 apiRouter.use('/hashtags', apiHashtagsRouter);
 apiRouter.use('/lists', apiListsRouter);
+apiRouter.use('/rooms', apiRoomsRouter);
+apiRouter.use('/messages', apiMessagesRouter);
 
 // "GET" /api/login"
 // 로그인 아이디 확인
@@ -194,12 +198,12 @@ apiRouter.post(
 apiRouter.post(
   '/password',
   async (
-    req: TypedRequestBody<{ password?: string }>,
-    res: TypedResponse<{ message: string }>
+    req: TypedRequestBody<{ current?: string; newPassword?: string }>,
+    res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    const password = req.body.password;
+    const { current, newPassword } = req.body;
     const { 'connect.sid': token } = req.cookies;
-    if (!password) return httpBadRequestResponse(res);
+    if (!current || !newPassword) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
@@ -209,11 +213,21 @@ apiRouter.post(
     }
 
     const dao = new DAO();
+    const findUser = await dao.getUser({
+      id: currentUser.id,
+      password: current,
+    });
+    if (!findUser) {
+      dao.release();
+      return httpNotFoundResponse(res);
+    }
+
     const updatedUser = await dao.updatePassword({
       id: currentUser.id,
-      password,
+      password: newPassword,
     });
-    return httpSuccessResponse(res, {});
+    dao.release();
+    return httpSuccessResponse(res, { data: updatedUser });
   }
 );
 
