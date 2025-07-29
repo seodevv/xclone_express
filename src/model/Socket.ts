@@ -6,6 +6,7 @@ import { AdvancedMessages } from '@/model/Message';
 export interface ServerToClientEvents {
   message: (data: { room?: AdvancedRooms; message?: AdvancedMessages }) => void;
   reaction: (data: { message?: AdvancedMessages }) => void;
+  focus: (data: { roomid: AdvancedRooms['id'] }) => void;
 }
 
 // on
@@ -29,6 +30,7 @@ export interface ClientToServerEvents {
     },
     callback: (data: AdvancedMessages | undefined) => void
   ) => void;
+  focus: (data: { roomid: AdvancedRooms['id'] }, callback: () => void) => void;
 }
 
 // ping event

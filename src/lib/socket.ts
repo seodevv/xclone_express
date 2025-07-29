@@ -65,6 +65,7 @@ export function setupSocket(
 ) {
   io.of('/messages').on('connection', (socket) => {
     addClientSocket(socket);
+    const sessionid = socket.handshake.auth.sessionId;
 
     socket.on('message', async (data, callback) => {
       const { roomid, senderid, content, parentid, media } = data;
@@ -125,7 +126,6 @@ export function setupSocket(
 
     socket.on('reaction', async (data, callback) => {
       const { type, roomid, messageid, content } = data;
-      const sessionid = socket.handshake.auth.sessionId;
       const receiverid = decryptRoomId({ userid: sessionid, roomid });
 
       const dao = new DAO();
@@ -175,6 +175,23 @@ export function setupSocket(
         (socket) => socket.handshake.auth.sessionId === receiverid
       );
       target?.emit('reaction', { message: updatedMessage });
+    });
+
+    socket.on('focus', async ({ roomid }, callback) => {
+      const receiverid = decryptRoomId({ userid: sessionid, roomid });
+
+      const dao = new DAO();
+      const findRoom = await dao.getRoom({ roomid, findUserid: sessionid });
+      if (findRoom) {
+        dao.updateSeen({ roomid, sessionid });
+      }
+      dao.release();
+
+      callback();
+      const target = clientSockets.find(
+        (socket) => socket.handshake.auth.sessionId === receiverid
+      );
+      target?.emit('focus', { roomid });
     });
 
     socket.on('disconnect', () => {
