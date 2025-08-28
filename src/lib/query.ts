@@ -6,7 +6,8 @@ import {
   Birth,
   Verified,
 } from '@/db/schema';
-import { AdvancedRooms } from '@/model/Room';
+import { AdvancedMessages } from '@/model/Message';
+import { AdvancedRooms, Room } from '@/model/Room';
 import { AdvancedUser } from '@/model/User';
 import { QueryConfig } from 'pg';
 
@@ -133,7 +134,12 @@ function makeWhere<T>(
       let second = true;
       where.forEach((v, j) => {
         if (typeof v === 'undefined') return;
-        if (typeof v.value === 'undefined') return;
+        if (
+          typeof v.value === 'undefined' &&
+          v.operator !== 'is not null' &&
+          v.operator !== 'is null'
+        )
+          return;
         const { tableAlias, field, operator, value, logic } = v;
         const isParam = operator !== 'is null' && operator !== 'is not null';
 
@@ -164,8 +170,10 @@ function makeOrder<T>(
 ): RequiredQueryConfig['text'] {
   if (order && order.length !== 0) {
     text += 'ORDER BY\n';
-    order.forEach(({ field, by }, i) => {
-      text += `  ${i === 0 ? '' : ','}${field.toString()} ${by || 'ASC'}\n`;
+    order.forEach(({ field, by, tableAlias }, i) => {
+      text += `  ${i === 0 ? '' : ','}${
+        typeof tableAlias !== 'undefined' ? `${tableAlias}.` : ''
+      }${field.toString()} ${by || 'ASC'}\n`;
     });
   }
 
@@ -595,9 +603,9 @@ left join (
 		m.createat as lastat
 	from
 		messages m
-left outer join messagesmedia mm on
+  left outer join messagesmedia mm on
 		mm.messageid = m.id
-inner join (
+  inner join (
 		select
 			m.roomid,
 			max(m.id) as messageid
@@ -666,6 +674,60 @@ where
 group by r.id`,
     values: [sessionid],
   };
+
+  return queryConfig;
+};
+
+export const selectMessagesListSearch = ({
+  sessionid,
+  query = '',
+  cursor,
+  limit,
+}: {
+  sessionid: AdvancedUser['id'];
+  query: AdvancedMessages['content'];
+  cursor?: number;
+  limit?: number;
+}) => {
+  let queryConfig: RequiredQueryConfig = {
+    text: `select
+	row_to_json(ar.*) as "Room",
+	am.*
+from
+	advancedmessages am
+inner join 
+		advancedrooms ar on
+	ar.id = am.roomid\n`,
+    values: [],
+  };
+
+  const wheres: Where<AdvancedMessages & AdvancedRooms>[][] = [
+    [
+      { tableAlias: 'ar', field: 'senderid', value: sessionid },
+      { tableAlias: 'ar', logic: 'OR', field: 'receiverid', value: sessionid },
+    ],
+    [
+      {
+        tableAlias: 'am',
+        field: 'content',
+        operator: 'like',
+        value: `%${query}%`,
+      },
+    ],
+  ];
+
+  if (typeof cursor !== 'undefined' && cursor !== 0) {
+    wheres.push([
+      { tableAlias: 'am', field: 'id', operator: '<', value: cursor },
+    ]);
+  }
+
+  queryConfig = makeWhere(queryConfig, wheres);
+  queryConfig.text = makeOrder<AdvancedMessages & AdvancedRooms>(
+    queryConfig.text,
+    [{ field: 'id', by: 'DESC', tableAlias: 'am' }]
+  );
+  queryConfig.text = makeLimit(queryConfig.text, limit);
 
   return queryConfig;
 };

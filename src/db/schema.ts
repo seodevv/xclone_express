@@ -140,7 +140,7 @@ export interface Schemas {
   };
   roomsdetail: {
     id: number;
-    type: 'disable';
+    type: 'disable' | 'pin';
     userid: Schemas['users']['id'];
     roomid: Schemas['rooms']['id'];
   };
@@ -211,6 +211,7 @@ export interface Where<TableSchema> {
 export interface Order<TableSchema> {
   field: keyof TableSchema;
   by?: 'ASC' | 'DESC';
+  tableAlias?: string;
 }
 
 export type RequiredQueryConfig = Required<

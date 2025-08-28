@@ -223,4 +223,23 @@ apiRoomsRouter.post(
   }
 );
 
+// POST /api/rooms/:roomid/pin
+// 특정 채팅방에 핀을 추가
+apiRoomsRouter.post(
+  '/:roomid/pin',
+  async (req: TypedRequestParams<{ roomid: string }>, res) => {
+    const { roomid } = req.params;
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = await decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token is expired');
+    }
+
+    
+  }
+);
+
 export default apiRoomsRouter;

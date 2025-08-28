@@ -1,4 +1,4 @@
-import { COOKIE_CLEAR_OPTIONS, decodingUserToken } from '@/lib/common';
+import { COOKIE_CLEAR_OPTIONS, decodingUserToken, delay } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 import {
@@ -14,12 +14,60 @@ import {
 import { AdvancedMessages } from '@/model/Message';
 import {
   TypedRequestBodyParams,
+  TypedRequestQuery,
   TypedRequestQueryParams,
 } from '@/model/Request';
 import { TypedResponse } from '@/model/Response';
+import { AdvancedRooms } from '@/model/Room';
 import express from 'express';
 
 const apiMessagesRouter = express.Router();
+
+// GET /api/messages/search
+// 본인이 참여 중인 채팅 방의 메시지의 내용을 검색
+apiMessagesRouter.get(
+  '/search',
+  async (
+    req: TypedRequestQuery<{ cursor?: string; size?: string; query?: string }>,
+    res: TypedResponse<{
+      data?: (AdvancedMessages & { Room: AdvancedRooms })[];
+      nextCursor?: number;
+      message: string;
+    }>
+  ) => {
+    await delay(1500);
+    const { cursor, size = '10', query = '' } = req.query;
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = await decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token has expired');
+    }
+
+    const dao = new DAO();
+    const pageSize = ~~size !== 0 ? ~~size : 10;
+    const messagesList = await dao.getMessagesListSearch({
+      sessionid: currentUser.id,
+      query: decodeURIComponent(query),
+      cursor:
+        typeof cursor !== 'undefined'
+          ? ~~cursor !== 0
+            ? ~~cursor
+            : undefined
+          : undefined,
+      limit: ~~pageSize,
+    });
+    dao.release();
+
+    if (typeof messagesList === 'undefined') {
+      return httpInternalServerErrorResponse(res);
+    }
+
+    return httpSuccessResponse(res, { data: messagesList, message: 'ok' });
+  }
+);
 
 // GET /api/messages/:roomid
 // 본인이 참여 중인 채팅 방의 메시지를 조회
@@ -27,7 +75,10 @@ apiMessagesRouter.get(
   '/:roomid',
   async (
     req: TypedRequestQueryParams<
-      { cursor?: string; size?: string },
+      {
+        cursor?: string;
+        size?: string;
+      },
       { roomid?: string }
     >,
     res: TypedResponse<{

@@ -7,6 +7,7 @@ import {
   insertUsersQuery,
   selectAdvancedRoomListQuery,
   selectListsQuery,
+  selectMessagesListSearch,
   selectPostsQuery,
   selectQuery,
   selectRoomsNotification,
@@ -927,6 +928,40 @@ class DAO {
     }
   }
 
+  async getMessagesListSearch({
+    sessionid,
+    query,
+    cursor,
+    limit,
+  }: {
+    sessionid: AdvancedMessages['content'];
+    query: AdvancedMessages['content'];
+    cursor?: number;
+    limit?: number;
+  }): Promise<(AdvancedMessages & { Room: AdvancedRooms })[] | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectMessagesListSearch({
+        sessionid,
+        query,
+        cursor,
+        limit,
+      });
+      // console.log('[getMessagesListSearch]\n', queryConfig.text);
+      const messagesList = (
+        await this.client.query<AdvancedMessages & { Room: AdvancedRooms }>(
+          queryConfig
+        )
+      ).rows;
+      return messagesList;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
   async createUser({
     id,
     password,
@@ -1184,7 +1219,7 @@ class DAO {
         update: { fields: ['password'], values: [password] },
         wheres: [[{ field: 'id', value: id }]],
       });
-      console.log(queryConfig.text);
+      // console.log(queryConfig.text);
       await this.client.query(queryConfig);
       const updatedUser = await this.getUser({ id });
       return updatedUser;
