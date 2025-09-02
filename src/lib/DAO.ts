@@ -427,7 +427,7 @@ class DAO {
     type: Schemas['roomsdetail']['type'];
     userid: Schemas['roomsdetail']['userid'];
     roomid: Schemas['roomsdetail']['roomid'];
-  }) {
+  }): Promise<Schemas['roomsdetail'] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -445,9 +445,45 @@ class DAO {
       });
       // console.log('[getRoomsDetail]\n', queryConfig.text);
       const detail = (
-        await this.client.query<Schemas['messagesdetail']>(queryConfig)
+        await this.client.query<Schemas['roomsdetail']>(queryConfig)
       ).rows[0];
       return detail;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
+  async getRoomsSnooze({
+    id,
+    type,
+    userid,
+    roomid,
+  }: {
+    id?: Schemas['roomssnooze']['id'];
+    type?: Schemas['roomssnooze']['type'];
+    userid: Schemas['roomssnooze']['userid'];
+    roomid: Schemas['roomssnooze']['roomid'];
+  }): Promise<Schemas['roomssnooze'] | undefined> {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const queryConfig = selectQuery({
+        table: 'roomssnooze',
+        wheres: [
+          [
+            { field: 'id', value: id },
+            { field: 'type', value: type },
+            { field: 'userid', value: userid },
+            { field: 'roomid', value: roomid },
+          ],
+        ],
+      });
+      const snooze = (
+        await this.client.query<Schemas['roomssnooze']>(queryConfig)
+      ).rows[0];
+      return snooze;
     } catch (error) {
       console.error(error);
       return;
@@ -462,7 +498,7 @@ class DAO {
     type: Schemas['messagesdetail']['type'];
     messageid: Schemas['messagesdetail']['messageid'];
     userid: Schemas['messagesdetail']['userid'];
-  }) {
+  }): Promise<Schemas['messagesdetail'] | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -1772,19 +1808,21 @@ class DAO {
     type: Schemas['roomsdetail']['type'];
     userid: Schemas['roomsdetail']['userid'];
     roomid: Schemas['roomsdetail']['roomid'];
-  }): Promise<boolean> {
+  }): Promise<boolean | undefined> {
     await this.init();
-    if (!this.client) return false;
+    if (!this.client) return;
 
     try {
-      const check = await this.getRoomsDetail({ type, userid, roomid });
+      const check = await this.getRoomsDetail({
+        type,
+        userid,
+        roomid,
+      });
 
       switch (method) {
         case 'post': {
           if (typeof check !== 'undefined') {
-            throw new Error(
-              'Cannot insert into roomsdetail table because row already exists.'
-            );
+            return false;
           }
 
           const queryConfig = insertQuery({
@@ -1798,9 +1836,7 @@ class DAO {
         }
         case 'delete': {
           if (typeof check === 'undefined') {
-            throw new Error(
-              'Cannot delete table roomsdetail because row does not exist already.'
-            );
+            return false;
           }
 
           const queryConfig = deleteQuery({
@@ -1819,7 +1855,81 @@ class DAO {
       }
     } catch (error) {
       console.error(error);
-      return false;
+      return;
+    }
+  }
+
+  async roomsSnoozeHandler({
+    method,
+    type,
+    userid,
+    roomid,
+  }: {
+    method: 'post' | 'delete';
+    type?: Schemas['roomssnooze']['type'];
+    userid: Schemas['roomssnooze']['userid'];
+    roomid: Schemas['roomssnooze']['roomid'];
+  }) {
+    await this.init();
+    if (!this.client) return;
+
+    try {
+      const check = await this.getRoomsSnooze({
+        type,
+        userid,
+        roomid,
+      });
+
+      switch (method) {
+        case 'post': {
+          if (typeof type === 'undefined') return false;
+          if (typeof check === 'undefined') {
+            const insertQueryConfig = insertQuery({
+              table: 'roomssnooze',
+              fields: ['type', 'userid', 'roomid'],
+              values: [type, userid, roomid],
+            });
+
+            await this.client.query(insertQueryConfig);
+            return true;
+          }
+
+          const updateQueryConfig = updateQuery({
+            table: 'roomssnooze',
+            update: {
+              fields: ['type', 'createat'],
+              values: [type, new Date()],
+            },
+            wheres: [
+              [
+                { field: 'userid', value: userid },
+                { field: 'roomid', value: roomid },
+              ],
+            ],
+          });
+          // console.log('[roomsSnoozeHandler]\n', updateQueryConfig.text);
+          await this.client.query(updateQueryConfig);
+          return true;
+        }
+        case 'delete': {
+          if (typeof check === 'undefined') return false;
+
+          const deleteQueryConfig = deleteQuery({
+            table: 'roomssnooze',
+            wheres: [
+              [
+                { field: 'userid', value: userid },
+                { field: 'roomid', value: roomid },
+              ],
+            ],
+          });
+          await this.client.query(deleteQueryConfig);
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      return;
     }
   }
 

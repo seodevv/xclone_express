@@ -136,13 +136,19 @@ export interface Schemas {
     Receiver: SafeUser;
     Sender: SafeUser;
     sent: { id: Schemas['users']['id']; count: number }[];
-    Disabled: UserId[];
   };
   roomsdetail: {
     id: number;
     type: 'disable' | 'pin';
     userid: Schemas['users']['id'];
     roomid: Schemas['rooms']['id'];
+  };
+  roomssnooze: {
+    id: number;
+    userid: Schemas['users']['id'];
+    roomid: Schemas['rooms']['id'];
+    type: '1h' | '8h' | '1w' | 'forever';
+    createat: Date;
   };
   messages: {
     id: number;

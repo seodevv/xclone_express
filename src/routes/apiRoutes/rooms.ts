@@ -8,11 +8,18 @@ import {
 import DAO from '@/lib/DAO';
 import {
   httpBadRequestResponse,
+  httpForbiddenResponse,
+  httpInternalServerErrorResponse,
   httpNotFoundResponse,
   httpSuccessResponse,
   httpUnAuthorizedResponse,
 } from '@/lib/responsesHandlers';
-import { TypedRequestCookies, TypedRequestParams } from '@/model/Request';
+import {
+  TypedRequestBodyParams,
+  TypedRequestCookies,
+  TypedRequestParams,
+  TypedRequestQueryParams,
+} from '@/model/Request';
 import { AdvancedRooms } from '@/model/Room';
 import express from 'express';
 
@@ -137,7 +144,9 @@ apiRoomsRouter.get(
           { id: currentUser.id, count: 0 },
           { id: receiver.id, count: 0 },
         ],
-        Disabled: [],
+        Pinned: false,
+        Disabled: false,
+        Snooze: null,
       };
       return httpSuccessResponse(res, { data: instantRoom, message: 'ok' });
     }
@@ -227,7 +236,10 @@ apiRoomsRouter.post(
 // 특정 채팅방에 핀을 추가
 apiRoomsRouter.post(
   '/:roomid/pin',
-  async (req: TypedRequestParams<{ roomid: string }>, res) => {
+  async (
+    req: TypedRequestParams<{ roomid: string }>,
+    res: TypedResponse<{ data?: AdvancedRooms; message: string }>
+  ) => {
     const { roomid } = req.params;
     const { 'connect.sid': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
@@ -238,7 +250,193 @@ apiRoomsRouter.post(
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
 
-    
+    const dao = new DAO();
+    const findRoom = await dao.getRoom({
+      roomid,
+      findUserid: currentUser.id,
+    });
+    if (!findRoom) {
+      dao.release();
+      return httpNotFoundResponse(res, 'The room not found');
+    }
+
+    const result = await dao.roomsDetailHandler({
+      method: 'post',
+      type: 'pin',
+      roomid: findRoom.id,
+      userid: currentUser.id,
+    });
+
+    if (!result) {
+      dao.release();
+      return httpForbiddenResponse(res, 'This room is already pinned');
+    }
+
+    const updatedRoom = await dao.getAdvancedRoom({
+      sessionid: currentUser.id,
+      roomid: findRoom.id,
+    });
+    dao.release();
+
+    return httpSuccessResponse(res, { data: updatedRoom, message: 'ok' });
+  }
+);
+
+// DELETE /api/rooms/:roomid/pin
+// 특정 채팅방에 핀을 제거
+apiRoomsRouter.delete(
+  '/:roomid/pin',
+  async (
+    req: TypedRequestParams<{ roomid: string }>,
+    res: TypedResponse<{ data?: AdvancedRooms; message: string }>
+  ) => {
+    const { roomid } = req.params;
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = await decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token is expired');
+    }
+
+    const dao = new DAO();
+    const findRoom = await dao.getRoom({
+      roomid,
+      findUserid: currentUser.id,
+    });
+    if (!findRoom) {
+      dao.release();
+      return httpNotFoundResponse(res, 'The room not found');
+    }
+
+    const result = await dao.roomsDetailHandler({
+      method: 'delete',
+      type: 'pin',
+      roomid: findRoom.id,
+      userid: currentUser.id,
+    });
+
+    if (!result) {
+      dao.release();
+      return httpForbiddenResponse(res, 'This room is not pinned');
+    }
+
+    const updatedRoom = await dao.getAdvancedRoom({
+      sessionid: currentUser.id,
+      roomid: findRoom.id,
+    });
+    dao.release();
+
+    return httpSuccessResponse(res, { data: updatedRoom, message: 'ok' });
+  }
+);
+
+// POST /api/rooms/:roomid/snooze
+// 특정 채팅방의 snooze를 설정
+apiRoomsRouter.post(
+  '/:roomid/snooze',
+  async (
+    req: TypedRequestBodyParams<{ snooze?: string }, { roomid: string }>,
+    res: TypedResponse<{ data?: AdvancedRooms; message: string }>
+  ) => {
+    const { roomid } = req.params;
+    const { snooze } = req.body;
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+    if (
+      snooze !== '1h' &&
+      snooze !== '8h' &&
+      snooze !== '1w' &&
+      snooze !== 'forever'
+    ) {
+      return httpBadRequestResponse(res);
+    }
+
+    const currentUser = await decodingUserToken(token);
+    if (!currentUser) {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token is expired');
+    }
+
+    const dao = new DAO();
+    const findRoom = await dao.getRoom({ roomid, findUserid: currentUser.id });
+    if (!findRoom) {
+      dao.release();
+      return httpNotFoundResponse(res, 'The room not found');
+    }
+
+    const result = await dao.roomsSnoozeHandler({
+      method: 'post',
+      type: snooze,
+      userid: currentUser.id,
+      roomid: findRoom.id,
+    });
+
+    if (typeof result === 'undefined') {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
+
+    const updatedRoom = await dao.getAdvancedRoom({
+      sessionid: currentUser.id,
+      roomid: findRoom.id,
+    });
+    dao.release();
+
+    return httpSuccessResponse(res, { data: updatedRoom, message: 'ok' });
+  }
+);
+
+// DELETE /api/rooms/:roomid/snooze
+// 특정 채팅방의 snooze를 해제
+apiRoomsRouter.delete(
+  '/:roomid/snooze',
+  async (
+    req: TypedRequestParams<{ roomid: string }>,
+    res: TypedResponse<{ data?: AdvancedRooms; message: string }>
+  ) => {
+    const { roomid } = req.params;
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentuser = await decodingUserToken(token);
+    if (!currentuser) {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token is expired');
+    }
+
+    const dao = new DAO();
+    const findRoom = await dao.getRoom({ roomid, findUserid: currentuser.id });
+    if (!findRoom) {
+      dao.release();
+      return httpNotFoundResponse(res, 'The room not found');
+    }
+
+    const result = await dao.roomsSnoozeHandler({
+      method: 'delete',
+      userid: currentuser.id,
+      roomid,
+    });
+    if (typeof result === 'undefined') {
+      dao.release();
+      return httpInternalServerErrorResponse(res);
+    }
+    if (!result) {
+      dao.release();
+      return httpForbiddenResponse(
+        res,
+        'This room is not already set to snooze'
+      );
+    }
+
+    const updatedRoom = await dao.getAdvancedRoom({
+      sessionid: currentuser.id,
+      roomid,
+    });
+    dao.release();
+
+    return httpSuccessResponse(res, { data: updatedRoom, message: 'ok' });
   }
 );
 

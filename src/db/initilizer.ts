@@ -123,6 +123,8 @@ async function getConstraint(pool: Pool, key: FKey | PKey) {
           key.type === 'P' ? 'p' : 'u',
           key.type === 'P'
             ? `${key.table}_pkey`
+            : key.type === 'U'
+            ? `${key.table}_ukey`
             : `${key.table}_${key.fields.join('_')}_key`,
         ]
       );
@@ -189,7 +191,11 @@ async function createConstraint(pool: Pool, key: FKey | PKey) {
     if (isPrimaryKey(key)) {
       const { table, fields } = key;
       const constraint_name = `${table}_${
-        key.type === 'P' ? 'pkey' : `${key.fields.join('_')}_key`
+        key.type === 'P'
+          ? 'pkey'
+          : key.type === 'U'
+          ? 'ukey'
+          : `${key.fields.join('_')}_key`
       }`;
       await pool.query(
         `ALTER TABLE ${table} ADD CONSTRAINT ${constraint_name} ${
@@ -250,6 +256,7 @@ type Table =
   | 'listsdetail'
   | 'rooms'
   | 'roomsdetail'
+  | 'roomssnooze'
   | 'messages'
   | 'messagesdetail'
   | 'messagesmedia';
@@ -271,6 +278,7 @@ type CustomTypes =
   | 'lists_make'
   | 'listsdetail_type'
   | 'roomsdetail_type'
+  | 'roomssnooze_type'
   | 'messagesdetail_type'
   | 'messagesmedia_type';
 
@@ -449,7 +457,7 @@ const SCHEMA_INIT: SchemaInit = {
       postid: {
         type: 'int4',
         notNull: true,
-        unique: true,
+        pkey: true,
         fkey: {
           table: 'post',
           column: 'postid',
@@ -554,10 +562,11 @@ const SCHEMA_INIT: SchemaInit = {
   },
   rooms: {
     columns: {
-      id: { type: 'varchar', length: 16, notNull: true, pkey: true },
+      id: { type: 'varchar', length: 128, notNull: true, pkey: true },
       receiverid: {
         type: 'varchar',
         length: 32,
+        unique: true,
         notNull: true,
         fkey: {
           table: 'users',
@@ -569,6 +578,7 @@ const SCHEMA_INIT: SchemaInit = {
       senderid: {
         type: 'varchar',
         length: 32,
+        unique: true,
         notNull: true,
         fkey: {
           table: 'users',
@@ -585,7 +595,7 @@ const SCHEMA_INIT: SchemaInit = {
     },
   },
   roomsdetail: {
-    type: { name: 'roomsdetail_type', values: ['disable'] },
+    type: { name: 'roomsdetail_type', values: ['disable', 'pin'] },
     columns: {
       id: { type: 'serial4', notNull: true },
       type: { type: 'roomsdetail_type', notNull: true, pkey: true },
@@ -612,6 +622,42 @@ const SCHEMA_INIT: SchemaInit = {
           delete: 'CASCADE',
           update: 'CASCADE',
         },
+      },
+    },
+  },
+  roomssnooze: {
+    type: { name: 'roomssnooze_type', values: ['1h', '8h', '1w', 'forever'] },
+    columns: {
+      id: { type: 'serial4', notNull: true },
+      type: { type: 'roomssnooze_type', notNull: true },
+      userid: {
+        type: 'varchar',
+        length: 32,
+        notNull: true,
+        pkey: true,
+        fkey: {
+          table: 'users',
+          column: 'id',
+          delete: 'CASCADE',
+          update: 'CASCADE',
+        },
+      },
+      roomid: {
+        type: 'varchar',
+        length: 128,
+        notNull: true,
+        pkey: true,
+        fkey: {
+          table: 'rooms',
+          column: 'id',
+          delete: 'CASCADE',
+          update: 'CASCADE',
+        },
+      },
+      createat: {
+        type: 'timestamp',
+        default: 'current_timestamp',
+        notNull: true,
       },
     },
   },
@@ -645,6 +691,16 @@ const SCHEMA_INIT: SchemaInit = {
         type: 'timestamp',
         default: 'current_timestamp',
         notNull: true,
+      },
+      seen: { type: 'bool', default: 'false', notNull: true },
+      parentid: {
+        type: 'int4',
+        fkey: {
+          table: 'messages',
+          column: 'id',
+          delete: 'SET NULL',
+          update: 'CASCADE',
+        },
       },
     },
   },
@@ -1284,11 +1340,7 @@ AS SELECT r.id,
         CASE
             WHEN n.sent IS NULL THEN '[]'::json
             ELSE n.sent
-        END AS sent,
-        CASE
-            WHEN rd.value IS NULL THEN '[]'::json
-            ELSE rd.value
-        END AS "Disabled"
+        END AS sent
    FROM rooms r
      JOIN ( SELECT users.id,
             users.nickname,
@@ -1308,14 +1360,7 @@ AS SELECT r.id,
                    FROM messages m_1
                   WHERE m_1.seen = false
                   GROUP BY m_1.roomid, m_1.senderid) a
-          GROUP BY a.roomid) n ON n.roomid::text = r.id::text
-     LEFT JOIN ( SELECT s2_rd.roomid,
-            json_agg(s2_rd.value) AS value
-           FROM ( SELECT s1_rd.roomid,
-                    json_build_object('id', s1_rd.userid) AS value
-                   FROM roomsdetail s1_rd
-                  GROUP BY s1_rd.roomid, s1_rd.userid) s2_rd
-          GROUP BY s2_rd.roomid) rd ON rd.roomid::text = r.id::text;`,
+          GROUP BY a.roomid) n ON n.roomid::text = r.id::text;`,
   advancedmessages: `CREATE OR REPLACE VIEW public.advancedmessages
 AS SELECT m.id,
     m.roomid,
