@@ -420,13 +420,13 @@ class DAO {
   async getRoomsDetail({
     id,
     type,
-    userid,
     roomid,
+    userid,
   }: {
     id?: Schemas['roomsdetail']['id'];
     type: Schemas['roomsdetail']['type'];
-    userid: Schemas['roomsdetail']['userid'];
     roomid: Schemas['roomsdetail']['roomid'];
+    userid?: Schemas['roomsdetail']['userid'];
   }): Promise<Schemas['roomsdetail'] | undefined> {
     await this.init();
     if (!this.client) return;
@@ -438,8 +438,8 @@ class DAO {
           [
             { field: 'id', value: id },
             { field: 'type', value: type },
-            { field: 'userid', value: userid },
             { field: 'roomid', value: roomid },
+            { field: 'userid', value: userid },
           ],
         ],
       });
@@ -1159,14 +1159,16 @@ class DAO {
   }
 
   async createRoom({
+    sessionid,
     roomid,
     senderid,
     receiverid,
   }: {
+    sessionid: string;
     roomid: string;
     senderid: string;
     receiverid: string;
-  }): Promise<Room | undefined> {
+  }): Promise<AdvancedRooms | undefined> {
     await this.init();
     if (!this.client) return;
 
@@ -1179,7 +1181,10 @@ class DAO {
       // console.log('[createRoom]\n', queryConfig);
       const inserted = (await this.client.query<Schemas['rooms']>(queryConfig))
         .rows[0];
-      const createRoom = await this.getRoom({ roomid: inserted.id });
+      const createRoom = await this.getAdvancedRoom({
+        sessionid,
+        roomid: inserted.id,
+      });
       return createRoom;
     } catch (error) {
       console.error(error);
@@ -1806,7 +1811,7 @@ class DAO {
   }: {
     method: 'post' | 'delete';
     type: Schemas['roomsdetail']['type'];
-    userid: Schemas['roomsdetail']['userid'];
+    userid?: Schemas['roomsdetail']['userid'];
     roomid: Schemas['roomsdetail']['roomid'];
   }): Promise<boolean | undefined> {
     await this.init();
@@ -1875,7 +1880,6 @@ class DAO {
 
     try {
       const check = await this.getRoomsSnooze({
-        type,
         userid,
         roomid,
       });

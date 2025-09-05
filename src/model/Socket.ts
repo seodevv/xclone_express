@@ -57,7 +57,7 @@ interface Image {
   url: string;
   width: number;
   height: number;
-  file: Buffer;
+  file: Uint8Array;
   filename: string;
 }
 

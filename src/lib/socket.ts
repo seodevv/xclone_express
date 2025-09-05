@@ -72,10 +72,21 @@ export function setupSocket(
       const receiverid = decryptRoomId({ userid: senderid, roomid });
 
       const dao = new DAO();
-      let findRoom = await dao.getRoom({ roomid });
+      let findRoom = await dao.getAdvancedRoom({ sessionid, roomid });
       if (typeof findRoom === 'undefined') {
-        findRoom = await dao.createRoom({ roomid, senderid, receiverid });
+        findRoom = await dao.createRoom({
+          sessionid,
+          roomid,
+          senderid,
+          receiverid,
+        });
       }
+
+      await dao.roomsDetailHandler({
+        method: 'delete',
+        type: 'disable',
+        roomid,
+      });
 
       let createdMessage = await dao.createMessage({
         roomid,

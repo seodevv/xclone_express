@@ -18,7 +18,6 @@ import {
   TypedRequestBodyParams,
   TypedRequestCookies,
   TypedRequestParams,
-  TypedRequestQueryParams,
 } from '@/model/Request';
 import { AdvancedRooms } from '@/model/Room';
 import express from 'express';
@@ -160,7 +159,10 @@ apiRoomsRouter.get(
 // 특정 채팅방을 비활성화
 apiRoomsRouter.delete(
   '/:roomid',
-  async (req: TypedRequestParams<{ roomid?: string }>, res) => {
+  async (
+    req: TypedRequestParams<{ roomid?: string }>,
+    res: TypedResponse<{ data?: AdvancedRooms; message: string }>
+  ) => {
     const { roomid } = req.params;
     const { 'connect.sid': token } = req.cookies;
     if (!roomid) return httpBadRequestResponse(res);
@@ -182,14 +184,23 @@ apiRoomsRouter.delete(
       return httpNotFoundResponse(res, 'The room not found');
     }
 
-    await dao.roomsDetailHandler({
-      method: 'delete',
+    const result = await dao.roomsDetailHandler({
+      method: 'post',
       type: 'disable',
       roomid,
       userid: currentUser.id,
     });
+    if (typeof result === 'undefined') {
+      return httpInternalServerErrorResponse(res);
+    }
 
-    return httpSuccessResponse(res, { message: 'ok' });
+    const updatedRoom = await dao.getAdvancedRoom({
+      sessionid: currentUser.id,
+      roomid: findRoom.id,
+    });
+    dao.release();
+
+    return httpSuccessResponse(res, { data: updatedRoom, message: 'ok' });
   }
 );
 
