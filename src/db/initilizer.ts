@@ -1370,7 +1370,7 @@ AS SELECT m.id,
     m.createat,
     m.seen,
     m.parentid,
-    row_to_json(m2.*) AS "Parent",
+    row_to_json(am.*) AS "Parent",
         CASE
             WHEN md_1.value IS NULL THEN '[]'::json
             ELSE md_1.value
@@ -1386,14 +1386,13 @@ AS SELECT m.id,
             users.image,
             users.verified
            FROM users) u ON u.id::text = m.senderid::text
-     LEFT JOIN messages m2 ON m2.id = m.parentid
-     LEFT JOIN ( SELECT unnamed_subquery.messageid,
-            json_agg(json_build_object('id', unnamed_subquery.userid)) AS value
-           FROM ( SELECT messagesdetail.messageid,
-                    messagesdetail.userid
-                   FROM messagesdetail
-                  WHERE messagesdetail.type = 'disable'::messagesdetail_type) unnamed_subquery
-          GROUP BY unnamed_subquery.messageid) md_1 ON md_1.messageid = m.id
+     LEFT JOIN ( SELECT s_md.messageid,
+            json_agg(json_build_object('id', s_md.userid)) AS value
+           FROM ( SELECT s_md_1.messageid,
+                    s_md_1.userid
+                   FROM messagesdetail s_md_1
+                  WHERE s_md_1.type = 'disable'::messagesdetail_type) s_md
+          GROUP BY s_md.messageid) md_1 ON md_1.messageid = m.id
      LEFT JOIN ( SELECT s_2_md.messageid,
             json_agg(row_to_json(s_2_md.*)::jsonb - 'messageid'::text) AS value
            FROM ( SELECT s_md.messageid,
@@ -1409,5 +1408,22 @@ AS SELECT m.id,
      LEFT JOIN ( SELECT s_mm.messageid,
             (row_to_json(s_mm.*)::jsonb - 'messageid'::text)::json AS value
            FROM messagesmedia s_mm) mm ON mm.messageid = m.id
+     LEFT JOIN ( SELECT m_1.id,
+            m_1.senderid,
+            row_to_json(u_1.*) AS "Sender",
+            m_1.content,
+            m_1.createat,
+            mm_1.value AS "Media"
+           FROM messages m_1
+             JOIN ( SELECT users.id,
+                    users.nickname,
+                    users.image,
+                    users.verified
+                   FROM users) u_1 ON u_1.id::text = m_1.senderid::text
+             LEFT JOIN messages m2 ON m2.id = m_1.parentid
+             LEFT JOIN ( SELECT s_mm.messageid,
+                    (row_to_json(s_mm.*)::jsonb - 'messageid'::text)::json AS value
+                   FROM messagesmedia s_mm) mm_1 ON mm_1.messageid = m_1.id
+          ORDER BY m_1.id DESC) am ON am.id = m.parentid
   ORDER BY m.id DESC;`,
 };

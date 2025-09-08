@@ -1,3 +1,4 @@
+import { AdvancedMessages } from '@/model/Message';
 import { QueryConfig } from 'pg';
 
 export type Birth = {
@@ -161,7 +162,15 @@ export interface Schemas {
   };
   advancedmessages: Schemas['messages'] & {
     Sender: SafeUser;
-    Parent: Schemas['messages'] | null;
+    Parent:
+      | (Pick<
+          Schemas['messages'],
+          'id' | 'senderid' | 'content' | 'createat'
+        > & {
+          Sender: Schemas['advancedmessages']['Sender'];
+          Media: Schemas['advancedmessages']['Media'];
+        })
+      | null;
     Disable: UserId[];
     React: {
       id: Schemas['users']['id'];
