@@ -26,6 +26,7 @@ const apiRoomsRouter = express.Router();
 
 // GET /api/rooms
 // 본인이 참여 중인 채팅 리스트
+// ㅇ
 apiRoomsRouter.get(
   '/',
   async (
@@ -36,7 +37,7 @@ apiRoomsRouter.get(
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
+    if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
@@ -53,6 +54,7 @@ apiRoomsRouter.get(
 
 // GET /api/rooms/notifications
 // 전체 채팅방의 알람을 조회
+// ㅇ
 apiRoomsRouter.get(
   '/notifications',
   async (
@@ -80,10 +82,11 @@ apiRoomsRouter.get(
 
 // GET /api/rooms/:roomid
 // 특정 채팅방 정보를 조회
+// ㅇ
 apiRoomsRouter.get(
   '/:roomid',
   async (
-    req: TypedRequestParams<{ roomid?: string }>,
+    req: TypedRequestParams<{ roomid: string }>,
     res: TypedResponse<{
       data?: AdvancedRooms;
       message: string;
@@ -91,12 +94,11 @@ apiRoomsRouter.get(
   ) => {
     const { roomid } = req.params;
     const { 'connect.sid': token } = req.cookies;
-    if (!roomid) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
     if (!roomid.includes('-')) return httpBadRequestResponse(res);
 
     const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
+    if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
@@ -107,7 +109,7 @@ apiRoomsRouter.get(
       roomid,
       findUserid: currentUser.id,
     });
-    if (!findRoom) {
+    if (typeof findRoom === 'undefined') {
       const receiverid = decryptRoomId({
         userid: currentUser.id,
         roomid,
@@ -157,19 +159,19 @@ apiRoomsRouter.get(
 
 // DELETE /api/rooms/:roomid
 // 특정 채팅방을 비활성화
+// ㅇ
 apiRoomsRouter.delete(
   '/:roomid',
   async (
-    req: TypedRequestParams<{ roomid?: string }>,
+    req: TypedRequestParams<{ roomid: string }>,
     res: TypedResponse<{ data?: AdvancedRooms; message: string }>
   ) => {
     const { roomid } = req.params;
     const { 'connect.sid': token } = req.cookies;
-    if (!roomid) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
+    if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
@@ -179,7 +181,7 @@ apiRoomsRouter.delete(
       roomid,
       findUserid: currentUser.id,
     });
-    if (!findRoom) {
+    if (typeof findRoom === 'undefined') {
       dao.release();
       return httpNotFoundResponse(res, 'The room not found');
     }
@@ -191,6 +193,7 @@ apiRoomsRouter.delete(
       userid: currentUser.id,
     });
     if (typeof result === 'undefined') {
+      dao.release();
       return httpInternalServerErrorResponse(res);
     }
 
@@ -206,19 +209,19 @@ apiRoomsRouter.delete(
 
 // POST /api/rooms/:roomid/seen
 // 특정 채팅방의 상대방의 메시지를 읽음
+// ㅇ
 apiRoomsRouter.post(
   '/:roomid/seen',
   async (
-    req: TypedRequestParams<{ roomid?: string }>,
+    req: TypedRequestParams<{ roomid: string }>,
     res: TypedResponse<{ data?: AdvancedRooms; message: string }>
   ) => {
     const { roomid } = req.params;
     const { 'connect.sid': token } = req.cookies;
-    if (!roomid) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
+    if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token the expired');
     }
@@ -228,7 +231,7 @@ apiRoomsRouter.post(
       roomid,
       findUserid: currentUser.id,
     });
-    if (!findRoom) {
+    if (typeof findRoom === 'undefined') {
       dao.release();
       return httpNotFoundResponse(res, 'Room not found');
     }
@@ -245,6 +248,7 @@ apiRoomsRouter.post(
 
 // POST /api/rooms/:roomid/pin
 // 특정 채팅방에 핀을 추가
+// ㅇ
 apiRoomsRouter.post(
   '/:roomid/pin',
   async (
@@ -256,7 +260,7 @@ apiRoomsRouter.post(
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
+    if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
@@ -266,7 +270,7 @@ apiRoomsRouter.post(
       roomid,
       findUserid: currentUser.id,
     });
-    if (!findRoom) {
+    if (typeof findRoom === 'undefined') {
       dao.release();
       return httpNotFoundResponse(res, 'The room not found');
     }
@@ -295,6 +299,7 @@ apiRoomsRouter.post(
 
 // DELETE /api/rooms/:roomid/pin
 // 특정 채팅방에 핀을 제거
+// ㅇ
 apiRoomsRouter.delete(
   '/:roomid/pin',
   async (
@@ -306,7 +311,7 @@ apiRoomsRouter.delete(
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
+    if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
@@ -316,7 +321,7 @@ apiRoomsRouter.delete(
       roomid,
       findUserid: currentUser.id,
     });
-    if (!findRoom) {
+    if (typeof findRoom === 'undefined') {
       dao.release();
       return httpNotFoundResponse(res, 'The room not found');
     }
@@ -345,6 +350,7 @@ apiRoomsRouter.delete(
 
 // POST /api/rooms/:roomid/snooze
 // 특정 채팅방의 snooze를 설정
+// ㅇ
 apiRoomsRouter.post(
   '/:roomid/snooze',
   async (
@@ -365,7 +371,7 @@ apiRoomsRouter.post(
     }
 
     const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
+    if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
@@ -401,6 +407,7 @@ apiRoomsRouter.post(
 
 // DELETE /api/rooms/:roomid/snooze
 // 특정 채팅방의 snooze를 해제
+// ㅇ
 apiRoomsRouter.delete(
   '/:roomid/snooze',
   async (
@@ -412,14 +419,14 @@ apiRoomsRouter.delete(
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentuser = await decodingUserToken(token);
-    if (!currentuser) {
+    if (typeof currentuser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
 
     const dao = new DAO();
     const findRoom = await dao.getRoom({ roomid, findUserid: currentuser.id });
-    if (!findRoom) {
+    if (typeof findRoom === 'undefined') {
       dao.release();
       return httpNotFoundResponse(res, 'The room not found');
     }

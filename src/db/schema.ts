@@ -42,6 +42,14 @@ export interface Schemas {
     refer: string | null;
     regist: Date;
   };
+  advancedusers: Omit<Schemas['users'], 'password'> & {
+    Followers: UserId[];
+    Followings: UserId[];
+    _count: {
+      Followers: number;
+      Followings: number;
+    };
+  };
   follow: {
     id: number;
     source: string;
@@ -212,19 +220,28 @@ export type Operator =
   | 'not like'
   | 'is null'
   | 'is not null';
+export type JsonOperator = '@>' | '->>' | '#>>';
+
+export type JsonFunction = 'jsonb_array_length';
 
 export type Field<TableSchema> = keyof TableSchema;
 
 export interface Where<TableSchema> {
   tableAlias?: string;
   field: keyof TableSchema;
-  operator?: Operator;
+  subField?: string;
+  not?: boolean;
+  operator?: Operator | JsonOperator;
+  subOperator?: Operator;
   value?: any;
   logic?: 'AND' | 'OR';
 }
 
 export interface Order<TableSchema> {
   field: keyof TableSchema;
+  operator?: JsonOperator;
+  subField?: string;
+  func?: JsonFunction;
   by?: 'ASC' | 'DESC';
   tableAlias?: string;
 }

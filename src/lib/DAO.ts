@@ -1,17 +1,17 @@
 import { GifType, ImageType, Post } from '../model/Post';
 import { pool } from '@/app';
-import { Birth, PostImage, Schemas, Verified, Where } from '@/db/schema';
+import { Birth, Order, PostImage, Schemas, Verified, Where } from '@/db/schema';
 import {
   deleteQuery,
   insertQuery,
   insertUsersQuery,
+  makeLimit,
+  makeOffset,
   selectAdvancedRoomListQuery,
   selectListsQuery,
   selectMessagesListSearch,
-  selectPostsQuery,
   selectQuery,
   selectRoomsNotification,
-  selectUsersQuery,
   updateQuery,
   updateUsersQuery,
 } from '@/lib/query';
@@ -49,76 +49,83 @@ class DAO {
   }): Promise<AdvancedUser | undefined> {
     await this.init();
     if (!this.client) return;
+
     const wheres: Where<Schemas['users']>[][] = [[{ field: 'id', value: id }]];
-    let index = 0;
-    if (password) {
-      if (typeof wheres[index] === 'undefined') {
-        wheres.push([]);
-      }
-      wheres[index].push({ field: 'password', value: password });
-      index++;
+
+    if (typeof nickname !== 'undefined') {
+      wheres[0].push({ logic: 'OR', field: 'nickname', value: nickname });
     }
-    if (nickname) {
-      if (typeof wheres[index] === 'undefined') {
-        wheres.push([]);
-      }
-      wheres[index].push({ field: 'nickname', value: nickname, logic: 'OR' });
+
+    if (typeof password !== 'undefined') {
+      wheres.push([{ field: 'password', value: password }]);
     }
 
     try {
-      const queryConfig = selectUsersQuery({ wheres });
-      const user = (await this.client.query<AdvancedUser>(queryConfig)).rows[0];
-      return user;
+      const usersQueryConfig = selectQuery({
+        table: 'users',
+        wheres,
+      });
+      const user = (await this.client.query<Schemas['users']>(usersQueryConfig))
+        .rows[0];
+      if (typeof user === 'undefined') return;
+
+      const advancedUsersQueryConfig = selectQuery({
+        table: 'advancedusers',
+        wheres: [[{ field: 'id', value: user.id }]],
+      });
+      const advancedUser = (
+        await this.client.query<Schemas['advancedusers']>(
+          advancedUsersQueryConfig
+        )
+      ).rows[0];
+      return advancedUser;
     } catch (error) {
       console.error(error);
       return;
     }
   }
 
-  async getPost({
-    postid,
-    userid,
-  }: {
+  async getPost(args: {
     postid: Schemas['post']['postid'];
     userid?: Schemas['post']['userid'];
   }): Promise<AdvancedPost | undefined> {
     await this.init();
     if (!this.client) return;
 
-    const where: Where<Schemas['advancedpost']>[] = [
-      { field: 'postid', value: postid },
+    const { postid, userid } = args;
+
+    const wheres: Where<Schemas['advancedpost']>[][] = [
+      [{ field: 'postid', value: postid }],
     ];
+
     if (typeof userid !== 'undefined') {
-      where.push({ field: 'userid', value: userid });
+      wheres.push([{ field: 'userid', value: userid }]);
     }
 
     try {
       const selectQueryConfig = selectQuery({
         table: 'advancedpost',
-        wheres: [where],
+        wheres,
       });
       // console.log('[getPost]\n', selectQueryConfig.text);
-      const post = (await this.client.query<AdvancedPost>(selectQueryConfig))
-        .rows[0];
+      const post = await this.client.query<AdvancedPost>(selectQueryConfig);
 
-      return post;
+      return post.rows[0];
     } catch (error) {
       console.error(error);
       return;
     }
   }
 
-  async getRepostPost({
-    userid,
-    originalid,
-    quote,
-  }: {
+  async getRepostPost(args: {
     userid: Schemas['post']['userid'];
     originalid: Schemas['post']['originalid'];
     quote: Schemas['post']['quote'];
   }): Promise<Post | undefined> {
     await this.init();
     if (!this.client) return;
+
+    const { userid, originalid, quote } = args;
 
     try {
       const queryConfig = selectQuery({
@@ -368,9 +375,8 @@ class DAO {
         findUserid,
       });
       // console.log('[getRoom]\n', queryConfig.text);
-      const room = (await this.client.query<AdvancedRooms>(queryConfig))
-        .rows[0];
-      return room;
+      const room = await this.client.query<AdvancedRooms>(queryConfig);
+      return room.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -522,44 +528,115 @@ class DAO {
     }
   }
 
-  async getUserList({
-    q,
-    verified,
-  }: {
+  async getUserList(args: {
     q?: string;
-    verified?: boolean;
+    verified?: true;
+    sort?: 'followers';
+    sessionid?: string;
+    relation?: 'Follow' | 'Following' | 'Follow or Following' | 'not Following';
+    self?: true;
+    pagination?: {
+      limit: number;
+      offset: number;
+    };
   }): Promise<AdvancedUser[] | undefined> {
     await this.init();
     if (!this.client) return;
-    const wheres: Where<Schemas['users']>[][] = [];
+    const { q, verified, sort, pagination, sessionid, relation, self } = args;
+
+    const wheres: Where<Schemas['advancedusers']>[][] = [];
+
     if (typeof q !== 'undefined') {
-      const where: Where<Schemas['users']>[] = [];
-      where.push({
-        field: 'id',
-        operator: 'ilike',
-        value: `%${decodeURIComponent(q)}%`,
-      });
-      where.push({
-        field: 'nickname',
-        operator: 'ilike',
-        value: `%${decodeURIComponent(q)}%`,
-        logic: 'OR',
-      });
-      wheres.push(where);
+      wheres.push([
+        {
+          field: 'id',
+          operator: 'ilike',
+          value: `%${decodeURIComponent(q)}%`,
+        },
+        {
+          field: 'nickname',
+          operator: 'ilike',
+          value: `%${decodeURIComponent(q)}%`,
+          logic: 'OR',
+        },
+      ]);
     }
 
     if (typeof verified !== 'undefined') {
-      const where: Where<Schemas['users']>[] = [];
-      where.push({ field: 'verified', operator: 'is not null' });
-      wheres.push(where);
+      wheres.push([{ field: 'verified', operator: 'is not null' }]);
+    }
+
+    if (typeof sessionid !== 'undefined') {
+      if (typeof self === 'undefined') {
+        wheres.push([{ field: 'id', operator: '<>', value: sessionid }]);
+      }
+
+      switch (relation) {
+        case 'Follow':
+          wheres.push([
+            {
+              field: 'Followings',
+              operator: '@>',
+              value: `[{"id":"${sessionid}"}]`,
+            },
+          ]);
+          break;
+        case 'Following':
+          wheres.push([
+            {
+              field: 'Followers',
+              operator: '@>',
+              value: `[{"id":"${sessionid}"}]`,
+            },
+          ]);
+          break;
+        case 'Follow or Following':
+          wheres.push([
+            {
+              field: 'Followers',
+              operator: '@>',
+              value: `[{"id":"${sessionid}"}]`,
+            },
+            {
+              logic: 'OR',
+              field: 'Followings',
+              operator: '@>',
+              value: `[{"id":"${sessionid}"}]`,
+            },
+          ]);
+          break;
+        case 'not Following':
+          wheres.push([
+            {
+              field: 'Followers',
+              operator: '@>',
+              not: true,
+              value: `[{"id":"${sessionid}"}]`,
+            },
+          ]);
+          break;
+      }
     }
 
     try {
-      const queryConfig = selectUsersQuery({
+      const queryConfig = selectQuery({
+        table: 'advancedusers',
         wheres,
-        order: [{ field: 'regist' }],
       });
+
+      if (typeof sort !== 'undefined') {
+        queryConfig.text += `ORDER BY\n`;
+        queryConfig.text += `\t(_count->>'Followers')::numeric DESC,\n`;
+        queryConfig.text += `\tregist DESC\n`;
+      }
+
+      if (typeof pagination !== 'undefined') {
+        const { limit, offset } = pagination;
+        queryConfig.text = makeLimit(queryConfig.text, limit);
+        queryConfig.text = makeOffset(queryConfig.text, limit * offset);
+      }
       // console.log('[getUserList]\n', queryConfig.text);
+
       const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
         .rows;
       return queryResult;
@@ -569,31 +646,45 @@ class DAO {
     }
   }
 
-  async getUserListWithIds({
-    userids,
-  }: {
+  async getUserListWithIds(args: {
     userids: string[];
+    pagination?: {
+      limit: number;
+      offset: number;
+    };
+    sort?: 'id';
   }): Promise<AdvancedUser[] | undefined> {
     await this.init();
     if (!this.client) return;
 
+    const { userids, pagination, sort } = args;
+
     if (userids.length == 0) {
       return [];
     }
-    const where: Where<Schemas['users']>[] = [];
-    userids.forEach((userid) => {
-      where.push({ field: 'id', value: userid, logic: 'OR' });
-    });
 
     try {
-      const queryConfig = selectUsersQuery({
-        wheres: [where],
-        order: [{ field: 'regist' }],
+      const queryConfig = selectQuery({
+        table: 'advancedusers',
+        wheres: [
+          [
+            {
+              field: 'id',
+              operator: 'in',
+              value: userids,
+            },
+          ],
+        ],
+        order: sort === 'id' ? [{ field: 'id' }] : undefined,
+        limit: pagination?.limit || 0,
+        offset:
+          typeof pagination !== 'undefined'
+            ? pagination.limit * pagination.offset
+            : 10,
       });
-      // console.log('[getUserListWithIds]\n', queryConfig.text);
-      const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
-        .rows;
-      return queryResult;
+      console.log('[getUserListWithIds]\n', queryConfig.text);
+      const userList = await this.client.query<AdvancedUser>(queryConfig);
+      return userList.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -611,19 +702,13 @@ class DAO {
     if (!this.client) return;
     const wheres: Where<Schemas['follow']>[][] = [];
     let index = 0;
-    if (source) {
-      if (typeof wheres[index] === 'undefined') {
-        wheres.push([]);
-      }
-      wheres[index].push({ field: 'source', value: source });
-      index++;
+
+    if (typeof source !== 'undefined') {
+      wheres.push([{ field: 'source', value: source }]);
     }
-    if (target) {
-      if (typeof wheres[index] === 'undefined') {
-        wheres.push([]);
-      }
-      wheres[index].push({ field: 'target', value: target });
-      index++;
+
+    if (typeof target !== 'undefined') {
+      wheres.push([{ field: 'target', value: target }]);
     }
 
     try {
@@ -640,79 +725,214 @@ class DAO {
     }
   }
 
-  async getPostList({
-    userid,
-    parentid,
-    originalid,
-    quote,
-    filter = 'all',
-  }: {
-    userid?: string;
-    parentid?: number;
-    originalid?: number;
-    quote?: boolean;
-    filter?: 'all' | 'media';
-  }): Promise<AdvancedPost[] | undefined> {
+  async getPostList(
+    args: GetPostList & {
+      isCount: true;
+    }
+  ): Promise<number | undefined>;
+  async getPostList(
+    args: GetPostList & {
+      isCount?: false;
+    }
+  ): Promise<AdvancedPost[] | undefined>;
+  async getPostList(
+    args: GetPostList
+  ): Promise<number | AdvancedPost[] | undefined> {
     await this.init();
     if (!this.client) return;
 
+    const {
+      postids,
+      userid,
+      userids,
+      parentid,
+      originalid,
+      quote,
+      q,
+      filter = 'all',
+      sort = 'createat',
+      pagination,
+      isCount,
+    } = args;
+
+    const wheres: Where<Schemas['advancedpost']>[][] = [];
+
+    if (typeof postids !== 'undefined') {
+      wheres.push([{ field: 'postid', operator: 'in', value: postids }]);
+    }
+
+    if (typeof userid !== 'undefined') {
+      wheres.push([{ field: 'userid', value: userid }]);
+    }
+
+    if (typeof userids !== 'undefined') {
+      wheres.push([{ field: 'userid', operator: 'in', value: userids }]);
+    }
+
+    if (typeof parentid !== 'undefined') {
+      wheres.push([{ field: 'parentid', value: parentid }]);
+    }
+
+    if (typeof originalid !== 'undefined') {
+      wheres.push([{ field: 'originalid', value: originalid }]);
+    }
+
+    if (typeof quote !== 'undefined') {
+      wheres.push([{ field: 'quote', value: quote }]);
+    }
+
+    if (typeof q !== 'undefined') {
+      wheres.push([
+        {
+          field: 'content',
+          operator: 'ilike',
+          value: `%${decodeURIComponent(q)}%`,
+        },
+        {
+          logic: 'OR',
+          field: 'User',
+          operator: '->>',
+          subField: 'id',
+          subOperator: 'ilike',
+          value: `%${decodeURIComponent(q)}%`,
+        },
+        {
+          logic: 'OR',
+          field: 'User',
+          operator: '->>',
+          subField: 'nickname',
+          subOperator: 'ilike',
+          value: `%${decodeURIComponent(q)}%`,
+        },
+        {
+          logic: 'OR',
+          field: 'Original',
+          operator: '->>',
+          subField: 'content',
+          subOperator: 'ilike',
+          value: `%${decodeURIComponent(q)}%`,
+        },
+        {
+          logic: 'OR',
+          field: 'Original',
+          operator: '#>>',
+          subField: '{User.id}',
+          subOperator: 'ilike',
+          value: `%${decodeURIComponent(q)}%`,
+        },
+        {
+          logic: 'OR',
+          field: 'Original',
+          operator: '#>>',
+          subField: '{User.nickname}',
+          subOperator: 'ilike',
+          value: `%${decodeURIComponent(q)}%`,
+        },
+      ]);
+    }
+
+    switch (filter) {
+      case 'reply':
+        wheres.push([{ field: 'parentid', operator: 'is not null' }]);
+        break;
+
+      case 'media':
+        wheres.push([
+          { field: 'images', operator: '<>', value: '[]' },
+          { field: 'parentid', operator: 'is null' },
+          { field: 'originalid', operator: 'is null' },
+        ]);
+        break;
+    }
+
+    const order: Order<Schemas['advancedpost']>[] = [];
+
+    switch (sort) {
+      case 'pinned':
+        order.push({ field: 'pinned', by: 'DESC' });
+        break;
+      case 'Hearts':
+        order.push({
+          field: '_count',
+          operator: '->>',
+          subField: 'Hearts',
+          by: 'DESC',
+        });
+        break;
+    }
+
+    order.push({ field: 'createat', by: 'DESC' });
+
     try {
-      const queryConfig = selectPostsQuery({
-        userid,
-        parentid,
-        originalid,
-        quote,
-        filter,
+      const queryConfig = selectQuery({
+        table: 'advancedpost',
+        wheres,
+        order,
+        limit: typeof pagination !== 'undefined' ? pagination.limit : 10,
+        offset:
+          typeof pagination !== 'undefined'
+            ? pagination.limit * pagination.offset
+            : 0,
+        isCount,
       });
       // console.log('[getPostList]\n', queryConfig.text);
-      const postList = (await this.client.query<AdvancedPost>(queryConfig))
-        .rows;
 
-      return postList;
+      return isCount
+        ? (await this.client.query<{ count: number }>(queryConfig)).rows[0]
+            .count
+        : (await this.client.query<AdvancedPost>(queryConfig)).rows;
     } catch (error) {
       console.error(error);
       return;
     }
   }
 
-  async getPostListWithIds({
-    postids,
-    userids,
-  }: {
+  async getPostListWithIds(args: {
     postids?: number[];
     userids?: string[];
+    pagination?: {
+      limit: number;
+      offset: number;
+    };
   }): Promise<AdvancedPost[] | undefined> {
     await this.init();
     if (!this.client) return;
 
+    const { postids, userids, pagination } = args;
+
     const wheres: Where<Schemas['advancedpost']>[][] = [];
     if (typeof postids !== 'undefined') {
-      if (postids.length === 0) {
-        return [] as AdvancedPost[];
-      }
-      const where: Where<Schemas['advancedpost']>[] = [];
-      postids.forEach((postid) => {
-        where.push({ field: 'postid', value: postid, logic: 'OR' });
-      });
-      wheres.push(where);
+      wheres.push([
+        {
+          field: 'postid',
+          operator: 'in',
+          value: postids,
+        },
+      ]);
     } else if (typeof userids !== 'undefined') {
-      if (userids.length === 0) {
-        return [] as AdvancedPost[];
-      }
-      const where: Where<Schemas['advancedpost']>[] = [];
-      userids.forEach((userid) => {
-        where.push({ field: 'userid', value: userid, logic: 'OR' });
-      });
-      wheres.push(where);
+      wheres.push([
+        {
+          field: 'userid',
+          operator: 'in',
+          value: userids,
+        },
+      ]);
     }
 
     try {
-      const queryConfig = selectQuery({ table: 'advancedpost', wheres });
+      const queryConfig = selectQuery({
+        table: 'advancedpost',
+        wheres,
+        order: [{ field: 'createat', by: 'DESC' }],
+        limit: pagination?.limit || 10,
+        offset:
+          typeof pagination !== 'undefined'
+            ? pagination.limit * pagination.offset
+            : 0,
+      });
       // console.log('[getPostListWithIds]\n', queryConfig.text);
-      const postListWithIds = (
-        await this.client.query<AdvancedPost>(queryConfig)
-      ).rows;
-      return postListWithIds;
+      const postList = await this.client.query<AdvancedPost>(queryConfig);
+      return postList.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -740,49 +960,68 @@ class DAO {
         ],
       });
       // console.log('[getReactionList]\n', queryConfig.text);
-      const reactionList = (await this.client.query<Reactions>(queryConfig))
-        .rows;
-      return reactionList;
+      const reactionList = await this.client.query<Reactions>(queryConfig);
+      return reactionList.rows;
     } catch (error) {
       console.error(error);
       return;
     }
   }
 
-  async getBookmarkPostList({
-    userid,
-  }: {
-    userid: Schemas['post']['userid'];
+  async getBookmarkPostList(args: {
+    userid: Schemas['advancedpost']['userid'];
+    pagination?: {
+      limit: number;
+      offset: number;
+    };
   }): Promise<AdvancedPost[] | undefined> {
     await this.init();
     if (!this.client) return;
 
+    const { userid, pagination } = args;
+
     try {
       const queryConfig = selectQuery({
         table: 'advancedpost',
+        wheres: [
+          [
+            {
+              field: 'Bookmarks',
+              operator: '@>',
+              value: `[{"id":"${userid}"}]`,
+            },
+          ],
+        ],
+        limit: pagination?.limit || 10,
+        offset: pagination?.offset || 0,
       });
-
-      queryConfig.text += 'WHERE\n';
-      queryConfig.text += `\t"Bookmarks"::text like '%"${userid}"%'`;
       // console.log('[getBookmarkPosts]\n', queryConfig.text);
-      const postList = (await this.client.query<AdvancedPost>(queryConfig))
-        .rows;
-      return postList;
+
+      const postList = await this.client.query<AdvancedPost>(queryConfig);
+      return postList.rows;
     } catch (error) {
       console.error(error);
       return;
     }
   }
 
-  async getLikeList({
-    userid,
-    postid,
-  }: {
-    userid?: string;
-    postid?: number;
-  }): Promise<Reactions[] | undefined> {
+  async getLikeList(
+    args: GetLikeList & {
+      isCount: true;
+    }
+  ): Promise<number | undefined>;
+  async getLikeList(
+    args: GetLikeList & {
+      isCount?: false;
+    }
+  ): Promise<Reactions[] | undefined>;
+  async getLikeList(
+    args: GetLikeList
+  ): Promise<number | Reactions[] | undefined> {
     await this.init();
     if (!this.client) return;
+
+    const { userid, postid, isCount } = args;
 
     const wheres: Where<Schemas['reactions']>[][] = [
       [{ field: 'type', value: 'Heart' }],
@@ -795,31 +1034,47 @@ class DAO {
     }
 
     try {
-      const queryConfig = selectQuery({ table: 'reactions', wheres });
+      const queryConfig = selectQuery({ table: 'reactions', wheres, isCount });
       // console.log('[getLikeList]\n', queryConfig.text);
-      const likeList = (await this.client.query<Reactions>(queryConfig)).rows;
-      return likeList;
+
+      return isCount
+        ? (await this.client.query<{ count: number }>(queryConfig)).rows[0]
+            .count
+        : (await this.client.query<Reactions>(queryConfig)).rows;
     } catch (error) {
       console.error(error);
       return;
     }
   }
 
-  async getListsList({
-    sessionid,
-    userid,
-    make,
-    filter,
-    q,
-  }: {
+  async getListsList(args: {
     sessionid: string;
     userid?: string;
     make?: Schemas['lists']['make'];
     filter?: 'all' | 'own' | 'memberships';
     q?: string;
+    includeSelf?: boolean;
+    relation?: 'Not Following';
+    sort?: 'Follower' | 'createat';
+    pagination?: {
+      limit: number;
+      offset: number;
+    };
   }): Promise<AdvancedLists[] | undefined> {
     await this.init();
     if (!this.client) return;
+
+    const {
+      sessionid,
+      userid,
+      make,
+      filter,
+      q,
+      includeSelf = true,
+      relation,
+      sort = 'createat',
+      pagination,
+    } = args;
 
     try {
       const queryConfig = selectListsQuery({
@@ -828,12 +1083,15 @@ class DAO {
         make,
         filter,
         q,
+        includeSelf,
+        relation,
+        sort,
+        pagination,
       });
-      // console.log('getListsList', queryConfig.text);
+      // console.log('[getListsList]\n', queryConfig.text);
+      const listsList = await this.client.query<AdvancedLists>(queryConfig);
 
-      const listsList = (await this.client.query<AdvancedLists>(queryConfig))
-        .rows;
-      return listsList;
+      return listsList.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -881,14 +1139,23 @@ class DAO {
     }
   }
 
-  async getHashTagList(): Promise<HashTags[] | undefined> {
+  async getHashTagList(args: {
+    pagination?: { limit: number; offset: number };
+  }): Promise<HashTags[] | undefined> {
     await this.init();
     if (!this.client) return;
+
+    const { pagination } = args;
 
     try {
       const queryConfig = selectQuery({
         table: 'hashtags',
         order: [{ field: 'count', by: 'DESC' }],
+        limit: pagination?.limit || 10,
+        offset:
+          typeof pagination !== 'undefined'
+            ? pagination.limit * pagination.offset
+            : 0,
       });
       // console.log('[getHashTagList]\n', queryConfig.text);
       const hashtagList = (await this.client.query(queryConfig)).rows;
@@ -927,33 +1194,34 @@ class DAO {
     }
   }
 
-  async getMessagesList({
-    roomid,
-    cursor,
-    limit,
-  }: {
+  async getMessagesList(args: {
     roomid: string;
-    cursor?: number;
-    limit?: number;
+    pagination?: {
+      limit: number;
+      offset: number;
+    };
   }): Promise<AdvancedMessages[] | undefined> {
     await this.init();
     if (!this.client) return;
 
+    const { roomid, pagination } = args;
+
     const where: Where<AdvancedMessages>[] = [
       { field: 'roomid', value: roomid },
     ];
-    if (typeof cursor !== 'undefined' && cursor !== 0) {
-      where.push({ logic: 'AND', field: 'id', operator: '<', value: cursor });
-    }
 
     try {
       const queryConfig = selectQuery({
         table: 'advancedmessages',
         wheres: [where],
         order: [{ field: 'createat', by: 'DESC' }],
-        limit,
+        limit: pagination?.limit || 50,
+        offset:
+          typeof pagination !== 'undefined'
+            ? pagination.limit * pagination.offset
+            : 0,
       });
-      // console.log('[getMessagesList]\n', queryConfig.text);
+      console.log('[getMessagesList]\n', queryConfig.text);
       const messagesList = (
         await this.client.query<AdvancedMessages>(queryConfig)
       ).rows;
@@ -964,26 +1232,24 @@ class DAO {
     }
   }
 
-  async getMessagesListSearch({
-    sessionid,
-    query,
-    cursor,
-    limit,
-  }: {
+  async getMessagesListSearch(args: {
     sessionid: AdvancedMessages['content'];
-    query: AdvancedMessages['content'];
-    cursor?: number;
-    limit?: number;
+    q: AdvancedMessages['content'];
+    pagination?: {
+      limit: number;
+      offset: number;
+    };
   }): Promise<(AdvancedMessages & { Room: AdvancedRooms })[] | undefined> {
     await this.init();
     if (!this.client) return;
 
+    const { sessionid, q, pagination } = args;
+
     try {
       const queryConfig = selectMessagesListSearch({
         sessionid,
-        query,
-        cursor,
-        limit,
+        q,
+        pagination,
       });
       // console.log('[getMessagesListSearch]\n', queryConfig.text);
       const messagesList = (
@@ -2189,3 +2455,26 @@ class DAO {
 }
 
 export default DAO;
+
+type GetPostList = {
+  postids?: Schemas['advancedpost']['postid'][];
+  userid?: Schemas['advancedpost']['userid'];
+  userids?: Schemas['advancedpost']['userid'][];
+  parentid?: NonNullable<Schemas['advancedpost']['parentid']>;
+  originalid?: NonNullable<Schemas['advancedpost']['originalid']>;
+  quote?: Schemas['advancedpost']['quote'];
+  q?: string;
+  filter?: 'all' | 'reply' | 'media';
+  sort?: 'createat' | 'pinned' | 'Hearts';
+  pagination?: {
+    limit: number;
+    offset: number;
+  };
+  isCount?: boolean;
+};
+
+type GetLikeList = {
+  userid?: string;
+  postid?: number;
+  isCount?: boolean;
+};

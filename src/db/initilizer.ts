@@ -762,8 +762,52 @@ const SCHEMA_INIT: SchemaInit = {
 };
 
 const SCHEMA_VIEWS = {
+  advancedusers: `CREATE OR REPLACE VIEW public.advancedusers
+AS SELECT u.id,
+    u.nickname,
+    u.image,
+    u.banner,
+    u."desc",
+    u.location,
+    u.birth,
+    u.refer,
+    u.verified,
+    u.regist,
+        CASE
+            WHEN follower.value IS NOT NULL THEN follower.value
+            ELSE '[]'::jsonb
+        END AS "Followers",
+        CASE
+            WHEN following.value IS NOT NULL THEN following.value
+            ELSE '[]'::jsonb
+        END AS "Followings",
+    json_build_object('Followers',
+        CASE
+            WHEN follower.count IS NOT NULL THEN follower.count
+            ELSE '0'::bigint
+        END, 'Followings',
+        CASE
+            WHEN following.count IS NOT NULL THEN following.count
+            ELSE '0'::bigint
+        END)::jsonb AS _count
+   FROM users u
+     LEFT JOIN ( SELECT f.source,
+            json_agg(row_to_json(f.*)::jsonb - 'source'::text)::jsonb AS value,
+            count(*) AS count
+           FROM ( SELECT follow.source,
+                    follow.target AS id
+                   FROM follow) f
+          GROUP BY f.source) following ON following.source::text = u.id::text
+     LEFT JOIN ( SELECT f.target,
+            json_agg(row_to_json(f.*)::jsonb - 'target'::text)::jsonb AS value,
+            count(*) AS count
+           FROM ( SELECT follow.source AS id,
+                    follow.target
+                   FROM follow) f
+          GROUP BY f.target) follower ON follower.target::text = u.id::text
+  ORDER BY u.regist DESC;`,
   advancedpost: `create or replace
-view advancedpost
+view public.advancedpost
 as
 select
 	p.postid,
@@ -781,45 +825,41 @@ select
 	p.scope,
 	case
 		when heart.value is not null then heart.value
-		else '[]'::json
+		else '[]'::jsonb
 	end as "Hearts",
 	case
 		when repost.value is not null then repost.value
-		else '[]'::json
+		else '[]'::jsonb
 	end as "Reposts",
 	case
 		when comment.value is not null then comment.value
-		else '[]'::json
+		else '[]'::jsonb
 	end as "Comments",
 	case
 		when bookmark.value is not null then bookmark.value
-		else '[]'::json
+		else '[]'::jsonb
 	end as "Bookmarks",
 	json_build_object('Hearts',
-	case
-		when heart.count is not null then heart.count
-		else '0'::bigint
-	end,
-	'Reposts',
-	case
-		when repost.count is not null then repost.count
-		else '0'::bigint
-	end,
-	'Comments',
-	case
-		when comment.count is not null then comment.count
-		else '0'::bigint
-	end,
-	'Bookmarks',
-	case
-		when bookmark.count is not null then bookmark.count
-		else '0'::bigint
-	end,
-	'Views',
-	case
-		when v.impressions is not null then v.impressions
-		else 0
-	end) as _count
+        case
+            when heart.count is not null then heart.count
+            else '0'::bigint
+        end, 'Reposts',
+        case
+            when repost.count is not null then repost.count
+            else '0'::bigint
+        end, 'Comments',
+        case
+            when comment.count is not null then comment.count
+            else '0'::bigint
+        end, 'Bookmarks',
+        case
+            when bookmark.count is not null then bookmark.count
+            else '0'::bigint
+        end, 'Views',
+        case
+            when v.impressions is not null then v.impressions
+            else 0
+        end) as _count
 from
 	post p
 join (
@@ -851,7 +891,7 @@ left join (
 left join (
 	select
 		r.postid,
-		json_agg(row_to_json(r.*)::jsonb - 'postid'::text) as value,
+		json_agg(row_to_json(r.*)::jsonb - 'postid'::text)::jsonb as value,
 		count(*) as count
 	from
 		(
@@ -868,7 +908,7 @@ left join (
 left join (
 	select
 		r.postid,
-		json_agg(row_to_json(r.*)::jsonb - 'postid'::text) as value,
+		json_agg(row_to_json(r.*)::jsonb - 'postid'::text)::jsonb as value,
 		count(*) as count
 	from
 		(
@@ -885,7 +925,7 @@ left join (
 left join (
 	select
 		r.postid,
-		json_agg(row_to_json(r.*)::jsonb - 'postid'::text) as value,
+		json_agg(row_to_json(r.*)::jsonb - 'postid'::text)::jsonb as value,
 		count(*) as count
 	from
 		(
@@ -902,7 +942,7 @@ left join (
 left join (
 	select
 		r.postid,
-		json_agg(row_to_json(r.*)::jsonb - 'postid'::text) as value,
+		json_agg(row_to_json(r.*)::jsonb - 'postid'::text)::jsonb as value,
 		count(*) as count
 	from
 		(
@@ -949,30 +989,26 @@ left join (
 			else '[]'::json
 		end as "Bookmarks",
 		json_build_object('Hearts',
-		case
-			when heart_1.count is not null then heart_1.count
-			else '0'::bigint
-		end,
-		'Reposts',
-		case
-			when repost_1.count is not null then repost_1.count
-			else '0'::bigint
-		end,
-		'Comments',
-		case
-			when comment_1.count is not null then comment_1.count
-			else '0'::bigint
-		end,
-		'Bookmarks',
-		case
-			when bookmark_1.count is not null then bookmark_1.count
-			else '0'::bigint
-		end,
-		'Views',
-		case
-			when v_1.impressions is not null then v_1.impressions
-			else 0
-		end) as _count
+                case
+                    when heart_1.count is not null then heart_1.count
+                    else '0'::bigint
+                end, 'Reposts',
+                case
+                    when repost_1.count is not null then repost_1.count
+                    else '0'::bigint
+                end, 'Comments',
+                case
+                    when comment_1.count is not null then comment_1.count
+                    else '0'::bigint
+                end, 'Bookmarks',
+                case
+                    when bookmark_1.count is not null then bookmark_1.count
+                    else '0'::bigint
+                end, 'Views',
+                case
+                    when v_1.impressions is not null then v_1.impressions
+                    else 0
+                end) as _count
 	from
 		post p_1
 	join (
@@ -1084,30 +1120,26 @@ left join (
 				else '[]'::json
 			end as "Bookmarks",
 			json_build_object('Hearts',
-			case
-				when heart_2.count is not null then heart_2.count
-				else '0'::bigint
-			end,
-			'Reposts',
-			case
-				when repost_2.count is not null then repost_2.count
-				else '0'::bigint
-			end,
-			'Comments',
-			case
-				when comment_2.count is not null then comment_2.count
-				else '0'::bigint
-			end,
-			'Bookmarks',
-			case
-				when bookmark_2.count is not null then bookmark_2.count
-				else '0'::bigint
-			end,
-			'Views',
-			case
-				when v_2.impressions is not null then v_2.impressions
-				else 0
-			end) as _count
+                        case
+                            when heart_2.count is not null then heart_2.count
+                            else '0'::bigint
+                        end, 'Reposts',
+                        case
+                            when repost_2.count is not null then repost_2.count
+                            else '0'::bigint
+                        end, 'Comments',
+                        case
+                            when comment_2.count is not null then comment_2.count
+                            else '0'::bigint
+                        end, 'Bookmarks',
+                        case
+                            when bookmark_2.count is not null then bookmark_2.count
+                            else '0'::bigint
+                        end, 'Views',
+                        case
+                            when v_2.impressions is not null then v_2.impressions
+                            else 0
+                        end) as _count
 		from
 			post p_2
 		join (
@@ -1194,7 +1226,7 @@ left join (
 order by
 	p.createat desc;`,
   advancedlists: `create or replace
-view advancedlists
+view public.advancedlists
 as
 select
 	l.id,
@@ -1208,19 +1240,19 @@ select
 	l.createat,
 	case
 		when member.value is not null then member.value
-		else '[]'::json
+		else '[]'::jsonb
 	end as "Member",
 	case
 		when follower.value is not null then follower.value
-		else '[]'::json
+		else '[]'::jsonb
 	end as "Follower",
 	case
 		when unshow.value is not null then unshow.value
-		else '[]'::json
+		else '[]'::jsonb
 	end as "UnShow",
 	case
 		when posts.value is not null then posts.value
-		else '[]'::json
+		else '[]'::jsonb
 	end as "Posts"
 from
 	lists l
@@ -1236,7 +1268,7 @@ join (
 left join (
 	select
 		ld.listid,
-		json_agg(row_to_json(ld.*)::jsonb - 'listid'::text) as value,
+		json_agg(row_to_json(ld.*)::jsonb - 'listid'::text)::jsonb as value,
 		count(*) as count
 	from
 		(
@@ -1253,7 +1285,7 @@ left join (
 left join (
 	select
 		ld.listid,
-		json_agg(row_to_json(ld.*)::jsonb - 'listid'::text) as value,
+		json_agg(row_to_json(ld.*)::jsonb - 'listid'::text)::jsonb as value,
 		count(*) as count
 	from
 		(
@@ -1270,7 +1302,7 @@ left join (
 left join (
 	select
 		ld.listid,
-		json_agg(row_to_json(ld.*)::jsonb - 'listid'::text) as value,
+		json_agg(row_to_json(ld.*)::jsonb - 'listid'::text)::jsonb as value,
 		count(*) as count
 	from
 		(
@@ -1287,9 +1319,7 @@ left join (
 left join (
 	select
 		p2.listid,
-		array_to_json(array_agg(p2.postid
-	order by
-		p2.postid)) as value
+		array_to_json(array_agg(p2.postid order by p2.postid))::jsonb as value
 	from
 		(
 		select

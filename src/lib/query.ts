@@ -1,3 +1,4 @@
+import { AdvancedRoomQuery } from '@/db/queries';
 import {
   Schemas,
   RequiredQueryConfig,
@@ -6,18 +7,22 @@ import {
   Birth,
   Verified,
 } from '@/db/schema';
+import { AdvancedLists } from '@/model/Lists';
 import { AdvancedMessages } from '@/model/Message';
-import { AdvancedRooms, Room } from '@/model/Room';
+import { AdvancedRooms } from '@/model/Room';
 import { AdvancedUser } from '@/model/User';
 import { QueryConfig } from 'pg';
 
 function makeSelectField<T extends keyof Schemas>(
   table: T,
-  fields?: (keyof Schemas[T])[]
+  fields?: (keyof Schemas[T])[],
+  isCount?: boolean
 ): RequiredQueryConfig['text'] {
   let text = 'SELECT\n';
 
-  if (fields && fields.length !== 0) {
+  if (isCount) {
+    text += '\tcount(*)\n';
+  } else if (fields && fields.length !== 0) {
     fields.forEach((field, i) => {
       text += `\t${i === 0 ? '' : ','}${field.toString()}\n`;
     });
@@ -125,10 +130,10 @@ function makeWhere<T>(
 
       if (first) {
         queryConfig.text += 'WHERE\n';
-        queryConfig.text += ` (\n`;
+        queryConfig.text += `\t(\n`;
         first = false;
       } else {
-        queryConfig.text += ` AND (\n`;
+        queryConfig.text += `\tAND (\n`;
       }
 
       let second = true;
@@ -140,24 +145,43 @@ function makeWhere<T>(
           v.operator !== 'is null'
         )
           return;
-        const { tableAlias, field, operator, value, logic } = v;
+        const {
+          tableAlias,
+          field,
+          subField,
+          not,
+          operator,
+          subOperator,
+          value,
+          logic,
+        } = v;
         const isParam = operator !== 'is null' && operator !== 'is not null';
+        const isArray = operator === 'in' || operator === 'not in';
+        const isJson = operator === '->>' || operator === '#>>';
 
-        queryConfig.text += `\t${second ? '' : `${logic || 'AND'} `}${
-          tableAlias ? `${tableAlias}.` : ''
-        }${field.toString()} ${operator || '='} ${
-          operator === 'in' || operator === 'not in' ? '(' : ''
-        }${isParam ? `$${index}` : ''}${
-          operator === 'in' || operator === 'not in' ? ')' : ''
-        }\n`;
+        queryConfig.text += `\t\t${second ? '' : `${logic || 'AND'} `}${
+          not ? 'NOT ' : ''
+        }${tableAlias ? `${tableAlias}.` : ''}"${field.toString()}" ${
+          operator || '='
+        }${subField && isJson ? `'${subField}'` : ''} ${subOperator || ''} ${
+          isArray ? '(' : ''
+        }${
+          isArray && Array.isArray(value)
+            ? `${value.map(() => `$${index++}`)}`
+            : isParam
+            ? `$${index}`
+            : ''
+        }${isArray ? ')' : ''}\n`;
         second = false;
 
-        if (isParam) {
-          queryConfig.values?.push(value);
+        if (isArray) {
+          value.forEach((v: any) => queryConfig.values.push(v));
+        } else if (isParam) {
+          queryConfig.values.push(value);
           index++;
         }
       });
-      queryConfig.text += ' )\n';
+      queryConfig.text += '\t)\n';
     });
   }
 
@@ -170,23 +194,36 @@ function makeOrder<T>(
 ): RequiredQueryConfig['text'] {
   if (order && order.length !== 0) {
     text += 'ORDER BY\n';
-    order.forEach(({ field, by, tableAlias }, i) => {
-      text += `  ${i === 0 ? '' : ','}${
-        typeof tableAlias !== 'undefined' ? `${tableAlias}.` : ''
-      }${field.toString()} ${by || 'ASC'}\n`;
+    order.forEach(({ field, operator, subField, func, by, tableAlias }, i) => {
+      text += `  ${i === 0 ? '' : ','}${func ? `${func}(` : ''}${
+        tableAlias ? `${tableAlias}.` : ''
+      }"${field.toString()}"${func ? ')' : ''}${operator || ''}${
+        subField ? `'${subField}'` : ''
+      } ${by || 'ASC'}\n`;
     });
   }
 
   return text;
 }
 
-function makeLimit<T>(
+export function makeLimit(
   text: RequiredQueryConfig['text'],
   limit?: number
 ): RequiredQueryConfig['text'] {
   if (typeof limit !== 'undefined') {
-    text += `LIMIT ${limit}`;
+    text += `LIMIT ${limit}\n`;
   }
+  return text;
+}
+
+export function makeOffset(
+  text: RequiredQueryConfig['text'],
+  offset?: number
+): RequiredQueryConfig['text'] {
+  if (typeof offset !== 'undefined') {
+    text += `OFFSET ${offset}\n`;
+  }
+
   return text;
 }
 
@@ -196,15 +233,19 @@ export const selectQuery = <T extends keyof Schemas>({
   wheres,
   order,
   limit,
+  offset,
+  isCount,
 }: {
   table: T;
   fields?: (keyof Schemas[T])[];
   wheres?: Where<Schemas[T]>[][];
   order?: Order<Schemas[T]>[];
   limit?: number;
+  offset?: number;
+  isCount?: boolean;
 }): QueryConfig => {
   const queryConfig: RequiredQueryConfig = {
-    text: makeSelectField(table, fields),
+    text: makeSelectField(table, fields, isCount),
     values: [],
   };
 
@@ -212,9 +253,11 @@ export const selectQuery = <T extends keyof Schemas>({
   queryConfig.text = whereResult.text;
   queryConfig.values = whereResult.values;
 
-  queryConfig.text = makeOrder(queryConfig.text, order);
-
-  queryConfig.text = makeLimit(queryConfig.text, limit);
+  if (!isCount) {
+    queryConfig.text = makeOrder(queryConfig.text, order);
+    queryConfig.text = makeLimit(queryConfig.text, limit);
+    queryConfig.text = makeOffset(queryConfig.text, offset);
+  }
 
   return queryConfig;
 };
@@ -253,156 +296,36 @@ export const deleteQuery = <T extends keyof Schemas>({
   return makeDeleteField(table, wheres);
 };
 
-export const selectUsersQuery = ({
-  wheres,
-  order,
-}: {
-  wheres?: Where<Schemas['users']>[][];
-  order?: Order<Schemas['users']>[];
-}): RequiredQueryConfig => {
-  const queryConfig: RequiredQueryConfig = {
-    text: '',
-    values: [],
-  };
-
-  queryConfig.text = `select
-	u.id ,
-	u.nickname ,
-	u.image ,
-	u.banner ,
-	u.desc ,
-	u.location,
-	u.birth ,
-	u.refer ,
-	u.verified ,
-	u.regist ,
-	case
-		when follower.value is not null then follower.value
-		else '[]'
-	end as "Followers",
-	case
-		when following.value is not null then following.value
-		else '[]'
-	end as "Followings",
-	json_build_object('Followers',
-	case
-		when follower.count is not null then follower.count
-		else '0'
-	end,
-	'Followings',
-	case
-		when following.count is not null then following.count
-		else '0'
-	end
-	) as _count
-from
-	users u
-left outer join (
-	select
-		source,
-		json_agg( row_to_json(f)::jsonb-'source') as value,
-		count(*) as count
-	from
-		(
-		select
-			source,
-			target as id
-		from
-			follow) f
-	group by
-		source) following on
-	following.source = u.id
-left outer join (
-	select
-		target,
-		json_agg( row_to_json(f)::jsonb-'target') as value,
-		count(*) as count
-	from
-		(
-		select
-			source as id,
-			target
-		from
-			follow) f
-	group by
-		target) follower on
-	follower.target = u.id
-`;
-
-  const { text, values } = makeWhere(queryConfig, wheres);
-  queryConfig.text = text;
-  queryConfig.values = values;
-
-  queryConfig.text = makeOrder(queryConfig.text, order);
-
-  return queryConfig;
-};
-
-export const selectPostsQuery = ({
-  userid,
-  parentid,
-  originalid,
-  quote,
-  filter,
-}: {
-  userid?: string;
-  parentid?: number;
-  originalid?: number;
-  quote?: boolean;
-  filter?: 'all' | 'media';
-}) => {
-  const queryConfig: RequiredQueryConfig = {
-    text: '',
-    values: [],
-  };
-  const wheres: Where<Schemas['advancedpost']>[][] = [[]];
-  let index = 0;
-
-  if (typeof userid !== 'undefined') {
-    wheres[index].push({ field: 'userid', value: userid });
-  }
-  if (typeof parentid !== 'undefined') {
-    wheres[index].push({ field: 'parentid', value: parentid });
-  }
-  if (typeof originalid !== 'undefined') {
-    wheres[index].push({ field: 'originalid', value: originalid });
-  }
-  if (typeof quote !== 'undefined') {
-    wheres[index].push({ field: 'quote', value: quote });
-  }
-  if (filter === 'media') {
-    wheres[index].push({ field: 'images', operator: '<>', value: '[]' });
-  }
-
-  queryConfig.text = makeSelectField('advancedpost');
-  const { text, values } = makeWhere(queryConfig, wheres);
-  queryConfig.text = text;
-  queryConfig.values = values;
-
-  return queryConfig;
-};
-
-export const selectListsQuery = ({
-  sessionid,
-  id,
-  userid,
-  make,
-  filter,
-  q,
-}: {
+export const selectListsQuery = (args: {
   sessionid: string;
   id?: Schemas['lists']['id'];
   userid?: Schemas['lists']['userid'];
   make?: Schemas['lists']['make'];
   filter?: 'all' | 'own' | 'memberships';
   q?: string;
-}) => {
-  let queryConfig: RequiredQueryConfig = {
-    text: '',
-    values: [sessionid],
+  includeSelf?: boolean;
+  relation?: 'Not Following';
+  sort?: 'Follower' | 'createat';
+  pagination?: {
+    limit: number;
+    offset: number;
   };
+}) => {
+  const {
+    sessionid,
+    id,
+    userid,
+    make,
+    filter,
+    q,
+    includeSelf = true,
+    relation,
+    sort = 'createat',
+    pagination,
+  } = args;
 
-  queryConfig.text = `select
+  let queryConfig: RequiredQueryConfig = {
+    text: `select
 	al.id,
 	al.userid,
 	al."User",
@@ -431,53 +354,100 @@ left outer join (
 	where
 		type = 'pinned'
 		and userid = $1) ld on
-	ld.listid = al.id
-`;
+	ld.listid = al.id\n`,
+    values: [sessionid],
+  };
 
-  const where: Where<Schemas['advancedlists']>[] = [];
+  const wheres: Where<Schemas['advancedlists']>[][] = [];
   if (typeof id !== 'undefined') {
-    where.push({ tableAlias: 'al', field: 'id', value: id });
+    wheres.push([{ tableAlias: 'al', field: 'id', value: id }]);
   }
+
   if (typeof userid !== 'undefined') {
-    where.push({ field: 'userid', value: userid });
+    switch (filter) {
+      case 'all':
+        wheres.push([
+          { tableAlias: 'al', field: 'userid', value: userid },
+          {
+            logic: 'OR',
+            tableAlias: 'al',
+            field: 'Follower',
+            operator: '@>',
+            value: `[{"id":"${userid}"}]`,
+          },
+        ]);
+        break;
+      case 'memberships':
+        wheres.push([
+          {
+            tableAlias: 'al',
+            field: 'Member',
+            operator: '@>',
+            value: `[{"id":"${userid}"}]`,
+          },
+        ]);
+        break;
+      default:
+        wheres.push([{ tableAlias: 'al', field: 'userid', value: userid }]);
+        break;
+    }
   }
   if (typeof make !== 'undefined') {
-    where.push({ field: 'make', value: make });
+    wheres.push([{ tableAlias: 'al', field: 'make', value: make }]);
   }
   if (typeof q !== 'undefined') {
-    where.push({
-      field: 'name',
-      operator: 'ilike',
-      value: `%${decodeURIComponent(q)}%`,
-    });
+    wheres.push([
+      {
+        tableAlias: 'al',
+        field: 'name',
+        operator: 'ilike',
+        value: `%${decodeURIComponent(q)}%`,
+      },
+    ]);
+  }
+  if (!includeSelf) {
+    wheres.push([{ field: 'userid', operator: '<>', value: sessionid }]);
   }
 
-  if (filter === 'all') {
-    const { text, values } = makeWhere(queryConfig, [where], 2);
-    queryConfig.text = text;
-    queryConfig.values = values;
-
-    queryConfig.text += `\tOR al."Follower"::text like $${
-      queryConfig.values.length + 1
-    }\n`;
-    queryConfig.values.push(`%"${userid}"%`);
-  } else if (filter === 'own' || typeof filter === 'undefined') {
-    const { text, values } = makeWhere(queryConfig, [where], 2);
-    queryConfig.text = text;
-    queryConfig.values = values;
-  } else if (filter === 'memberships') {
-    queryConfig.text += 'WHERE\n';
-    queryConfig.text += `\tal."Member"::text like $${
-      queryConfig.values.length + 1
-    }\n`;
-    queryConfig.values.push(`%"${userid}"%`);
+  if (typeof relation !== 'undefined') {
+    switch (relation) {
+      case 'Not Following':
+        wheres.push([
+          {
+            field: 'Follower',
+            operator: '@>',
+            not: true,
+            value: `[{"id":"${sessionid}"}]`,
+          },
+        ]);
+        break;
+    }
   }
 
-  queryConfig.text += 'ORDER BY\n';
+  queryConfig = makeWhere(queryConfig, wheres, 2);
+
+  const order: Order<AdvancedLists>[] = [];
+  switch (sort) {
+    case 'Follower':
+      order.push({
+        func: 'jsonb_array_length',
+        field: 'Follower',
+        by: 'DESC',
+      });
+      break;
+  }
+
   if (sessionid === userid) {
-    queryConfig.text += '\t"Pinned" desc,\n';
+    order.push({ field: 'Pinned', by: 'DESC' });
   }
-  queryConfig.text += '\tcreateat desc\n';
+  order.push({ field: 'createat', by: 'DESC' });
+
+  queryConfig.text = makeOrder<AdvancedLists>(queryConfig.text, order);
+  queryConfig.text = makeLimit(queryConfig.text, pagination?.limit || 10);
+  queryConfig.text = makeOffset(
+    queryConfig.text,
+    typeof pagination !== 'undefined' ? pagination.limit * pagination.offset : 0
+  );
 
   return queryConfig;
 };
@@ -577,97 +547,7 @@ export const selectAdvancedRoomListQuery = ({
   findUserid?: string;
 }) => {
   let queryConfig: RequiredQueryConfig = {
-    text: `select
-	ar.id as id,
-	ar.receiverid as receiverid,
-	ar."Receiver" as "Receiver",
-	ar.senderid as senderid,
-	ar."Sender" as "Sender",
-	ar.createat as createat,
-	m.id as lastmessageid,
-	m.lastmessagesenderid as lastmessagesenderid,
-	m."type" as type,
-	m."content" as content,
-	m.lastat as lastat,
-	ar.sent as sent,
-	case
-		when rd_pin.roomid is null then false
-		else true
-	end as "Pinned",
-	case
-		when rd_disable.roomid is null then false
-		else true
-	end as "Disabled",
-	case
-		when
-		rs_snooze.roomid is null then null
-		else jsonb_build_object('type', rs_snooze."type", 'createat', rs_snooze.createat )
-	end as "Snooze"
-from
-	advancedrooms ar
-left join (
-	select
-		max_m.roomid,
-		m.id,
-		m.senderid as lastmessagesenderid,
-		mm."type" ,
-		m."content",
-		m.createat as lastat
-	from
-		messages m
-	left outer join messagesmedia mm on
-		mm.messageid = m.id
-	inner join (
-		select
-			m.roomid,
-			max(m.id) as messageid
-		from
-			messages m
-		left outer join (
-			select
-				s_md."type",
-				s_md.messageid,
-				s_md.userid
-			from
-				messagesdetail s_md
-			where
-				s_md."type" = 'disable'
-				and s_md.userid = $1 ) md on
-			md.messageid = m.id
-		where
-			md."type" is null
-		group by
-			m.roomid) max_m on
-		max_m.messageid = m.id) m on
-	m.roomid = ar.id
-left outer join (
-	select
-		s_rd.roomid
-	from
-		roomsdetail s_rd
-	where
-		s_rd.type = 'pin'
-		and s_rd.userid = $1) rd_pin on
-	rd_pin.roomid = ar.id
-left outer join (
-	select
-		s_rd.roomid
-	from
-		roomsdetail s_rd
-	where
-		s_rd.type = 'disable'
-		and s_rd.userid = $1) rd_disable on
-	rd_disable.roomid = ar.id
-left outer join (
-	select
-		s_rs."type" ,
-		s_rs.roomid,
-		s_rs.createat
-	from
-		roomssnooze s_rs
-	where
-		s_rs.userid = $1) rs_snooze on
-	rs_snooze.roomid = ar.id \n`,
+    text: AdvancedRoomQuery,
     values: [sessionid],
   };
 
@@ -718,17 +598,16 @@ group by r.id`,
   return queryConfig;
 };
 
-export const selectMessagesListSearch = ({
-  sessionid,
-  query = '',
-  cursor,
-  limit,
-}: {
+export const selectMessagesListSearch = (args: {
   sessionid: AdvancedUser['id'];
-  query: AdvancedMessages['content'];
-  cursor?: number;
-  limit?: number;
+  q: AdvancedMessages['content'];
+  pagination?: {
+    limit: number;
+    offset: number;
+  };
 }) => {
+  const { sessionid, q, pagination } = args;
+
   let queryConfig: RequiredQueryConfig = {
     text: `select
 	row_to_json(ar.*) as "Room",
@@ -736,7 +615,8 @@ export const selectMessagesListSearch = ({
 from
 	advancedmessages am
 inner join 
-		advancedrooms ar on
+		(
+	${AdvancedRoomQuery}) ar on
 	ar.id = am.roomid\n`,
     values: [],
   };
@@ -751,23 +631,21 @@ inner join
         tableAlias: 'am',
         field: 'content',
         operator: 'like',
-        value: `%${query}%`,
+        value: `%${q}%`,
       },
     ],
   ];
 
-  if (typeof cursor !== 'undefined' && cursor !== 0) {
-    wheres.push([
-      { tableAlias: 'am', field: 'id', operator: '<', value: cursor },
-    ]);
-  }
-
   queryConfig = makeWhere(queryConfig, wheres);
   queryConfig.text = makeOrder<AdvancedMessages & AdvancedRooms>(
     queryConfig.text,
-    [{ field: 'id', by: 'DESC', tableAlias: 'am' }]
+    [{ tableAlias: 'am', field: 'createat', by: 'DESC' }]
   );
-  queryConfig.text = makeLimit(queryConfig.text, limit);
+  queryConfig.text = makeLimit(queryConfig.text, pagination?.limit || 10);
+  queryConfig.text = makeOffset(
+    queryConfig.text,
+    typeof pagination !== 'undefined' ? pagination.limit * pagination.offset : 0
+  );
 
   return queryConfig;
 };
