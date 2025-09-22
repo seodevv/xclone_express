@@ -100,7 +100,7 @@ apiRouter.post(
     // 로그인 성공 시
     if (findUser) {
       const userToken = generateUserToken(findUser);
-      if (!userToken) {
+      if (typeof userToken === 'undefined') {
         return httpInternalServerErrorResponse(res);
       }
       res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
@@ -176,20 +176,16 @@ apiRouter.post(
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
-    if (!currentUser) {
+    if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
-      res.clearCookie('connect.sid', COOKIE_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
     const dao = new DAO();
-    const checkUser = await dao.getUser({ id: currentUser.id, password });
+    const user = await dao.getUser({ id: currentUser.id, password });
     dao.release();
-    if (checkUser) {
-      return httpSuccessResponse(res, { data: checkUser });
-    } else {
-      return httpNotFoundResponse(res);
-    }
+
+    return httpSuccessResponse(res, { data: user });
   }
 );
 

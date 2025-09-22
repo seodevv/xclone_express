@@ -682,7 +682,7 @@ class DAO {
             ? pagination.limit * pagination.offset
             : 10,
       });
-      console.log('[getUserListWithIds]\n', queryConfig.text);
+      // console.log('[getUserListWithIds]\n', queryConfig.text);
       const userList = await this.client.query<AdvancedUser>(queryConfig);
       return userList.rows;
     } catch (error) {
@@ -1206,14 +1206,10 @@ class DAO {
 
     const { roomid, pagination } = args;
 
-    const where: Where<AdvancedMessages>[] = [
-      { field: 'roomid', value: roomid },
-    ];
-
     try {
       const queryConfig = selectQuery({
         table: 'advancedmessages',
-        wheres: [where],
+        wheres: [[{ field: 'roomid', value: roomid }]],
         order: [{ field: 'createat', by: 'DESC' }],
         limit: pagination?.limit || 50,
         offset:
@@ -1221,7 +1217,7 @@ class DAO {
             ? pagination.limit * pagination.offset
             : 0,
       });
-      console.log('[getMessagesList]\n', queryConfig.text);
+      // console.log('[getMessagesList]\n', queryConfig.text);
       const messagesList = (
         await this.client.query<AdvancedMessages>(queryConfig)
       ).rows;

@@ -51,6 +51,7 @@ apiListsRouter.get(
       message: string;
     }>
   ) => {
+    await delay(1000);
     const { cursor = '0', size = '10', q } = req.query;
     const { 'connect.sid': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
@@ -726,13 +727,16 @@ apiListsRouter.get(
 // 특정 리스트를 팔로우
 // ㅇ
 apiListsRouter.post(
-  '/:id/follow',
+  '/:listid/follow',
   async (
     req: TypedRequestParams<{ listid: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
     const listid = req.params.listid;
     const { 'connect.sid': token } = req.cookies;
+
+    console.log(listid);
+
     if (!REGEX_NUMBER_ONLY.test(listid)) {
       return httpBadRequestResponse(res);
     }
@@ -794,7 +798,7 @@ apiListsRouter.post(
 // 특정 리스트를 언팔로우
 // ㅇ
 apiListsRouter.delete(
-  '/:id/follow',
+  '/:listid/follow',
   async (
     req: TypedRequestParams<{ listid: string }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>

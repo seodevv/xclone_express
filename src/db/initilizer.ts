@@ -1391,69 +1391,115 @@ AS SELECT r.id,
                   WHERE m_1.seen = false
                   GROUP BY m_1.roomid, m_1.senderid) a
           GROUP BY a.roomid) n ON n.roomid::text = r.id::text;`,
-  advancedmessages: `CREATE OR REPLACE VIEW public.advancedmessages
-AS SELECT m.id,
-    m.roomid,
-    m.senderid,
-    row_to_json(u.*) AS "Sender",
-    m.content,
-    m.createat,
-    m.seen,
-    m.parentid,
-    row_to_json(am.*) AS "Parent",
-        CASE
-            WHEN md_1.value IS NULL THEN '[]'::json
-            ELSE md_1.value
-        END AS "Disable",
-        CASE
-            WHEN md_2.value IS NULL THEN '[]'::json
-            ELSE md_2.value
-        END AS "React",
-    mm.value AS "Media"
-   FROM messages m
-     JOIN ( SELECT users.id,
-            users.nickname,
-            users.image,
-            users.verified
-           FROM users) u ON u.id::text = m.senderid::text
-     LEFT JOIN ( SELECT s_md.messageid,
-            json_agg(json_build_object('id', s_md.userid)) AS value
-           FROM ( SELECT s_md_1.messageid,
-                    s_md_1.userid
-                   FROM messagesdetail s_md_1
-                  WHERE s_md_1.type = 'disable'::messagesdetail_type) s_md
-          GROUP BY s_md.messageid) md_1 ON md_1.messageid = m.id
-     LEFT JOIN ( SELECT s_2_md.messageid,
-            json_agg(row_to_json(s_2_md.*)::jsonb - 'messageid'::text) AS value
-           FROM ( SELECT s_md.messageid,
-                    s_md.userid AS id,
-                    s_u.nickname,
-                    s_u.image,
-                    s_u.verified,
-                    s_md.content
-                   FROM messagesdetail s_md
-                     JOIN users s_u ON s_u.id::text = s_md.userid::text
-                  WHERE s_md.type = 'react'::messagesdetail_type) s_2_md
-          GROUP BY s_2_md.messageid) md_2 ON md_2.messageid = m.id
-     LEFT JOIN ( SELECT s_mm.messageid,
-            (row_to_json(s_mm.*)::jsonb - 'messageid'::text)::json AS value
-           FROM messagesmedia s_mm) mm ON mm.messageid = m.id
-     LEFT JOIN ( SELECT m_1.id,
-            m_1.senderid,
-            row_to_json(u_1.*) AS "Sender",
-            m_1.content,
-            m_1.createat,
-            mm_1.value AS "Media"
-           FROM messages m_1
-             JOIN ( SELECT users.id,
-                    users.nickname,
-                    users.image,
-                    users.verified
-                   FROM users) u_1 ON u_1.id::text = m_1.senderid::text
-             LEFT JOIN messages m2 ON m2.id = m_1.parentid
-             LEFT JOIN ( SELECT s_mm.messageid,
-                    (row_to_json(s_mm.*)::jsonb - 'messageid'::text)::json AS value
-                   FROM messagesmedia s_mm) mm_1 ON mm_1.messageid = m_1.id
-          ORDER BY m_1.id DESC) am ON am.id = m.parentid
-  ORDER BY m.id DESC;`,
+  advancedmessages: `create or replace
+view public.advancedmessages
+as
+select
+	m.id,
+	m.roomid,
+	m.senderid,
+	row_to_json(u.*) as "Sender",
+	m.content,
+	m.createat,
+	m.seen,
+	m.parentid,
+	row_to_json(am.*) as "Parent",
+	case
+		when md_1.value is null then '[]'::jsonb
+		else md_1.value
+	end as "Disable",
+	case
+		when md_2.value is null then '[]'::jsonb
+		else md_2.value
+	end as "React",
+	mm.value as "Media"
+from
+	messages m
+join (
+	select
+		users.id,
+		users.nickname,
+		users.image,
+		users.verified
+	from
+		users) u on
+	u.id::text = m.senderid::text
+left join (
+	select
+		s_md.messageid,
+		json_agg(json_build_object('id', s_md.userid))::jsonb as value
+	from
+		(
+		select
+			s_md_1.messageid,
+			s_md_1.userid
+		from
+			messagesdetail s_md_1
+		where
+			s_md_1.type = 'disable'::messagesdetail_type) s_md
+	group by
+		s_md.messageid) md_1 on
+	md_1.messageid = m.id
+left join (
+	select
+		s_2_md.messageid,
+		json_agg(row_to_json(s_2_md.*)::jsonb - 'messageid'::text)::jsonb as value
+	from
+		(
+		select
+			s_md.messageid,
+			s_md.userid as id,
+			s_u.nickname,
+			s_u.image,
+			s_u.verified,
+			s_md.content
+		from
+			messagesdetail s_md
+		join users s_u on
+			s_u.id::text = s_md.userid::text
+		where
+			s_md.type = 'react'::messagesdetail_type) s_2_md
+	group by
+		s_2_md.messageid) md_2 on
+	md_2.messageid = m.id
+left join (
+	select
+		s_mm.messageid,
+		row_to_json(s_mm.*)::jsonb - 'messageid'::text as value
+	from
+		messagesmedia s_mm) mm on
+	mm.messageid = m.id
+left join (
+	select
+		m_1.id,
+		m_1.senderid,
+		row_to_json(u_1.*) as "Sender",
+		m_1.content,
+		m_1.createat,
+		mm_1.value as "Media"
+	from
+		messages m_1
+	join (
+		select
+			users.id,
+			users.nickname,
+			users.image,
+			users.verified
+		from
+			users) u_1 on
+		u_1.id::text = m_1.senderid::text
+	left join messages m2 on
+		m2.id = m_1.parentid
+	left join (
+		select
+			s_mm.messageid,
+			row_to_json(s_mm.*)::jsonb - 'messageid'::text as value
+		from
+			messagesmedia s_mm) mm_1 on
+		mm_1.messageid = m_1.id
+	order by
+		m_1.id desc) am on
+	am.id = m.parentid
+order by
+	m.id desc;`,
 };
