@@ -32,7 +32,7 @@ import { uploadPath } from '@/app';
 import { Views } from '@/model/Views';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
 import { AdvancedUser } from '@/model/User';
-import { PostImage, Schemas } from '@/db/schema';
+import { PostImage } from '@/db/schema';
 import DAO from '@/lib/DAO';
 
 const apiPostsRouter = express.Router();
@@ -77,6 +77,10 @@ apiPostsRouter.get(
             (f) => f.target
           )
         : undefined;
+    if (followingIds?.length === 0) {
+      dao.release();
+      return httpSuccessResponse(res, { data: [] });
+    }
     const postList = await dao.getPostList({
       userids: followingIds,
       q,
@@ -87,6 +91,7 @@ apiPostsRouter.get(
         offset: ~~cursor,
       },
     });
+
     dao.release();
     if (typeof postList === 'undefined') {
       return httpInternalServerErrorResponse(res);
@@ -230,6 +235,11 @@ apiPostsRouter.get(
       return httpInternalServerErrorResponse(res);
     }
 
+    if (followingIds.length === 0) {
+      dao.release();
+      return httpSuccessResponse(res, { data: [] });
+    }
+
     const postList = await dao.getPostList({
       userids: followingIds,
       pagination: {
@@ -280,6 +290,11 @@ apiPostsRouter.get(
     if (typeof likePostIds === 'undefined') {
       dao.release();
       return httpInternalServerErrorResponse(res);
+    }
+
+    if (likePostIds.length === 0) {
+      dao.release();
+      return httpSuccessResponse(res, { data: [] });
     }
 
     const postList = await dao.getPostList({

@@ -185,6 +185,10 @@ apiRouter.post(
     const user = await dao.getUser({ id: currentUser.id, password });
     dao.release();
 
+    if (typeof user === 'undefined') {
+      return httpNotFoundResponse(res, 'User not found');
+    }
+
     return httpSuccessResponse(res, { data: user });
   }
 );

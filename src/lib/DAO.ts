@@ -1027,20 +1027,23 @@ class DAO {
       [{ field: 'type', value: 'Heart' }],
     ];
     if (typeof userid !== 'undefined') {
-      wheres[0].push({ field: 'userid', value: userid });
+      wheres.push([{ field: 'userid', value: userid }]);
     }
     if (typeof postid !== 'undefined') {
-      wheres[0].push({ field: 'postid', value: postid });
+      wheres.push([{ field: 'postid', value: postid }]);
     }
 
     try {
       const queryConfig = selectQuery({ table: 'reactions', wheres, isCount });
       // console.log('[getLikeList]\n', queryConfig.text);
 
-      return isCount
-        ? (await this.client.query<{ count: number }>(queryConfig)).rows[0]
-            .count
-        : (await this.client.query<Reactions>(queryConfig)).rows;
+      if (isCount) {
+        const result = await this.client.query<{ count: number }>(queryConfig);
+        return result.rows[0].count;
+      }
+
+      const result = await this.client.query<Schemas['reactions']>(queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
