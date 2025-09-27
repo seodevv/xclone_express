@@ -21,6 +21,12 @@ import {
 const app = express();
 const host = process.env.SERVER_HOST || '0.0.0.0';
 const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 9090;
+const origin = [
+  'http://localhost',
+  'https://localhost',
+  'http://localhost:3000',
+  'https://localhost:3000',
+];
 export const uploadPath = path.join(__dirname, './uploads');
 if (!fs.pathExistsSync(uploadPath)) {
   fs.mkdirSync(uploadPath);
@@ -34,7 +40,7 @@ pool.on('error', (err) => {
 
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'https://localhost:3000'],
+    origin,
     optionsSuccessStatus: 200,
     credentials: true,
   })
@@ -62,7 +68,7 @@ const io = new Server<
   SocketData
 >(server, {
   cors: {
-    origin: ['http://localhost:3000', 'https://localhost:3000'],
+    origin,
     methods: ['GET', 'POST'],
   },
   maxHttpBufferSize: 1e9,

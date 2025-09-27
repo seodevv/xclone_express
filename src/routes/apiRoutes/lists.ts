@@ -735,8 +735,6 @@ apiListsRouter.post(
     const listid = req.params.listid;
     const { 'connect.sid': token } = req.cookies;
 
-    console.log(listid);
-
     if (!REGEX_NUMBER_ONLY.test(listid)) {
       return httpBadRequestResponse(res);
     }
