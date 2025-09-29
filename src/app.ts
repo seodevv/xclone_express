@@ -83,3 +83,5 @@ server.listen(port, host, async () => {
 // app.listen(port, host, () =>
 //   console.log(`server is running on : http://${host}:${port}`)
 // );
+
+export default server;

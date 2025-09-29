@@ -56,6 +56,8 @@ apiUsersRouter.get(
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
+    console.log(currentUser);
+
     return httpSuccessResponse(res, { data: currentUser });
   }
 );

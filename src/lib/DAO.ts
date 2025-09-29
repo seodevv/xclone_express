@@ -1711,6 +1711,25 @@ class DAO {
     }
   }
 
+  async deleteUser(args: { id: Schemas['users']['id'] }) {
+    await this.init();
+    if (!this.client) return;
+    const { id } = args;
+
+    try {
+      const queryConfig = deleteQuery({
+        table: 'users',
+        wheres: [[{ field: 'id', value: id }]],
+      });
+      // console.log('[deleteUser]', queryConfig.text);
+      await this.client.query(queryConfig);
+      return true;
+    } catch (error) {
+      console.error(error);
+      return;
+    }
+  }
+
   async deleteBirth({ id }: { id: string }): Promise<AdvancedUser | undefined> {
     await this.init();
     if (!this.client) return;
