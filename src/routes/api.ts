@@ -34,6 +34,7 @@ import { AdvancedUser } from '@/model/User';
 import DAO from '@/lib/DAO';
 import apiRoomsRouter from '@/routes/apiRoutes/rooms';
 import apiMessagesRouter from '@/routes/apiRoutes/messages';
+import jwt from 'jsonwebtoken';
 
 const apiRouter = express.Router();
 
@@ -109,6 +110,80 @@ apiRouter.post(
 
     // 로그인 실패 시
     return httpForbiddenResponse(res, 'ID, Password is incorrect.');
+  }
+);
+
+// "GET /api/login/token"
+// 토근 생성
+apiRouter.get(
+  '/login/token',
+  async (
+    req: TypedRequestQuery<{ id?: string; password?: string }>,
+    res: TypedResponse<{ data?: string; message: string }>
+  ) => {
+    const { id, password } = req.query;
+    if (!id || !password) return httpBadRequestResponse(res);
+
+    const secret = process.env.JWT_SECRET || 'secret';
+    const dao = new DAO();
+    const user = await dao.getUser({ id, password });
+    if (typeof user === 'undefined') {
+      return httpForbiddenResponse(res);
+    }
+
+    try {
+      const token = jwt.sign({ id, password }, secret);
+      return httpSuccessResponse(res, { data: token });
+    } catch (error) {
+      console.error(error);
+      return httpInternalServerErrorResponse(res);
+    }
+  }
+);
+
+// "Post /api/login/token"
+// 토근을 이용한 로그인
+apiRouter.post(
+  '/login/token',
+  multer().none(),
+  async (
+    req: TypedRequestBody<{ token?: string }>,
+    res: TypedResponse<{ data?: AdvancedUser; message: string }>
+  ) => {
+    const { token } = req.body;
+    if (!token) return httpBadRequestResponse(res);
+
+    const secret = process.env.JWT_SECRET || 'secret';
+    try {
+      const decode = jwt.verify(token, secret);
+
+      if (
+        typeof decode === 'string' ||
+        !['id', 'password'].every((key) => key in decode)
+      ) {
+        return httpBadRequestResponse(res);
+      }
+
+      const { id, password } = decode as { id: string; password: string };
+
+      const dao = new DAO();
+      const user = await dao.getUser({ id, password });
+      dao.release();
+
+      if (typeof user === 'undefined') {
+        return httpForbiddenResponse(res, 'the token is incorrect');
+      }
+
+      const userToken = generateUserToken(user);
+      if (typeof userToken === 'undefined') {
+        return httpInternalServerErrorResponse(res);
+      }
+      res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
+      return httpSuccessResponse(res, { data: user });
+    } catch (error) {
+      console.error(error);
+      return httpBadRequestResponse(res);
+    }
   }
 );
 
