@@ -40,7 +40,6 @@ const upload = multer({ storage });
 
 // "GET /api/posts"
 // 검색 결과 페이지 조회
-// ㅇ
 apiPostsRouter.get(
   '/',
   async (
@@ -106,7 +105,6 @@ apiPostsRouter.get(
 
 // "POST /api/posts"
 // 게시물 생성
-// ㅇ
 apiPostsRouter.post(
   '/',
   upload.array('images', 4),
@@ -118,7 +116,7 @@ apiPostsRouter.post(
     }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
-    await delay(3000);
+    await delay(2000);
     const { content, mediaInfo, repostid } = req.body;
     const files = req.files;
     const { 'connect.sid': token } = req.cookies;
@@ -167,7 +165,6 @@ apiPostsRouter.post(
 
 // "GET /api/posts/recommends"
 // 추천 게시글 조회
-// ㅇ
 apiPostsRouter.get(
   '/recommends',
   async (
@@ -204,7 +201,6 @@ apiPostsRouter.get(
 
 // "GET /api/posts/followings"
 // 팔로잉 게시글 조회
-// ㅇ
 apiPostsRouter.get(
   '/followings',
   async (
@@ -261,7 +257,6 @@ apiPostsRouter.get(
 
 // "GET /api/posts/likes"
 // 좋아요를 한 게시글 조회
-// ㅇ
 apiPostsRouter.get(
   '/likes',
   async (
@@ -318,7 +313,6 @@ apiPostsRouter.get(
 
 // "GET /api/posts/bookmarks"
 // 북마크한 게시글 조회
-// ㅇ
 apiPostsRouter.get(
   '/bookmarks',
   async (
@@ -363,7 +357,6 @@ apiPostsRouter.get(
 
 // "GET /api/posts/:postid"
 // 특정 게시글 조회
-// ㅇ
 apiPostsRouter.get(
   '/:postid',
   async (
@@ -390,7 +383,6 @@ apiPostsRouter.get(
 
 // "DELETE /api/posts/:postid"
 // 특정 게시글 삭제
-// ㅇ
 apiPostsRouter.delete(
   '/:postid',
   async (
@@ -446,7 +438,6 @@ apiPostsRouter.delete(
 
 // "POST /api/posts/:postid/hearts"
 // 특정 게시글 좋아요
-// ㅇ
 apiPostsRouter.post(
   '/:postid/hearts',
   async (
@@ -494,7 +485,6 @@ apiPostsRouter.post(
 
 // "DELETE /api/posts/:postid/hearts"
 // 특정 게시글 좋아요 취소
-// ㅇ
 apiPostsRouter.delete(
   '/:postid/hearts',
   async (
@@ -540,11 +530,10 @@ apiPostsRouter.delete(
 
 // "POST /api/posts/:postid/reposts"
 // 특정 게시글 리포스트
-// ㅇ
 apiPostsRouter.post(
   '/:postid/reposts',
   async (
-    req: TypedRequestQueryParams<{ quote?: string }, { postid: string }>,
+    req: TypedRequestParams<{ postid: string }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const postid = req.params.postid;
@@ -592,7 +581,6 @@ apiPostsRouter.post(
 
 // "DELETE /api/posts/:postid/reposts"
 // 특정 게시글 리포스트 취소
-// ㅇ
 apiPostsRouter.delete(
   '/:postid/reposts',
   async (
@@ -637,7 +625,6 @@ apiPostsRouter.delete(
 
 // "GET /api/posts/:postid/comments"
 // 특정 게시글 댓글 조회
-// ㅇ
 apiPostsRouter.get(
   '/:postid/comments',
   async (
@@ -684,9 +671,8 @@ apiPostsRouter.get(
   }
 );
 
-// "POST /api/posts/:postidid/comments"
+// "POST /api/posts/:postid/comments"
 // 특정 게시글 댓글 달기
-// ㅇ
 apiPostsRouter.post(
   '/:postid/comments',
   upload.array('images', 4),
@@ -753,7 +739,6 @@ apiPostsRouter.post(
 
 // "GET /api/posts/:postid/views"
 // 특정 게시물 view 조회
-// ㅇ
 apiPostsRouter.get(
   '/:postid/views',
   async (
@@ -763,6 +748,7 @@ apiPostsRouter.get(
     const postid = req.params.postid;
     const regex = /^[0-9]+$/;
     const { 'connect.sid': token } = req.cookies;
+
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
@@ -797,7 +783,6 @@ apiPostsRouter.get(
 
 // "POST /api/posts/:postid/views"
 // 특정 게시물 view 카운트 추가
-// ㅇ
 apiPostsRouter.post(
   '/:postid/views',
   async (
@@ -894,7 +879,6 @@ apiPostsRouter.post(
 
 // "DELETE /api/posts/:postid/bookmarks"
 // 특정 게시물 bookmark 제거
-// ㅇ
 apiPostsRouter.delete(
   '/:postid/bookmarks',
   async (
@@ -939,7 +923,6 @@ apiPostsRouter.delete(
 
 // "GET /api/posts/:postid/engagements"
 // 특정 게시물 engagements 조회
-// ㅇ
 apiPostsRouter.get(
   '/:postid/engagements',
   async (
@@ -1058,8 +1041,7 @@ apiPostsRouter.get(
 );
 
 // "POST /api/posts/:postid/pinned"
-// 특정 게시물 pinned 추가
-// ㅇ
+// 내 게시물 pinned 추가
 apiPostsRouter.post(
   '/:postid/pinned',
   async (
@@ -1103,8 +1085,7 @@ apiPostsRouter.post(
 );
 
 // "DELETE /api/posts/:postid/pinned"
-// 특정 게시물 pinned 추가
-// ㅇ
+// 내 게시물 pinned 추가
 apiPostsRouter.delete(
   '/:postid/pinned',
   async (
@@ -1148,8 +1129,7 @@ apiPostsRouter.delete(
 );
 
 // "POST /api/posts/:postid/scope"
-// 특정 게시물 scope 설정
-// ㅇ
+// 내 게시물 scope 설정
 apiPostsRouter.post(
   '/:postid/scope',
   async (
@@ -1157,7 +1137,7 @@ apiPostsRouter.post(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const postid = req.params.postid;
-    const { scope } = req.body;
+    const scope = req.body.scope;
     const { 'connect.sid': token } = req.cookies;
     if (
       !REGEX_NUMBER_ONLY.test(postid) ||
@@ -1204,7 +1184,6 @@ apiPostsRouter.post(
 
 // "GET /api/posts/:postid/photos/:imagesId"
 // 특정 게시글 이미지 조회
-// ㅇ
 apiPostsRouter.get(
   '/:postid/photos/:imageId',
   async (

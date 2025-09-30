@@ -40,7 +40,6 @@ const upload = multer({ storage });
 
 // "GET /api/users"
 // 내 정보 조회
-// ㅇ
 apiUsersRouter.get(
   '/',
   async (
@@ -56,15 +55,12 @@ apiUsersRouter.get(
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
-    console.log(currentUser);
-
     return httpSuccessResponse(res, { data: currentUser });
   }
 );
 
 // "POST /api/users"
 // 회원 가입
-// ㅇ
 apiUsersRouter.post(
   '/',
   upload.single('image'),
@@ -127,7 +123,6 @@ apiUsersRouter.post(
 
 // "GET /api/users/search"
 // 유저 검색
-// ㅇ
 apiUsersRouter.get(
   '/search',
   async (
@@ -185,7 +180,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/followRecommends"
 // 팔로우 추천인 조회
-// ㅇ
 apiUsersRouter.get(
   '/followRecommends',
   async (
@@ -254,7 +248,6 @@ apiUsersRouter.get(
 
 // "POST /api/users/edit"
 // 프로필 수정
-// ㅇ
 apiUsersRouter.post(
   '/edit',
   upload.fields([
@@ -348,7 +341,6 @@ apiUsersRouter.post(
 
 // "DELETE /api/users/birth"
 // 유저 생일 삭제
-// ㅇ
 apiUsersRouter.delete(
   '/birth',
   async (
@@ -383,7 +375,6 @@ apiUsersRouter.delete(
 
 // "GET /api/users/:id"
 // 특정 유저 정보 조회
-// ㅇ
 apiUsersRouter.get(
   '/:id',
   async (
@@ -405,7 +396,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/:id/posts"
 // 특정 유저의 게시물 조회
-// ㅇ
 apiUsersRouter.get(
   '/:id/posts',
   async (
@@ -456,7 +446,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/:id/lists"
 // 특정 유저의 리스트 조회
-// ㅇ
 apiUsersRouter.get(
   '/:id/lists',
   async (
@@ -516,7 +505,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/:id/posts/count"
 // 특정 유저의 전체 게시물 카운트 조회
-// ㅇ
 apiUsersRouter.get(
   '/:id/posts/count',
   async (
@@ -567,7 +555,6 @@ apiUsersRouter.get(
 
 // "GET /api/users/:id/follow"
 // 특정 유저 팔로우 정보
-// ㅇ
 apiUsersRouter.get(
   '/:id/follow',
   async (
@@ -627,7 +614,6 @@ apiUsersRouter.get(
 
 // "POST /api/users/:id/follow"
 // 특정 유저 팔로우
-// ㅇ
 apiUsersRouter.post(
   '/:id/follow',
   async (
@@ -677,7 +663,6 @@ apiUsersRouter.post(
 
 // "DELETE /api/users/:id/follow"
 // 특정 유저 언팔로우
-// ㅇ
 apiUsersRouter.delete(
   '/:id/follow',
   async (

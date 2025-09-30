@@ -878,7 +878,7 @@ class DAO {
       // console.log('[getPostList]\n', queryConfig.text);
 
       return isCount
-        ? (await this.client.query<{ count: number }>(queryConfig)).rows[0]
+        ? ~~(await this.client.query<{ count: number }>(queryConfig)).rows[0]
             .count
         : (await this.client.query<AdvancedPost>(queryConfig)).rows;
     } catch (error) {
@@ -1039,7 +1039,7 @@ class DAO {
 
       if (isCount) {
         const result = await this.client.query<{ count: number }>(queryConfig);
-        return result.rows[0].count;
+        return ~~result.rows[0].count;
       }
 
       const result = await this.client.query<Schemas['reactions']>(queryConfig);
@@ -1329,8 +1329,11 @@ class DAO {
             };
           }
           const file = files
-            ? Object.values(files).find((v) => v.originalname === m.fileName)
+            ? (Object.values(files).find(
+                (v) => v.originalname === m.fileName
+              ) as Express.Multer.File)
             : undefined;
+
           return {
             imageId: i + 1,
             link: file ? file.filename : '',

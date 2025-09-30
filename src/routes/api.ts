@@ -317,7 +317,7 @@ apiRouter.get(
     const { imageName } = req.params;
     if (!imageName) return httpBadRequestResponse(res);
 
-    const imagePath = path.join(uploadPath, `/${imageName}`);
+    const imagePath = path.resolve(uploadPath, imageName);
     if (fs.existsSync(imagePath)) {
       return res.status(200).sendFile(imagePath);
     }
