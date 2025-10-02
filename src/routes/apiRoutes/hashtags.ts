@@ -14,7 +14,6 @@ const apiHashtagsRouter = express.Router();
 
 // "GET /api/hashtags/trends"
 // 상위 트랜드 조회
-// ㅇ
 apiHashtagsRouter.get(
   '/trends',
   async (
