@@ -1,11 +1,10 @@
 import jwt from 'jsonwebtoken';
-import multer from 'multer';
 import fs from 'fs-extra';
 import { uploadPath } from '@/app';
 import { AdvancedUser } from '@/model/User';
 import { CookieOptions } from 'express';
 import DAO from '@/lib/DAO';
-import { SafeUser, Schemas } from '@/db/schema';
+import { SafeUser } from '@/db/schema';
 import { QueryConfig, PoolClient, DatabaseError, QueryResultRow } from 'pg';
 
 export const COOKIE_OPTIONS: CookieOptions = {
@@ -23,16 +22,6 @@ export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
   sameSite: 'none',
   secure: true,
 };
-
-export const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const fileName = `${Date.now()}_${file.originalname}`;
-    cb(null, fileName);
-  },
-});
 
 export const IMAGE_DEFAULT_PROFILE = 'default_profile.png';
 export const IMAGE_DEFAULT_LISTS = 'default_lists.png';
@@ -176,7 +165,9 @@ export async function safeQuery<T extends QueryResultRow>(
   try {
     return await client.query<T>(queryConfig);
   } catch (err) {
-    const wrapped = new Error(`[Query failed]\n${queryConfig.text}`);
+    const wrapped: Error & { cause?: Error } = new Error(
+      `[Query failed]\n${queryConfig.text}`
+    );
     wrapped.cause = err as DatabaseError;
     Error.captureStackTrace(wrapped, safeQuery);
     throw wrapped;

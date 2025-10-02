@@ -3,13 +3,14 @@ import path from 'path';
 import { decryptRoomId } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import { Server, Socket } from 'socket.io';
-import { uploadPath } from '@/app';
+import { pool, uploadPath } from '@/app';
 import {
   ClientToServerEvents,
   InterServerEvents,
   ServerToClientEvents,
   SocketData,
 } from '@/model/Socket';
+import { createAdapter } from '@socket.io/postgres-adapter';
 
 const clientSockets: Socket<
   ClientToServerEvents,
@@ -63,6 +64,8 @@ export function setupSocket(
     SocketData
   >
 ) {
+  io.adapter(createAdapter(pool));
+
   io.of('/messages').on('connection', (socket) => {
     addClientSocket(socket);
     const sessionid = socket.handshake.auth.sessionId;

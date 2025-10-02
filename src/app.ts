@@ -7,6 +7,8 @@ import fs from 'fs-extra';
 import https from 'https';
 import apiRouter from '@/routes/api';
 import morgan from 'morgan';
+import os from 'os';
+import cluster from 'cluster';
 import { Pool } from 'pg';
 import initializeDatabase from '@/db/initilizer';
 import { Server } from 'socket.io';
@@ -18,7 +20,6 @@ import {
   SocketData,
 } from '@/model/Socket';
 
-const app = express();
 const host = process.env.SERVER_HOST || '0.0.0.0';
 const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 9090;
 const origin = [
@@ -27,61 +28,80 @@ const origin = [
   'http://localhost:3000',
   'https://localhost:3000',
 ];
+
+export let pool: Pool;
+export let server: ReturnType<(typeof https)['createServer']>;
+
 export const uploadPath = path.join(__dirname, './uploads');
 if (!fs.pathExistsSync(uploadPath)) {
   fs.mkdirSync(uploadPath);
 }
 
-export const pool = new Pool();
+if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
+  console.log(`Primary ${process.pid} is running`);
 
-pool.on('error', (err) => {
-  console.error('[node-postgres][error]\n', err);
-});
+  pool = new Pool();
 
-app.use(
-  cors({
-    origin,
-    optionsSuccessStatus: 200,
-    credentials: true,
-  })
-);
-app.use(express.json());
-app.use(cookieParser());
-app.use(
-  morgan(
-    ':remote-addr :method :url :status :res[content-length] - :response-time ms'
-  )
-);
+  initializeDatabase(pool)
+    .then(() => {
+      const num_worker = os.cpus().length > 4 ? 4 : os.cpus().length;
 
-app.use('/api', apiRouter);
+      for (let i = 0; i < num_worker; i++) {
+        cluster.fork();
+      }
+    })
+    .catch(console.error);
 
-const options: https.ServerOptions = {
-  key: fs.readFileSync('./localhost-key.pem'),
-  cert: fs.readFileSync('./localhost.pem'),
-};
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} died. Restarting...`);
+    cluster.fork();
+  });
+} else {
+  const app = express();
+  app.use(
+    cors({
+      origin,
+      optionsSuccessStatus: 200,
+      credentials: true,
+    })
+  );
+  app.use(express.json());
+  app.use(cookieParser());
+  app.use(
+    morgan(
+      `[Worker ${process.pid}] :remote-addr :method :url :status :res[content-length] - :response-time ms`
+    )
+  );
+  app.use('/api', apiRouter);
 
-const server = https.createServer(options, app);
-const io = new Server<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData
->(server, {
-  cors: {
-    origin,
-    methods: ['GET', 'POST'],
-  },
-  maxHttpBufferSize: 1e9,
-});
-setupSocket(io);
+  pool = new Pool();
+  pool.on('error', (err) => {
+    console.error(`[node-postgres][Worker][${process.pid}][error]\n`, err);
+  });
 
-server.listen(port, host, async () => {
-  await initializeDatabase(pool);
-  console.log(`server is running on : https://${host}:${port}`);
-});
+  const options: https.ServerOptions = {
+    key: fs.readFileSync('./localhost-key.pem'),
+    cert: fs.readFileSync('./localhost.pem'),
+  };
 
-// app.listen(port, host, () =>
-//   console.log(`server is running on : http://${host}:${port}`)
-// );
+  server = https.createServer(options, app);
+  const io = new Server<
+    ClientToServerEvents,
+    ServerToClientEvents,
+    InterServerEvents,
+    SocketData
+  >(server, {
+    cors: {
+      origin,
+      methods: ['GET', 'POST'],
+    },
+    maxHttpBufferSize: 1e9,
+  });
+  setupSocket(io);
 
-export default server;
+  server.listen(port, host, async () => {
+    console.log(
+      `Worker ${process.pid} is running on : https://${host}:${port}`
+    );
+  });
+}

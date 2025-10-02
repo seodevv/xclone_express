@@ -1,6 +1,8 @@
 {
-  "exclude": ["node_modules"],
-  "include": ["**/*.ts"],
+  "exclude": ["node_modules", "dist"],
+  // "include": ["**/*.ts"],
+  // "include": ["src/**/*"], // src 폴더만 빌드
+  "include": ["src/**/*.ts", "__tests__/**/*.ts"],
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig to read more about this file */
 
@@ -28,7 +30,7 @@
 
     /* Modules */
     "module": "NodeNext" /* Specify what module code is generated. */,
-    // "rootDir": "./",                                  /* Specify the root folder within your source files. */
+    "rootDir": "src" /* Specify the root folder within your source files. */,
     "moduleResolution": "NodeNext" /* Specify how TypeScript looks up a file from a given module specifier. */,
     "baseUrl": "./" /* Specify the base directory to resolve non-relative module names. */,
     "paths": {

@@ -4,8 +4,8 @@
   "description": "Backend Express Server for X.com clone coding",
   "main": "app.js",
   "scripts": {
-    "build": "tsc && tsc-alias",
-    "build:restart": "tsc && tsc-alias && pm2 restart pm2.config.js && pm2 logs",
+    "build": "tsc -p tsconfig.build.json && tsc-alias",
+    "build:restart": "tsc -p tsconfig.build.json && tsc-alias && pm2 restart pm2.config.js && pm2 logs",
     "start": "node ./dist/app.js",
     "dev": "npx tsx watch ./src/app.ts",
     "pm2": "pm2 start pm2.config.js",
@@ -14,6 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@socket.io/postgres-adapter": "^0.4.0",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

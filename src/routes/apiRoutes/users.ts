@@ -16,7 +16,6 @@ import {
 import {
   generateUserToken,
   decodingUserToken,
-  storage,
   delay,
   COOKIE_OPTIONS,
   removingFiles,
@@ -36,6 +35,15 @@ import DAO from '@/lib/DAO';
 import { Birth } from '@/db/schema';
 
 const apiUsersRouter = express.Router();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const fileName = `${Date.now()}_${file.originalname}`;
+    cb(null, fileName);
+  },
+});
 const upload = multer({ storage });
 
 // "GET /api/users"

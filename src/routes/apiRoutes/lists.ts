@@ -7,7 +7,6 @@ import {
   delay,
   IMAGE_DEFAULT_LISTS,
   removingFiles,
-  storage,
 } from '@/lib/common';
 import {
   httpBadRequestResponse,
@@ -36,6 +35,15 @@ import { uploadPath } from '@/app';
 import DAO from '@/lib/DAO';
 
 const apiListsRouter = express.Router();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const fileName = `${Date.now()}_${file.originalname}`;
+    cb(null, fileName);
+  },
+});
 const upload = multer({ storage });
 
 // "GET /api/lists"

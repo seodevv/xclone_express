@@ -17,7 +17,6 @@ import {
   decodingUserToken,
   delay,
   removingFiles,
-  storage,
 } from '@/lib/common';
 import {
   TypedRequestBody,
@@ -36,6 +35,15 @@ import { PostImage } from '@/db/schema';
 import DAO from '@/lib/DAO';
 
 const apiPostsRouter = express.Router();
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const fileName = `${Date.now()}_${file.originalname}`;
+    cb(null, fileName);
+  },
+});
 const upload = multer({ storage });
 
 // "GET /api/posts"
