@@ -25,7 +25,8 @@ import { Reactions } from '@/model/Reaction';
 import { AdvancedRooms, Room, RoomsNotifications } from '@/model/Room';
 import { AdvancedUser, User } from '@/model/User';
 import { Views } from '@/model/Views';
-import { PoolClient } from 'pg';
+import { DatabaseError, PoolClient, QueryConfig } from 'pg';
+import { safeQuery } from '@/lib/common';
 
 class DAO {
   private client: PoolClient | undefined;
@@ -65,20 +66,20 @@ class DAO {
         table: 'users',
         wheres,
       });
-      const user = (await this.client.query<Schemas['users']>(usersQueryConfig))
-        .rows[0];
+      const user = (
+        await safeQuery<Schemas['users']>(this.client, usersQueryConfig)
+      ).rows[0];
       if (typeof user === 'undefined') return;
 
       const advancedUsersQueryConfig = selectQuery({
         table: 'advancedusers',
         wheres: [[{ field: 'id', value: user.id }]],
       });
-      const advancedUser = (
-        await this.client.query<Schemas['advancedusers']>(
-          advancedUsersQueryConfig
-        )
-      ).rows[0];
-      return advancedUser;
+      const result = await safeQuery<AdvancedUser>(
+        this.client,
+        advancedUsersQueryConfig
+      );
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -103,14 +104,13 @@ class DAO {
     }
 
     try {
-      const selectQueryConfig = selectQuery({
+      const queryConfig = selectQuery({
         table: 'advancedpost',
         wheres,
       });
       // console.log('[getPost]\n', selectQueryConfig.text);
-      const post = await this.client.query<AdvancedPost>(selectQueryConfig);
-
-      return post.rows[0];
+      const result = await safeQuery<AdvancedPost>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -139,8 +139,8 @@ class DAO {
         ],
       });
       // console.log('[getRepostPost]\n', queryConfig.text);
-      const repost = (await this.client.query<Post>(queryConfig)).rows[0];
-      return repost;
+      const result = await safeQuery<Post>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -177,9 +177,8 @@ class DAO {
     try {
       const queryConfig = selectQuery({ table: 'reactions', wheres: [where] });
       // console.log('[getReactions]\n', queryConfig.text);
-      const reaction = (await this.client.query<Reactions>(queryConfig))
-        .rows[0];
-      return reaction;
+      const result = await safeQuery<Reactions>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
     }
@@ -199,8 +198,8 @@ class DAO {
         wheres: [[{ field: 'postid', value: postid }]],
       });
       // console.log('[getView]\n', queryConfig);
-      const view = (await this.client.query<Views>(queryConfig)).rows[0];
-      return view;
+      const result = await safeQuery<Views>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -229,9 +228,8 @@ class DAO {
         make,
       });
       // console.log('[getLists]\n', queryConfig.text);
-      const lists = (await this.client.query<AdvancedLists>(queryConfig))
-        .rows[0];
-      return lists;
+      const result = await safeQuery<AdvancedLists>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -267,9 +265,8 @@ class DAO {
         table: 'listsdetail',
         wheres: [where],
       });
-      const listsDetail = (await this.client.query<ListsDetail>(queryConfig))
-        .rows[0];
-      return listsDetail;
+      const reuslt = await safeQuery<ListsDetail>(this.client, queryConfig);
+      return reuslt.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -300,8 +297,8 @@ class DAO {
         ],
       });
       // console.log('[getHashTag]\n', queryConfig.text);
-      const hashtag = (await this.client.query<HashTags>(queryConfig)).rows[0];
-      return hashtag;
+      const result = await safeQuery<HashTags>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -342,8 +339,8 @@ class DAO {
         ],
       });
       // console.log('[getRoom]\n', queryConfig.text);
-      const room = (await this.client.query<Room>(queryConfig)).rows[0];
-      return room;
+      const result = await safeQuery<Room>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -375,8 +372,8 @@ class DAO {
         findUserid,
       });
       // console.log('[getRoom]\n', queryConfig.text);
-      const room = await this.client.query<AdvancedRooms>(queryConfig);
-      return room.rows[0];
+      const result = await safeQuery<AdvancedRooms>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -396,9 +393,11 @@ class DAO {
         table: 'advancedmessages',
         wheres: [[{ field: 'id', value: id }]],
       });
-      const message = (await this.client.query<AdvancedMessages>(queryConfig))
-        .rows[0];
-      return message;
+      const result = await safeQuery<AdvancedMessages>(
+        this.client,
+        queryConfig
+      );
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -413,10 +412,11 @@ class DAO {
       const queryConfig = selectRoomsNotification({
         sessionid,
       });
-      const notifications = (
-        await this.client.query<RoomsNotifications>(queryConfig)
-      ).rows;
-      return notifications;
+      const result = await safeQuery<RoomsNotifications>(
+        this.client,
+        queryConfig
+      );
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -450,10 +450,11 @@ class DAO {
         ],
       });
       // console.log('[getRoomsDetail]\n', queryConfig.text);
-      const detail = (
-        await this.client.query<Schemas['roomsdetail']>(queryConfig)
-      ).rows[0];
-      return detail;
+      const result = await safeQuery<Schemas['roomsdetail']>(
+        this.client,
+        queryConfig
+      );
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -486,10 +487,11 @@ class DAO {
           ],
         ],
       });
-      const snooze = (
-        await this.client.query<Schemas['roomssnooze']>(queryConfig)
-      ).rows[0];
-      return snooze;
+      const result = await safeQuery<Schemas['roomssnooze']>(
+        this.client,
+        queryConfig
+      );
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -519,9 +521,8 @@ class DAO {
           ],
         ],
       });
-      const detail = (await this.client.query<MessagesDetail>(queryConfig))
-        .rows[0];
-      return detail;
+      const result = await safeQuery<MessagesDetail>(this.client, queryConfig);
+      return result.rows[0];
     } catch (error) {
       console.error(error);
       return;
@@ -636,10 +637,8 @@ class DAO {
         queryConfig.text = makeOffset(queryConfig.text, limit * offset);
       }
       // console.log('[getUserList]\n', queryConfig.text);
-
-      const queryResult = (await this.client.query<AdvancedUser>(queryConfig))
-        .rows;
-      return queryResult;
+      const result = await safeQuery<AdvancedUser>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -683,8 +682,8 @@ class DAO {
             : 10,
       });
       // console.log('[getUserListWithIds]\n', queryConfig.text);
-      const userList = await this.client.query<AdvancedUser>(queryConfig);
-      return userList.rows;
+      const result = await safeQuery<AdvancedUser>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -717,8 +716,8 @@ class DAO {
         wheres,
       });
       // console.log('[getFollowList]\n', queryConfig.text);
-      const queryResult = (await this.client.query<Follow>(queryConfig)).rows;
-      return queryResult;
+      const result = await safeQuery<Follow>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -877,10 +876,16 @@ class DAO {
       });
       // console.log('[getPostList]\n', queryConfig.text);
 
-      return isCount
-        ? ~~(await this.client.query<{ count: number }>(queryConfig)).rows[0]
-            .count
-        : (await this.client.query<AdvancedPost>(queryConfig)).rows;
+      if (isCount) {
+        const result = await safeQuery<{ count: number }>(
+          this.client,
+          queryConfig
+        );
+        return ~~result.rows[0];
+      }
+
+      const result = await safeQuery<AdvancedPost>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -901,7 +906,7 @@ class DAO {
     const { postids, userids, pagination } = args;
 
     const wheres: Where<Schemas['advancedpost']>[][] = [];
-    if (typeof postids !== 'undefined') {
+    if (typeof postids !== 'undefined' && postids.length !== 0) {
       wheres.push([
         {
           field: 'postid',
@@ -909,7 +914,7 @@ class DAO {
           value: postids,
         },
       ]);
-    } else if (typeof userids !== 'undefined') {
+    } else if (typeof userids !== 'undefined' && userids.length !== 0) {
       wheres.push([
         {
           field: 'userid',
@@ -931,10 +936,10 @@ class DAO {
             : 0,
       });
       // console.log('[getPostListWithIds]\n', queryConfig.text);
-      const postList = await this.client.query<AdvancedPost>(queryConfig);
-      return postList.rows;
-    } catch (error) {
-      console.error(error);
+      const result = await safeQuery<AdvancedPost>(this.client, queryConfig);
+      return result.rows;
+    } catch (e) {
+      console.error(e);
       return;
     }
   }
@@ -960,8 +965,8 @@ class DAO {
         ],
       });
       // console.log('[getReactionList]\n', queryConfig.text);
-      const reactionList = await this.client.query<Reactions>(queryConfig);
-      return reactionList.rows;
+      const result = await safeQuery<Reactions>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -996,9 +1001,8 @@ class DAO {
         offset: pagination?.offset || 0,
       });
       // console.log('[getBookmarkPosts]\n', queryConfig.text);
-
-      const postList = await this.client.query<AdvancedPost>(queryConfig);
-      return postList.rows;
+      const result = await safeQuery<AdvancedPost>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -1042,7 +1046,10 @@ class DAO {
         return ~~result.rows[0].count;
       }
 
-      const result = await this.client.query<Schemas['reactions']>(queryConfig);
+      const result = await safeQuery<Schemas['reactions']>(
+        this.client,
+        queryConfig
+      );
       return result.rows;
     } catch (error) {
       console.error(error);
@@ -1092,9 +1099,8 @@ class DAO {
         pagination,
       });
       // console.log('[getListsList]\n', queryConfig.text);
-      const listsList = await this.client.query<AdvancedLists>(queryConfig);
-
-      return listsList.rows;
+      const result = await safeQuery<AdvancedLists>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -1131,11 +1137,8 @@ class DAO {
     try {
       const queryConfig = selectQuery({ table: 'listsdetail', wheres });
       // console.log('[getListsDetailList]\n', queryConfig.text);
-      const listsDetailList = (
-        await this.client.query<ListsDetail>(queryConfig)
-      ).rows;
-
-      return listsDetailList;
+      const result = await safeQuery<ListsDetail>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -1161,8 +1164,8 @@ class DAO {
             : 0,
       });
       // console.log('[getHashTagList]\n', queryConfig.text);
-      const hashtagList = (await this.client.query(queryConfig)).rows;
-      return hashtagList;
+      const result = await safeQuery<HashTags>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -1188,9 +1191,8 @@ class DAO {
         findUserid,
       });
       // console.log('[getRoomList]\n', queryConfig);
-      const roomsList = (await this.client.query<AdvancedRooms>(queryConfig))
-        .rows;
-      return roomsList;
+      const result = await safeQuery<AdvancedRooms>(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -1221,10 +1223,11 @@ class DAO {
             : 0,
       });
       // console.log('[getMessagesList]\n', queryConfig.text);
-      const messagesList = (
-        await this.client.query<AdvancedMessages>(queryConfig)
-      ).rows;
-      return messagesList.reverse();
+      const result = await safeQuery<AdvancedMessages>(
+        this.client,
+        queryConfig
+      );
+      return result.rows.reverse();
     } catch (error) {
       console.error(error);
       return;
@@ -1251,12 +1254,10 @@ class DAO {
         pagination,
       });
       // console.log('[getMessagesListSearch]\n', queryConfig.text);
-      const messagesList = (
-        await this.client.query<AdvancedMessages & { Room: AdvancedRooms }>(
-          queryConfig
-        )
-      ).rows;
-      return messagesList;
+      const result = await safeQuery<
+        AdvancedMessages & { Room: AdvancedRooms }
+      >(this.client, queryConfig);
+      return result.rows;
     } catch (error) {
       console.error(error);
       return;
@@ -1285,9 +1286,8 @@ class DAO {
         image,
       });
       // console.log('[createUser]\n', queryConfig.text);
-      await this.client.query(queryConfig);
-      const user = await this.getUser({ id });
-      return user;
+      await safeQuery(this.client, queryConfig);
+      return await this.getUser({ id });
     } catch (error) {
       console.error(error);
       return;
@@ -1364,11 +1364,11 @@ class DAO {
         ],
       });
       // console.log('[createPost]\n', queryConfig);
-      const inserted = (await this.client.query<Schemas['post']>(queryConfig))
-        .rows[0];
+      const inserted = (
+        await safeQuery<Schemas['post']>(this.client, queryConfig)
+      ).rows[0];
       this.viewsHandler({ postid: inserted.postid, create: true });
-      const updatedPost = await this.getPost({ postid: inserted.postid });
-      return updatedPost;
+      return await this.getPost({ postid: inserted.postid });
     } catch (error) {
       console.error(error);
       return;
@@ -1416,10 +1416,10 @@ class DAO {
         ],
       });
       // console.log('[createList]\n', queryConfig);
-      const inserted = (await this.client.query<Schemas['lists']>(queryConfig))
-        .rows[0];
-      const createLists = await this.getLists({ sessionid, id: inserted.id });
-      return createLists;
+      const inserted = (
+        await safeQuery<Schemas['lists']>(this.client, queryConfig)
+      ).rows[0];
+      return await this.getLists({ sessionid, id: inserted.id });
     } catch (error) {
       console.error(error);
       return;
@@ -1447,13 +1447,13 @@ class DAO {
         values: [roomid, senderid, receiverid],
       });
       // console.log('[createRoom]\n', queryConfig);
-      const inserted = (await this.client.query<Schemas['rooms']>(queryConfig))
-        .rows[0];
-      const createRoom = await this.getAdvancedRoom({
+      const inserted = (
+        await safeQuery<Schemas['rooms']>(this.client, queryConfig)
+      ).rows[0];
+      return await this.getAdvancedRoom({
         sessionid,
         roomid: inserted.id,
       });
-      return createRoom;
     } catch (error) {
       console.error(error);
       return;
@@ -1482,10 +1482,9 @@ class DAO {
       });
       // console.log('[createMessage]\n', queryConfig);
       const inserted = (
-        await this.client.query<Schemas['messages']>(queryConfig)
+        await safeQuery<Schemas['messages']>(this.client, queryConfig)
       ).rows[0];
-      const createdMessage = await this.getMessage({ id: inserted.id });
-      return createdMessage;
+      return await this.getMessage({ id: inserted.id });
     } catch (error) {
       console.error(error);
       return;
@@ -1509,9 +1508,8 @@ class DAO {
     try {
       const queryConfig = updateUsersQuery(config);
       // console.log('[updateUser]\n', queryConfig.text);
-      await this.client.query(queryConfig);
-      const updateUser = await this.getUser({ id: config.id });
-      return updateUser;
+      await safeQuery(this.client, queryConfig);
+      return await this.getUser({ id: config.id });
     } catch (error) {
       console.error(error);
       return;
@@ -1529,9 +1527,8 @@ class DAO {
         wheres: [[{ field: 'id', value: id }]],
       });
       // console.log(queryConfig.text);
-      await this.client.query(queryConfig);
-      const updatedUser = await this.getUser({ id });
-      return updatedUser;
+      await safeQuery(this.client, queryConfig);
+      return await this.getUser({ id });
     } catch (error) {
       console.error(error);
       return;
@@ -1593,9 +1590,8 @@ class DAO {
         ],
       });
       // console.log('[updatePost]\n', queryConfig.text);
-      await this.client.query(queryConfig);
-      const updatedPost = await this.getPost({ userid, postid });
-      return updatedPost;
+      await safeQuery(this.client, queryConfig);
+      return await this.getPost({ userid, postid });
     } catch (error) {
       console.error(error);
       return;
@@ -1658,13 +1654,12 @@ class DAO {
         ],
       });
       // console.log('[updateLists]\n', queryConfig.text);
-      await this.client.query(queryConfig);
-      const updatedLists = await this.getLists({
+      await safeQuery(this.client, queryConfig);
+      return await this.getLists({
         sessionid: userid,
         id,
         userid: userid,
       });
-      return updatedLists;
     } catch (error) {
       console.error(error);
       return;
@@ -1701,7 +1696,7 @@ class DAO {
         ],
       });
       // console.log('[updateSeen]\n', queryConfig.text);
-      await this.client.query(queryConfig);
+      await safeQuery(this.client, queryConfig);
 
       return await this.getAdvancedRoom({
         sessionid,
@@ -1725,7 +1720,7 @@ class DAO {
         wheres: [[{ field: 'id', value: id }]],
       });
       // console.log('[deleteUser]', queryConfig.text);
-      await this.client.query(queryConfig);
+      await safeQuery(this.client, queryConfig);
       return true;
     } catch (error) {
       console.error(error);
@@ -1740,9 +1735,8 @@ class DAO {
     try {
       const queryConfig = updateUsersQuery({ id, birth: null });
       // console.log(queryConfig);
-      await this.client.query(queryConfig);
-      const user = await this.getUser({ id });
-      return user;
+      await safeQuery(this.client, queryConfig);
+      return await this.getUser({ id });
     } catch (error) {
       console.error(error);
       return;
@@ -1779,7 +1773,7 @@ class DAO {
         wheres: [where],
       });
       // console.log('[deletePost]\n', queryConfig.text);
-      await this.client.query(queryConfig);
+      await safeQuery(this.client, queryConfig);
       return true;
     } catch (error) {
       console.error(error);
@@ -1801,7 +1795,7 @@ class DAO {
         wheres: [[{ field: 'id', value: id }]],
       });
       // console.log('[deleteLists]\n', queryConfig.text);
-      await this.client.query(queryConfig);
+      await safeQuery(this.client, queryConfig);
       return true;
     } catch (error) {
       console.error(error);
@@ -1826,7 +1820,7 @@ class DAO {
         values: ['disable', messageid, userid],
       });
       // console.log(`[disableMessage]\n`, queryConfig.text);
-      await this.client.query(queryConfig);
+      await safeQuery(this.client, queryConfig);
       return true;
     } catch (error) {
       console.error(error);
@@ -1857,7 +1851,7 @@ class DAO {
         ],
       });
       // console.log('[followHandler]\n', selectQueryConfig.text);
-      const isFollow = (await this.client.query<Follow>(selectQueryConfig))
+      const isFollow = (await safeQuery<Follow>(this.client, selectQueryConfig))
         .rows[0];
 
       switch (type) {
@@ -1869,7 +1863,7 @@ class DAO {
               values: [source, target],
             });
             // console.log(insertQueryConfig.text);
-            await this.client.query(insertQueryConfig);
+            await safeQuery(this.client, insertQueryConfig);
           }
           break;
         case 'unfollow':
@@ -1884,12 +1878,11 @@ class DAO {
               ],
             });
             // console.log(deleteQueryConfig.text);
-            await this.client.query(deleteQueryConfig);
+            await safeQuery(this.client, deleteQueryConfig);
           }
       }
 
-      const updatedUser = await this.getUser({ id: target });
-      return updatedUser;
+      return await this.getUser({ id: target });
     } catch (error) {
       console.error(error);
       return;
@@ -1946,8 +1939,7 @@ class DAO {
               values,
             });
             // console.log('[reactionHandler][post]\n', insertQueryConfig.text);
-
-            await this.client.query(insertQueryConfig);
+            await safeQuery(this.client, insertQueryConfig);
             break;
           }
         }
@@ -1970,15 +1962,13 @@ class DAO {
               wheres: [where],
             });
             // console.log('[reactionHandler][delete]\n', deleteQueryConfig.text);
-
-            await this.client.query(deleteQueryConfig);
+            await safeQuery(this.client, deleteQueryConfig);
           }
           break;
         }
       }
 
-      const updatedPost = await this.getPost({ postid });
-      return updatedPost;
+      return await this.getPost({ postid });
     } catch (error) {
       console.error(error);
       return;
@@ -2013,7 +2003,7 @@ class DAO {
           wheres: [[{ field: 'postid', value: findView.postid }]],
         });
         // console.log('[viewsHandler][update]\n', updateQueryConfig.text);
-        await this.client.query(updateQueryConfig);
+        await safeQuery(this.client, updateQueryConfig);
       } else {
         const insertQueryConfig = insertQuery({
           table: 'views',
@@ -2021,11 +2011,10 @@ class DAO {
           values: [postid, create ? 0 : 1],
         });
         // console.log('[viewsHandler][insert]\n', insertQueryConfig.text);
-        await this.client.query(insertQueryConfig);
+        await safeQuery(this.client, insertQueryConfig);
       }
 
-      const updatedPost = await this.getPost({ postid });
-      return updatedPost;
+      return await this.getPost({ postid });
     } catch (error) {
       console.error(error);
       return;
@@ -2062,7 +2051,7 @@ class DAO {
             ],
           });
           // console.log('[listsDetailHandler][post]\n', queryConfig.text);
-          await this.client.query(queryConfig);
+          await safeQuery(this.client, queryConfig);
           return true;
         }
         case 'delete': {
@@ -2077,7 +2066,7 @@ class DAO {
             ],
           });
           // console.log('[listsDetailHandler][delete]\n', queryConfig.text);
-          await this.client.query(queryConfig);
+          await safeQuery(this.client, queryConfig);
           return true;
         }
         default: {
@@ -2123,7 +2112,7 @@ class DAO {
             values: [type, userid, roomid],
           });
 
-          await this.client.query(queryConfig);
+          await safeQuery(this.client, queryConfig);
           return true;
         }
         case 'delete': {
@@ -2141,7 +2130,7 @@ class DAO {
               ],
             ],
           });
-          await this.client.query(queryConfig);
+          await safeQuery(this.client, queryConfig);
           return true;
         }
       }
@@ -2180,8 +2169,7 @@ class DAO {
               fields: ['type', 'userid', 'roomid'],
               values: [type, userid, roomid],
             });
-
-            await this.client.query(insertQueryConfig);
+            await safeQuery(this.client, insertQueryConfig);
             return true;
           }
 
@@ -2199,7 +2187,7 @@ class DAO {
             ],
           });
           // console.log('[roomsSnoozeHandler]\n', updateQueryConfig.text);
-          await this.client.query(updateQueryConfig);
+          await safeQuery(this.client, updateQueryConfig);
           return true;
         }
         case 'delete': {
@@ -2214,7 +2202,7 @@ class DAO {
               ],
             ],
           });
-          await this.client.query(deleteQueryConfig);
+          await safeQuery(this.client, deleteQueryConfig);
           return true;
         }
       }
@@ -2247,7 +2235,7 @@ class DAO {
             values: ['disable', payload.messageid, payload.userid],
           });
           // console.log('[disable]\n', queryConfig.text);
-          const result = await this.client.query(queryConfig);
+          await safeQuery(this.client, queryConfig);
           return true;
         }
         case 'addReact': {
@@ -2263,7 +2251,7 @@ class DAO {
             ],
           });
           // console.log('[addReact]\n', queryConfig.text);
-          await this.client.query(queryConfig);
+          await safeQuery(this.client, queryConfig);
           return true;
         }
         case 'updateReact': {
@@ -2282,7 +2270,7 @@ class DAO {
             ],
           });
           // console.log('[updateReact]\n', queryConfig.text);
-          await this.client.query(queryConfig);
+          await safeQuery(this.client, queryConfig);
           return true;
         }
         case 'removeReact': {
@@ -2304,7 +2292,7 @@ class DAO {
             ],
           });
           // console.log('[removeReact]\n', queryConfig.text);
-          await this.client.query(queryConfig);
+          await safeQuery(this.client, queryConfig);
           return true;
         }
       }
@@ -2337,7 +2325,7 @@ class DAO {
         values: [type, messageid, url, width, height],
       });
       // console.log('[messagesMediaHandler]\n', queryConfig.text);
-      await this.client.query(queryConfig);
+      await safeQuery(this.client, queryConfig);
       return await this.getMessage({ id: messageid });
     } catch (error) {
       console.error(error);
@@ -2374,18 +2362,15 @@ class DAO {
               ],
             });
             // console.log('[hashtagAnalysis]\n', updateQueryConfig.text);
-
-            this.client.query(updateQueryConfig);
+            safeQuery(this.client, updateQueryConfig);
           } else {
             const insertQueryConfig = insertQuery({
               table: 'hashtags',
               fields: ['type', 'title'],
               values: ['tag', tag],
             });
-
             // console.log('[hashtagAnalysis]\n', insertQueryConfig.text);
-
-            this.client.query(insertQueryConfig);
+            safeQuery(this.client, insertQueryConfig);
           }
         } catch (error) {
           console.error(error);
@@ -2448,7 +2433,7 @@ class DAO {
                 ],
               });
               // console.log('[morphologyAnalysis]\n', updateQueryConfig.text);
-              this.client.query(updateQueryConfig);
+              safeQuery(this.client, updateQueryConfig);
             } else {
               const insertQueryConfig = insertQuery({
                 table: 'hashtags',
@@ -2456,7 +2441,7 @@ class DAO {
                 values: ['word', morp.lemma, morp.weight],
               });
               // console.log('[morphologyAnalysis]\n', insertQueryConfig.text);
-              this.client.query(insertQueryConfig);
+              safeQuery(this.client, insertQueryConfig);
             }
           } catch (error) {
             console.error(error);

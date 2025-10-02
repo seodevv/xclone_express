@@ -40,11 +40,15 @@ const upload = multer({ storage });
 
 // "GET /api/lists"
 // 리스트를 검색
-// ㅇ
 apiListsRouter.get(
   '/',
   async (
-    req: TypedRequestQuery<{ q?: string; cursor?: string; size?: string }>,
+    req: TypedRequestQuery<{
+      q?: string;
+      cursor?: string;
+      size?: string;
+      includeSelf?: string;
+    }>,
     res: TypedResponse<{
       data?: AdvancedLists[];
       nextCursor?: number;
@@ -52,7 +56,7 @@ apiListsRouter.get(
     }>
   ) => {
     await delay(1000);
-    const { cursor = '0', size = '10', q } = req.query;
+    const { cursor = '0', size = '10', q, includeSelf } = req.query;
     const { 'connect.sid': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
@@ -68,7 +72,7 @@ apiListsRouter.get(
       sessionid: currentUser.id,
       make: 'public',
       q,
-      includeSelf: false,
+      includeSelf: !!includeSelf,
       sort: 'Follower',
       pagination: {
         limit: pageSize,
@@ -91,7 +95,6 @@ apiListsRouter.get(
 
 // "POST /api/lists"
 // 새로운 리스트를 생성
-// ㅇ
 apiListsRouter.post(
   '/',
   upload.fields([
@@ -155,7 +158,6 @@ apiListsRouter.post(
 
 // "GET /api/lists/recommends"
 // 리스트를 추천
-// ㅇ
 apiListsRouter.get(
   '/recommends',
   async (
@@ -204,7 +206,6 @@ apiListsRouter.get(
 
 // "GET /api/lists/:listid"
 // 특정 리스트를 조회
-// ㅇ
 apiListsRouter.get(
   '/:listid',
   async (
@@ -241,8 +242,7 @@ apiListsRouter.get(
 );
 
 // "DELETE /api/lists/:listid"
-// 특정 리스트를 삭제
-// ㅇ
+// 내 리스트를 삭제
 apiListsRouter.delete(
   '/:listid',
   async (
@@ -288,8 +288,7 @@ apiListsRouter.delete(
 );
 
 // "POST /api/lists/:listid/edit"
-// 특정 리스트를 업데이트
-// ㅇ
+// 내 리스트를 업데이트
 apiListsRouter.post(
   '/:listid/edit',
   upload.fields([
@@ -354,6 +353,7 @@ apiListsRouter.post(
     const thumbnailFiles = files.thumbnail || [
       { filename: def ? IMAGE_DEFAULT_LISTS : undefined },
     ];
+
     const banner = bannerFiles[0].filename;
     const thumbnail = thumbnailFiles[0].filename;
 
@@ -368,11 +368,17 @@ apiListsRouter.post(
     });
     dao.release();
 
-    if (findLists.banner !== IMAGE_DEFAULT_LISTS) {
+    if (
+      findLists.banner !== IMAGE_DEFAULT_LISTS &&
+      findLists.banner !== updateLists?.banner
+    ) {
       const imagePath = path.join(uploadPath, '/', findLists.banner);
       fs.removeSync(imagePath);
     }
-    if (findLists.thumbnail !== IMAGE_DEFAULT_LISTS) {
+    if (
+      findLists.thumbnail !== IMAGE_DEFAULT_LISTS &&
+      findLists.thumbnail !== updateLists?.thumbnail
+    ) {
       const imagePath = path.join(uploadPath, '/', findLists.thumbnail);
       fs.removeSync(imagePath);
     }
@@ -382,7 +388,6 @@ apiListsRouter.post(
 
 // "GET /api/lists/:listid/posts"
 // 특정 리스트의 게시글을 조회
-// ㅇ
 apiListsRouter.get(
   '/:listid/posts',
   async (
@@ -450,7 +455,6 @@ apiListsRouter.get(
 
 // "GET /api/lists/:listid/member"
 // 리스트의 멤버를 조회
-// ㅇ
 apiListsRouter.get(
   '/:listid/member',
   async (
@@ -519,7 +523,6 @@ apiListsRouter.get(
 
 // "POST /api/lists/:listid/member"
 // 특정 리스트의 멤버를 추가
-// ㅇ
 apiListsRouter.post(
   '/:listid/member',
   async (
@@ -589,7 +592,6 @@ apiListsRouter.post(
 
 // "DELETE /api/lists/:listid/member"
 // 특정 리스트의 멤버를 삭제
-// ㅇ
 apiListsRouter.delete(
   '/:listid/member',
   async (
@@ -658,7 +660,6 @@ apiListsRouter.delete(
 
 // "GET /api/lists/:listid/follow"
 // 특정 리스트의 팔로워를 조회
-// ㅇ
 apiListsRouter.get(
   '/:listid/follow',
   async (
@@ -725,7 +726,6 @@ apiListsRouter.get(
 
 // "POST /api/lists/:listid/follow"
 // 특정 리스트를 팔로우
-// ㅇ
 apiListsRouter.post(
   '/:listid/follow',
   async (
@@ -794,7 +794,6 @@ apiListsRouter.post(
 
 // "DELETE /api/lists/:listid/follow"
 // 특정 리스트를 언팔로우
-// ㅇ
 apiListsRouter.delete(
   '/:listid/follow',
   async (
@@ -861,7 +860,6 @@ apiListsRouter.delete(
 
 // "POST /api/lists/:listid/post"
 // 게시글을 특정 리스트에 추가
-// ㅇ
 apiListsRouter.post(
   '/:listid/post',
   async (
@@ -938,7 +936,6 @@ apiListsRouter.post(
 
 // "DELETE /api/lists/:listid/post"
 // 게시글을 특정 리스트에서 제거
-// ㅇ
 apiListsRouter.delete(
   '/:listid/post',
   async (
@@ -1018,7 +1015,6 @@ apiListsRouter.delete(
 
 // "POST /api/lists/:listid/pinned"
 // 특정 리스트 pinned 설정
-// ㅇ
 apiListsRouter.post(
   '/:listid/pinned',
   async (
@@ -1080,7 +1076,6 @@ apiListsRouter.post(
 
 // "DELETE /api/lists/:listid/pinned"
 // 특정 리스트 pinned 제거
-// ㅇ
 apiListsRouter.delete(
   '/:listid/pinned',
   async (
@@ -1143,7 +1138,6 @@ apiListsRouter.delete(
 
 // "POST /api/lists/:listid/unshow"
 // 특정 리스트 show 설정
-// ㅇ
 apiListsRouter.post(
   '/:listid/unshow',
   async (
@@ -1197,7 +1191,6 @@ apiListsRouter.post(
 
 // "DELETE /api/lists/:listid/unshow"
 // 특정 리스트 show 제거
-// ㅇ
 apiListsRouter.delete(
   '/:listid/unshow',
   async (

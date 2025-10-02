@@ -5,7 +5,8 @@ import { uploadPath } from '@/app';
 import { AdvancedUser } from '@/model/User';
 import { CookieOptions } from 'express';
 import DAO from '@/lib/DAO';
-import { SafeUser } from '@/db/schema';
+import { SafeUser, Schemas } from '@/db/schema';
+import { QueryConfig, PoolClient, DatabaseError, QueryResultRow } from 'pg';
 
 export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,
@@ -167,3 +168,17 @@ export const decryptRoomId = ({
   const receiverId = userid === u1 ? u2 : u1;
   return receiverId;
 };
+
+export async function safeQuery<T extends QueryResultRow>(
+  client: PoolClient,
+  queryConfig: QueryConfig
+) {
+  try {
+    return await client.query<T>(queryConfig);
+  } catch (err) {
+    const wrapped = new Error(`[Query failed]\n${queryConfig.text}`);
+    wrapped.cause = err as DatabaseError;
+    Error.captureStackTrace(wrapped, safeQuery);
+    throw wrapped;
+  }
+}

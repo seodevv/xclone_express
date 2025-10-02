@@ -26,7 +26,6 @@ const apiMessagesRouter = express.Router();
 
 // GET /api/messages/search
 // 본인이 참여 중인 채팅 방의 메시지의 내용을 검색
-// ㅇ
 apiMessagesRouter.get(
   '/search',
   async (
@@ -74,7 +73,6 @@ apiMessagesRouter.get(
 
 // GET /api/messages/:roomid
 // 본인이 참여 중인 채팅 방의 메시지를 조회
-// ㅇ
 apiMessagesRouter.get(
   '/:roomid',
   async (
@@ -135,7 +133,6 @@ apiMessagesRouter.get(
 
 // DELETE /api/messages/:roomid
 // 본인이 참여 중인 채팅 방의 메시지를 비활성화
-// ㅇ
 apiMessagesRouter.delete(
   '/:roomid',
   async (
@@ -182,7 +179,6 @@ apiMessagesRouter.delete(
 
 // POST /api/messages/:roomid/react
 // 메시지에 대한 리액션을 추가/업데이트
-// ㅇ
 apiMessagesRouter.post(
   '/:roomid/react',
   async (
@@ -244,7 +240,6 @@ apiMessagesRouter.post(
 
 // DELETE /api/messages/:roomid/react
 // 메시지에 대한 리액션을 삭제
-// ㅇ
 apiMessagesRouter.delete(
   '/:roomid/react',
   async (

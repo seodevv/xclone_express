@@ -26,7 +26,6 @@ const apiRoomsRouter = express.Router();
 
 // GET /api/rooms
 // 본인이 참여 중인 채팅 리스트
-// ㅇ
 apiRoomsRouter.get(
   '/',
   async (
@@ -54,7 +53,6 @@ apiRoomsRouter.get(
 
 // GET /api/rooms/notifications
 // 전체 채팅방의 알람을 조회
-// ㅇ
 apiRoomsRouter.get(
   '/notifications',
   async (
@@ -82,7 +80,6 @@ apiRoomsRouter.get(
 
 // GET /api/rooms/:roomid
 // 특정 채팅방 정보를 조회
-// ㅇ
 apiRoomsRouter.get(
   '/:roomid',
   async (
@@ -159,7 +156,6 @@ apiRoomsRouter.get(
 
 // DELETE /api/rooms/:roomid
 // 특정 채팅방을 비활성화
-// ㅇ
 apiRoomsRouter.delete(
   '/:roomid',
   async (
@@ -209,7 +205,6 @@ apiRoomsRouter.delete(
 
 // POST /api/rooms/:roomid/seen
 // 특정 채팅방의 상대방의 메시지를 읽음
-// ㅇ
 apiRoomsRouter.post(
   '/:roomid/seen',
   async (
@@ -248,7 +243,6 @@ apiRoomsRouter.post(
 
 // POST /api/rooms/:roomid/pin
 // 특정 채팅방에 핀을 추가
-// ㅇ
 apiRoomsRouter.post(
   '/:roomid/pin',
   async (
@@ -299,7 +293,6 @@ apiRoomsRouter.post(
 
 // DELETE /api/rooms/:roomid/pin
 // 특정 채팅방에 핀을 제거
-// ㅇ
 apiRoomsRouter.delete(
   '/:roomid/pin',
   async (
@@ -350,7 +343,6 @@ apiRoomsRouter.delete(
 
 // POST /api/rooms/:roomid/snooze
 // 특정 채팅방의 snooze를 설정
-// ㅇ
 apiRoomsRouter.post(
   '/:roomid/snooze',
   async (
@@ -407,7 +399,6 @@ apiRoomsRouter.post(
 
 // DELETE /api/rooms/:roomid/snooze
 // 특정 채팅방의 snooze를 해제
-// ㅇ
 apiRoomsRouter.delete(
   '/:roomid/snooze',
   async (
