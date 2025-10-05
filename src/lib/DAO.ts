@@ -25,7 +25,7 @@ import { Reactions } from '@/model/Reaction';
 import { AdvancedRooms, Room, RoomsNotifications } from '@/model/Room';
 import { AdvancedUser, User } from '@/model/User';
 import { Views } from '@/model/Views';
-import { DatabaseError, PoolClient, QueryConfig } from 'pg';
+import { PoolClient } from 'pg';
 import { safeQuery } from '@/lib/common';
 
 class DAO {

@@ -1,4 +1,8 @@
+import { safeQuery } from '@/lib/common';
 import { Pool, QueryConfig } from 'pg';
+
+const USER = process.env.PGUSER || 'xclone';
+const SCHEMA_NAME = process.env.PGSCHEMA || 'public';
 
 export default async function initializeDatabase(pool: Pool) {
   await aliveCheck(pool);
@@ -8,6 +12,20 @@ export default async function initializeDatabase(pool: Pool) {
   const isTable = (table: string): table is keyof SchemaInit =>
     Object.keys(SCHEMA_INIT).includes(table);
 
+  console.log(USER, SCHEMA_NAME);
+
+  // create schema
+  if (SCHEMA_NAME !== 'public') {
+    const checkSchema = await getSchema(pool, SCHEMA_NAME);
+    if (!checkSchema) {
+      await createSchema(pool, USER, SCHEMA_NAME);
+    }
+  }
+
+  // grant schema
+  await grantSchema(pool, USER, SCHEMA_NAME);
+
+  // create table
   for (const table in SCHEMA_INIT) {
     if (!isTable(table)) continue;
 
@@ -46,6 +64,7 @@ export default async function initializeDatabase(pool: Pool) {
     await createTable(pool, table, SCHEMA_INIT[table].columns);
   }
 
+  // create primary key
   if (pkeys.length !== 0) {
     for (const pkey of pkeys) {
       const checkConstraint = await getConstraint(pool, pkey);
@@ -55,6 +74,7 @@ export default async function initializeDatabase(pool: Pool) {
     }
   }
 
+  // create foreign/unique key
   if (fkeys.length !== 0) {
     for (const fkey of fkeys) {
       const checkConstraint = await getConstraint(pool, fkey);
@@ -64,6 +84,7 @@ export default async function initializeDatabase(pool: Pool) {
     }
   }
 
+  // create view
   if (Object.keys(SCHEMA_VIEWS).length !== 0) {
     await createViews(pool);
   }
@@ -75,7 +96,7 @@ async function aliveCheck(pool: Pool) {
   };
 
   try {
-    await pool.query(queryConfig);
+    await safeQuery(pool, queryConfig);
   } catch (error) {
     console.error(error);
     console.error('Unable to connect to database (PostgreSQL).');
@@ -84,12 +105,27 @@ async function aliveCheck(pool: Pool) {
   }
 }
 
-async function getTable(pool: Pool, table: keyof SchemaInit) {
+async function getSchema(pool: Pool, schema: string) {
+  const queryConfig: QueryConfig = {
+    text: `select nspname from pg_namespace where nspname = $1`,
+    values: [schema],
+  };
   try {
-    const result = await pool.query(
-      'SELECT * FROM pg_tables WHERE tablename = $1',
-      [table]
-    );
+    const result = await safeQuery(pool, queryConfig);
+    return !!result.rows[0];
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+async function getTable(pool: Pool, table: keyof SchemaInit) {
+  const queryConfig: QueryConfig = {
+    text: 'SELECT * FROM pg_tables WHERE tablename = $1',
+    values: [table],
+  };
+  try {
+    const result = await safeQuery(pool, queryConfig);
     return !!result.rows[0];
   } catch (error) {
     console.error(error);
@@ -98,11 +134,23 @@ async function getTable(pool: Pool, table: keyof SchemaInit) {
 }
 
 async function getType(pool: Pool, typeName: string) {
+  const queryConfig: QueryConfig = {
+    text: `select
+  n.nspname,
+	t.typname,
+	t.typtype
+from
+	pg_type t
+join pg_namespace n on
+	t.typnamespace = n.oid
+where
+	t.typtype = $1
+	and n.nspname = $2
+	and t.typname = $3`,
+    values: ['e', SCHEMA_NAME, typeName],
+  };
   try {
-    const result = await pool.query(
-      'SELECT t.typname FROM pg_enum e INNER JOIN pg_type t on e.enumtypid = t.oid where typname = $1',
-      [typeName]
-    );
+    const result = await safeQuery(pool, queryConfig);
     return !!result.rows[0];
   } catch (error) {
     console.error(error);
@@ -117,29 +165,45 @@ function isPrimaryKey(key: PKey | FKey): key is PKey {
 async function getConstraint(pool: Pool, key: FKey | PKey) {
   try {
     if (isPrimaryKey(key)) {
-      const result = await pool.query(
-        'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
-        [
+      const queryConfig: QueryConfig = {
+        text: 'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
+        values: [
           key.type === 'P' ? 'p' : 'u',
           key.type === 'P'
             ? `${key.table}_pkey`
             : key.type === 'U'
             ? `${key.table}_ukey`
             : `${key.table}_${key.fields.join('_')}_key`,
-        ]
-      );
+        ],
+      };
+      const result = await safeQuery(pool, queryConfig);
       return !!result.rows[0];
     } else {
       const { source, target } = key;
-      const result = await pool.query(
-        'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
-        [
+      const queryConfig: QueryConfig = {
+        text: 'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
+        values: [
           'f',
           `${source.table}_${target.table}_${source.column}_${target.column}_fkey`,
-        ]
-      );
+        ],
+      };
+      const result = await safeQuery(pool, queryConfig);
       return !!result.rows[0];
     }
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
+async function createSchema(pool: Pool, user: string, schema: string) {
+  const queryConfig: QueryConfig = {
+    text: `CREATE SCHEMA IF NOT EXISTS ${schema} AUTHORIZATION ${user}`,
+  };
+  try {
+    await safeQuery(pool, queryConfig);
+    console.log(`[DATABASE][SCHEMA] The ${schema} schema has been created`);
+    return true;
   } catch (error) {
     console.error(error);
     return false;
@@ -151,8 +215,15 @@ async function createType(
   { name, values }: { name: string; values: string[] }
 ) {
   try {
-    await pool.query(`CREATE TYPE ${name} AS ENUM ('${values.join("','")}');`);
-    console.log(`[DATABASE][TYPE] The ${name} type has been created`);
+    const queryConfig: QueryConfig = {
+      text: `CREATE TYPE ${SCHEMA_NAME}.${name} AS ENUM ('${values.join(
+        "','"
+      )}');`,
+    };
+    await safeQuery(pool, queryConfig);
+    console.log(
+      `[DATABASE][TYPE] The ${SCHEMA_NAME}.${name} type has been created`
+    );
     return true;
   } catch (error) {
     console.error(error);
@@ -165,20 +236,25 @@ async function createTable<T extends Table>(
   table: T,
   columns: SchemaInit[T]['columns']
 ) {
+  const queryConfig: QueryConfig = {
+    text: `CREATE TABLE IF NOT EXISTS ${SCHEMA_NAME}.${table} (\n`,
+  };
+
   const keys = Object.keys(columns);
-  let query = `CREATE TABLE IF NOT EXISTS ${table} (\n`;
   keys.forEach((key, i) => {
     const { type, length, default: def, notNull } = columns[key];
-    query += `\t"${key}" ${type}${length ? `(${length})` : ''} ${
+    queryConfig.text += `\t"${key}" ${type}${length ? `(${length})` : ''} ${
       def ? `DEFAULT ${def === 'current_timestamp' ? def : `'${def}'`} ` : ''
     }${notNull ? 'NOT NULL' : 'NULL'}${keys.length - 1 !== i ? ',\n' : ''}`;
   });
-  query += '\n';
-  query += ');';
+  queryConfig.text += '\n';
+  queryConfig.text += ');';
 
   try {
-    await pool.query(query);
-    console.log(`[DATABASE][TABLE] The ${table} table has been created`);
+    await safeQuery(pool, queryConfig);
+    console.log(
+      `[DATABASE][TABLE] The ${SCHEMA_NAME}.${table} table has been created`
+    );
     return true;
   } catch (error) {
     console.error(error);
@@ -197,11 +273,12 @@ async function createConstraint(pool: Pool, key: FKey | PKey) {
           ? 'ukey'
           : `${key.fields.join('_')}_key`
       }`;
-      await pool.query(
-        `ALTER TABLE ${table} ADD CONSTRAINT ${constraint_name} ${
+      const queryConfig: QueryConfig = {
+        text: `ALTER TABLE ${table} ADD CONSTRAINT ${constraint_name} ${
           key.type === 'P' ? 'PRIMARY KEY' : 'UNIQUE'
-        } (${fields.join(', ')})`
-      );
+        } (${fields.join(', ')})`,
+      };
+      await safeQuery(pool, queryConfig);
       console.log(
         `[DATABASE][CONSTRAINT] The ${constraint_name} has been altered`
       );
@@ -209,15 +286,16 @@ async function createConstraint(pool: Pool, key: FKey | PKey) {
     } else {
       const { source, target } = key;
       const constraint_name = `${source.table}_${target.table}_${source.column}_${target.column}_fkey`;
-      await pool.query(
-        `ALTER TABLE ${
+      const queryConfig: QueryConfig = {
+        text: `ALTER TABLE ${
           source.table
         } ADD CONSTRAINT ${constraint_name} FOREIGN KEY (${
           source.column
         }) REFERENCES ${target.table}(${target.column}) ${
           target.delete ? `ON DELETE ${target.delete}` : ''
-        } ${target.update ? `ON UPDATE ${target.update}` : ''}`
-      );
+        } ${target.update ? `ON UPDATE ${target.update}` : ''}`,
+      };
+      await safeQuery(pool, queryConfig);
       console.log(
         `[DATABASE][CONSTRAINT] The ${constraint_name} has been altered`
       );
@@ -236,12 +314,47 @@ async function createViews(pool: Pool) {
   for (const view in SCHEMA_VIEWS) {
     if (!isView(view)) continue;
     try {
-      const result = await pool.query(SCHEMA_VIEWS[view]);
+      const queryConfig: QueryConfig = {
+        text: SCHEMA_VIEWS[view],
+      };
+      await safeQuery(pool, queryConfig);
       console.log(`[DATABASE][VIEWS] THE ${view} has been created or replaced`);
     } catch (error) {
       console.error(error);
       continue;
     }
+  }
+}
+
+async function grantSchema(pool: Pool, user: string, schema: string) {
+  try {
+    await safeQuery(pool, {
+      text: `GRANT USAGE, CREATE ON SCHEMA ${schema} TO ${user};`,
+    });
+    await safeQuery(pool, {
+      text: `ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema} GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO ${user}`,
+    });
+    await safeQuery(pool, {
+      text: `ALTER DEFAULT PRIVILEGES IN SCHEMA ${schema} GRANT USAGE, SELECT ON SEQUENCES TO ${user}`,
+    });
+    await safeQuery(pool, {
+      text: `GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${schema} TO ${user}`,
+    });
+    await safeQuery(pool, {
+      text: `GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA ${schema} TO ${user}`,
+    });
+    await safeQuery(pool, {
+      text: `GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA ${schema} TO ${user}`,
+    });
+    await safeQuery(pool, {
+      text: `ALTER ROLE ${user} SET search_path = ${schema}`,
+    });
+    console.log(`[DATABASE][GRANT] THE ${schema}-${user} has been granted`);
+
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
   }
 }
 
@@ -762,7 +875,7 @@ const SCHEMA_INIT: SchemaInit = {
 };
 
 const SCHEMA_VIEWS = {
-  advancedusers: `CREATE OR REPLACE VIEW public.advancedusers
+  advancedusers: `CREATE OR REPLACE VIEW ${SCHEMA_NAME}.advancedusers
 AS SELECT u.id,
     u.nickname,
     u.image,
@@ -807,7 +920,7 @@ AS SELECT u.id,
           GROUP BY f.target) follower ON follower.target::text = u.id::text
   ORDER BY u.regist DESC;`,
   advancedpost: `create or replace
-view public.advancedpost
+view ${SCHEMA_NAME}.advancedpost
 as
 select
 	p.postid,
@@ -1226,7 +1339,7 @@ left join (
 order by
 	p.createat desc;`,
   advancedlists: `create or replace
-view public.advancedlists
+view ${SCHEMA_NAME}.advancedlists
 as
 select
 	l.id,
@@ -1360,7 +1473,7 @@ left join (
 order by
 	follower.count,
 	member.count;`,
-  advancedrooms: `CREATE OR REPLACE VIEW public.advancedrooms
+  advancedrooms: `CREATE OR REPLACE VIEW ${SCHEMA_NAME}.advancedrooms
 AS SELECT r.id,
     r.receiverid,
     row_to_json(receiver.*) AS "Receiver",
@@ -1392,7 +1505,7 @@ AS SELECT r.id,
                   GROUP BY m_1.roomid, m_1.senderid) a
           GROUP BY a.roomid) n ON n.roomid::text = r.id::text;`,
   advancedmessages: `create or replace
-view public.advancedmessages
+view ${SCHEMA_NAME}.advancedmessages
 as
 select
 	m.id,

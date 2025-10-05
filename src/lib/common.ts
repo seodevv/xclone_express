@@ -5,7 +5,13 @@ import { AdvancedUser } from '@/model/User';
 import { CookieOptions } from 'express';
 import DAO from '@/lib/DAO';
 import { SafeUser } from '@/db/schema';
-import { QueryConfig, PoolClient, DatabaseError, QueryResultRow } from 'pg';
+import {
+  QueryConfig,
+  PoolClient,
+  DatabaseError,
+  QueryResultRow,
+  Pool,
+} from 'pg';
 
 export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,
@@ -159,7 +165,7 @@ export const decryptRoomId = ({
 };
 
 export async function safeQuery<T extends QueryResultRow>(
-  client: PoolClient,
+  client: Pool | PoolClient,
   queryConfig: QueryConfig
 ) {
   try {
