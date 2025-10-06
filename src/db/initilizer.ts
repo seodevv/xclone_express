@@ -12,8 +12,6 @@ export default async function initializeDatabase(pool: Pool) {
   const isTable = (table: string): table is keyof SchemaInit =>
     Object.keys(SCHEMA_INIT).includes(table);
 
-  console.log(USER, SCHEMA_NAME);
-
   // create schema
   if (SCHEMA_NAME !== 'public') {
     const checkSchema = await getSchema(pool, SCHEMA_NAME);
@@ -196,6 +194,21 @@ async function getConstraint(pool: Pool, key: FKey | PKey) {
   }
 }
 
+async function getView(pool: Pool, view: string, schema: string) {
+  const queryConfig: QueryConfig = {
+    text: 'select schemaname, viewname, definition from pg_views where viewname = $1 and schemaname = $2',
+    values: [view, schema],
+  };
+
+  try {
+    const result = await safeQuery(pool, queryConfig);
+    return !!result.rows[0];
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
+}
+
 async function createSchema(pool: Pool, user: string, schema: string) {
   const queryConfig: QueryConfig = {
     text: `CREATE SCHEMA IF NOT EXISTS ${schema} AUTHORIZATION ${user}`,
@@ -313,6 +326,11 @@ async function createViews(pool: Pool) {
 
   for (const view in SCHEMA_VIEWS) {
     if (!isView(view)) continue;
+
+    const checkView = await getView(pool, view, SCHEMA_NAME);
+    console.log(`[DATEBASE][VIEWS] The ${SCHEMA_NAME}.${view} already exist`);
+    if (checkView) continue;
+
     try {
       const queryConfig: QueryConfig = {
         text: SCHEMA_VIEWS[view],
@@ -349,7 +367,7 @@ async function grantSchema(pool: Pool, user: string, schema: string) {
     await safeQuery(pool, {
       text: `ALTER ROLE ${user} SET search_path = ${schema}`,
     });
-    console.log(`[DATABASE][GRANT] THE ${schema}-${user} has been granted`);
+    console.log(`[DATABASE][GRANT][${user}] THE ${schema} has been granted`);
 
     return true;
   } catch (error) {

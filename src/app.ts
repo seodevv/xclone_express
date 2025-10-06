@@ -26,7 +26,7 @@ const host = process.env.SERVER_HOST || '0.0.0.0';
 const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 9090;
 const origin = process.env.SERVER_ORIGIN
   ? process.env.SERVER_ORIGIN.split(',')
-  : ['https://localhost'];
+  : ['http://localhost', 'https://localhost'];
 
 export let pool: Pool;
 export let server: ReturnType<(typeof https | typeof http)['createServer']>;
