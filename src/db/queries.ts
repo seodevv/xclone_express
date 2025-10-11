@@ -1,3 +1,31 @@
+import { SCHEMA_NAME } from '@/db/env';
+import {
+  DatabaseError,
+  Pool,
+  PoolClient,
+  QueryConfig,
+  QueryResultRow,
+} from 'pg';
+
+let settingSearchPath = false;
+export async function safeQuery<T extends QueryResultRow>(
+  client: Pool | PoolClient,
+  queryConfig: QueryConfig
+) {
+  try {
+    if (!settingSearchPath) {
+      await client.query(`SET search_path To ${SCHEMA_NAME}, public`);
+      settingSearchPath = true;
+    }
+    return await client.query<T>(queryConfig);
+  } catch (err) {
+    const wrapped: Error & { cause?: Error } = new Error(`${queryConfig.text}`);
+    wrapped.cause = err as DatabaseError;
+    Error.captureStackTrace(wrapped, safeQuery);
+    throw wrapped;
+  }
+}
+
 export const AdvancedRoomQuery = `select
 	ar.id as id,
 	ar.receiverid as receiverid,

@@ -1,8 +1,9 @@
-import { safeQuery } from '@/lib/common';
+import { PGUSER, SCHEMA_NAME } from '@/db/env';
+import { safeQuery } from '@/db/queries';
 import { Pool, QueryConfig } from 'pg';
 
-const USER = process.env.PGUSER || 'xclone';
-const SCHEMA_NAME = process.env.PGSCHEMA || 'public';
+// const USER = process.env.PGUSER || 'xclone';
+// const SCHEMA_NAME = process.env.PGSCHEMA || 'public';
 
 export default async function initializeDatabase(pool: Pool) {
   await aliveCheck(pool);
@@ -16,12 +17,12 @@ export default async function initializeDatabase(pool: Pool) {
   if (SCHEMA_NAME !== 'public') {
     const checkSchema = await getSchema(pool, SCHEMA_NAME);
     if (!checkSchema) {
-      await createSchema(pool, USER, SCHEMA_NAME);
+      await createSchema(pool, PGUSER, SCHEMA_NAME);
     }
   }
 
   // grant schema
-  await grantSchema(pool, USER, SCHEMA_NAME);
+  await grantSchema(pool, PGUSER, SCHEMA_NAME);
 
   // create table
   for (const table in SCHEMA_INIT) {
@@ -96,10 +97,9 @@ async function aliveCheck(pool: Pool) {
   try {
     await safeQuery(pool, queryConfig);
   } catch (error) {
-    console.error(error);
     console.error('Unable to connect to database (PostgreSQL).');
     console.error('Please check the connection to the database (PostgreSQL).');
-    process.exit(0);
+    throw error;
   }
 }
 
@@ -119,8 +119,8 @@ async function getSchema(pool: Pool, schema: string) {
 
 async function getTable(pool: Pool, table: keyof SchemaInit) {
   const queryConfig: QueryConfig = {
-    text: 'SELECT * FROM pg_tables WHERE tablename = $1',
-    values: [table],
+    text: 'SELECT * FROM pg_tables WHERE tablename = $1 and schemaname = $2',
+    values: [table, SCHEMA_NAME],
   };
   try {
     const result = await safeQuery(pool, queryConfig);
@@ -164,7 +164,21 @@ async function getConstraint(pool: Pool, key: FKey | PKey) {
   try {
     if (isPrimaryKey(key)) {
       const queryConfig: QueryConfig = {
-        text: 'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
+        text: `select
+	n.nspname,
+	c.relname,
+	con.conname,
+	con.contype
+from
+	pg_constraint con
+join pg_class c on
+	con.conrelid = c.oid
+join pg_namespace n on
+	c.relnamespace = n.oid
+where
+	con.contype = $1
+	and con.conname = $2
+	and n.nspname = $3`,
         values: [
           key.type === 'P' ? 'p' : 'u',
           key.type === 'P'
@@ -172,6 +186,7 @@ async function getConstraint(pool: Pool, key: FKey | PKey) {
             : key.type === 'U'
             ? `${key.table}_ukey`
             : `${key.table}_${key.fields.join('_')}_key`,
+          SCHEMA_NAME,
         ],
       };
       const result = await safeQuery(pool, queryConfig);
@@ -179,10 +194,25 @@ async function getConstraint(pool: Pool, key: FKey | PKey) {
     } else {
       const { source, target } = key;
       const queryConfig: QueryConfig = {
-        text: 'SELECT * FROM pg_constraint WHERE contype = $1 AND conname = $2',
+        text: `select
+	n.nspname,
+	c.relname,
+	con.conname,
+	con.contype
+from
+	pg_constraint con
+join pg_class c on
+	con.conrelid = c.oid
+join pg_namespace n on
+	c.relnamespace = n.oid
+where
+	con.contype = $1
+	and con.conname = $2
+	and n.nspname = $3`,
         values: [
           'f',
           `${source.table}_${target.table}_${source.column}_${target.column}_fkey`,
+          SCHEMA_NAME,
         ],
       };
       const result = await safeQuery(pool, queryConfig);
@@ -257,7 +287,9 @@ async function createTable<T extends Table>(
   keys.forEach((key, i) => {
     const { type, length, default: def, notNull } = columns[key];
     queryConfig.text += `\t"${key}" ${type}${length ? `(${length})` : ''} ${
-      def ? `DEFAULT ${def === 'current_timestamp' ? def : `'${def}'`} ` : ''
+      typeof def !== 'undefined'
+        ? `DEFAULT ${def === 'current_timestamp' ? def : `'${def}'`} `
+        : ''
     }${notNull ? 'NOT NULL' : 'NULL'}${keys.length - 1 !== i ? ',\n' : ''}`;
   });
   queryConfig.text += '\n';
@@ -328,8 +360,10 @@ async function createViews(pool: Pool) {
     if (!isView(view)) continue;
 
     const checkView = await getView(pool, view, SCHEMA_NAME);
-    console.log(`[DATEBASE][VIEWS] The ${SCHEMA_NAME}.${view} already exist`);
-    if (checkView) continue;
+    if (checkView) {
+      // console.log(`[DATEBASE][VIEWS] The ${SCHEMA_NAME}.${view} already exist`);
+      continue;
+    }
 
     try {
       const queryConfig: QueryConfig = {
@@ -367,7 +401,7 @@ async function grantSchema(pool: Pool, user: string, schema: string) {
     await safeQuery(pool, {
       text: `ALTER ROLE ${user} SET search_path = ${schema}`,
     });
-    console.log(`[DATABASE][GRANT][${user}] THE ${schema} has been granted`);
+    // console.log(`[DATABASE][GRANT][${user}] THE ${schema} has been granted`);
 
     return true;
   } catch (error) {
@@ -797,7 +831,7 @@ const SCHEMA_INIT: SchemaInit = {
       id: { type: 'serial4', notNull: true, pkey: true },
       roomid: {
         type: 'varchar',
-        length: 32,
+        length: 128,
         notNull: true,
         fkey: {
           table: 'rooms',

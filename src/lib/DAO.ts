@@ -1,5 +1,6 @@
+import { pool } from '@/db/env';
 import { GifType, ImageType, Post } from '../model/Post';
-import { pool } from '@/app';
+import { safeQuery } from '@/db/queries';
 import { Birth, Order, PostImage, Schemas, Verified, Where } from '@/db/schema';
 import {
   deleteQuery,
@@ -26,7 +27,6 @@ import { AdvancedRooms, Room, RoomsNotifications } from '@/model/Room';
 import { AdvancedUser, User } from '@/model/User';
 import { Views } from '@/model/Views';
 import { PoolClient } from 'pg';
-import { safeQuery } from '@/lib/common';
 
 class DAO {
   private client: PoolClient | undefined;
@@ -874,14 +874,14 @@ class DAO {
             : 0,
         isCount,
       });
-      // console.log('[getPostList]\n', queryConfig.text);
+      // console.log('[getPostList]\n', queryConfig.text, queryConfig.values);
 
       if (isCount) {
         const result = await safeQuery<{ count: number }>(
           this.client,
           queryConfig
         );
-        return ~~result.rows[0];
+        return ~~result.rows[0].count;
       }
 
       const result = await safeQuery<AdvancedPost>(this.client, queryConfig);
@@ -892,34 +892,76 @@ class DAO {
     }
   }
 
-  async getPostListWithIds(args: {
-    postids?: number[];
-    userids?: string[];
-    pagination?: {
-      limit: number;
-      offset: number;
-    };
-  }): Promise<AdvancedPost[] | undefined> {
+  async getPostListWithIds(
+    args:
+      | {
+          postids: number[];
+          pagination?: {
+            limit: number;
+            offset: number;
+          };
+        }
+      | {
+          userids: string[];
+          pagination?: {
+            limit: number;
+            offset: number;
+          };
+        }
+  ): Promise<AdvancedPost[] | undefined> {
     await this.init();
     if (!this.client) return;
 
-    const { postids, userids, pagination } = args;
+    function isPost(
+      args:
+        | {
+            postids: number[];
+            pagination?: {
+              limit: number;
+              offset: number;
+            };
+          }
+        | {
+            userids: string[];
+            pagination?: {
+              limit: number;
+              offset: number;
+            };
+          }
+    ): args is {
+      postids: number[];
+      pagination?: {
+        limit: number;
+        offset: number;
+      };
+    } {
+      return Object.keys(args).includes('postids');
+    }
 
     const wheres: Where<Schemas['advancedpost']>[][] = [];
-    if (typeof postids !== 'undefined' && postids.length !== 0) {
+
+    if (isPost(args)) {
+      if (args.postids.length === 0) {
+        return [];
+      }
+
       wheres.push([
         {
           field: 'postid',
           operator: 'in',
-          value: postids,
+          value: args.postids,
         },
       ]);
-    } else if (typeof userids !== 'undefined' && userids.length !== 0) {
+    } else {
+      if (args.userids.length === 0) {
+        return [];
+      }
+
       wheres.push([
         {
           field: 'userid',
           operator: 'in',
-          value: userids,
+          value: args.userids,
         },
       ]);
     }
@@ -929,10 +971,10 @@ class DAO {
         table: 'advancedpost',
         wheres,
         order: [{ field: 'createat', by: 'DESC' }],
-        limit: pagination?.limit || 10,
+        limit: args.pagination?.limit || 10,
         offset:
-          typeof pagination !== 'undefined'
-            ? pagination.limit * pagination.offset
+          typeof args.pagination !== 'undefined'
+            ? args.pagination.limit * args.pagination.offset
             : 0,
       });
       // console.log('[getPostListWithIds]\n', queryConfig.text);
@@ -1042,7 +1084,10 @@ class DAO {
       // console.log('[getLikeList]\n', queryConfig.text);
 
       if (isCount) {
-        const result = await this.client.query<{ count: number }>(queryConfig);
+        const result = await safeQuery<{ count: number }>(
+          this.client,
+          queryConfig
+        );
         return ~~result.rows[0].count;
       }
 

@@ -19,7 +19,7 @@ module.exports = {
       max_memory_restart: '200M',
       env: {
         NODE_ENV: 'production',
-        SERVER_HOST: '127.0.0.1',
+        SERVER_HOST: '0.0.0.0',
         SERVER_PORT: 9090,
       },
       pid_file: './dist/xClone.pid',

@@ -16,6 +16,7 @@ import { AdvancedRooms } from '../src/model/Room';
 import { AdvancedMessages } from '../src/model/Message';
 import { AdvancedLists } from '../src/model/Lists';
 import { HashTags } from '../src/model/Hashtag';
+import crypto from 'crypto';
 
 interface CustomSocket
   extends Socket<ServerToClientEvents, ClientToServerEvents> {
@@ -24,22 +25,47 @@ interface CustomSocket
   };
 }
 
+interface User {
+  id: string;
+  password: string;
+  nickname: string;
+  image: string;
+  User?: AdvancedUser;
+  Post?: AdvancedPost;
+  List?: AdvancedLists;
+  Room?: AdvancedRooms;
+  Messages?: AdvancedMessages[];
+}
+
 process.env.NODE_NEV = 'test';
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+function randomString(length = 10) {
+  return crypto
+    .randomBytes(length)
+    .toString('base64')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .slice(0, length);
+}
+
 const agent = request.agent(server);
-const tester = {
-  id: 'jest',
-  password: 'jest',
-  newPassword: 'jest123',
-  nickname: 'jest',
+const tester: User = {
+  id: randomString(),
+  password: randomString(),
+  nickname: randomString(),
   image: 'jest.png',
 };
-const target = { id: 'elonmusk', postid: 1, imageId: 1, listid: 14 };
+const target: User = {
+  id: randomString(),
+  password: randomString(),
+  nickname: randomString(),
+  image: 'target.png',
+};
 const roomid = encryptRoomId(tester.id, target.id);
 let client: CustomSocket;
 
 beforeAll(async () => {
+  // watting for the server to listen
   await new Promise<void>((resolve, reject) => {
     server.on('listening', () => {
       resolve();
@@ -49,6 +75,7 @@ beforeAll(async () => {
     });
   });
 
+  // waits for the websocket to connect to the server
   await new Promise<void>((resolve, reject) => {
     client = io('https://127.0.0.1:9090/messages', {
       rejectUnauthorized: false,
@@ -65,23 +92,125 @@ beforeAll(async () => {
       reject();
     });
   });
-});
+
+  // create target users to use for testing
+  await new Promise<void>((resolve, reject) => {
+    agent
+      .post('/api/users')
+      .type('form')
+      .field('id', target.id)
+      .field('password', target.password)
+      .field('nickname', target.nickname)
+      .attach('image', path.resolve(__dirname, target.image))
+      .then((res) => {
+        target.User = res.body.data;
+        resolve();
+      })
+      .catch((err) => {
+        console.error('err', err);
+        reject();
+      });
+  });
+
+  // create post for target user to use in testing
+  await new Promise<void>((resolve, reject) => {
+    const content = 'This article is for testing purposes only.';
+    agent
+      .post('/api/posts')
+      .type('form')
+      .field('content', content)
+      .field(
+        'mediaInfo',
+        JSON.stringify([
+          { type: 'image', fileName: target.image, width: 100, height: 100 },
+        ])
+      )
+      .attach('images', path.resolve(__dirname, target.image))
+      .then((res) => {
+        target.Post = res.body.data;
+        resolve();
+      })
+      .catch((err) => {
+        console.error(err);
+        reject();
+      });
+  });
+
+  // create list for target user to use in testing
+  await new Promise<void>((resolve, reject) => {
+    const name = `${target.id}'s list`;
+    const description = `this is ${target.id}'s list`;
+    const make = 'public';
+    const image = path.resolve(__dirname, target.image);
+
+    agent
+      .post('/api/lists')
+      .type('form')
+      .field('name', name)
+      .field('description', description)
+      .field('make', make)
+      .attach('banner', image)
+      .attach('thumbnail', image)
+      .then((res) => {
+        target.List = res.body.data;
+        res.body.data;
+        resolve();
+      })
+      .catch((err) => {
+        console.error(err);
+        reject(err);
+      });
+  });
+
+  // log out (clear cookie)
+  await new Promise<void>((resolve, reject) => {
+    agent
+      .post('/api/logout')
+      .then(() => resolve())
+      .catch((err) => reject(err));
+  });
+}, 10000);
 
 afterAll(async () => {
   const dao = new DAO();
-  const user = await dao.getUser({ id: tester.id });
-  if (typeof user?.image !== 'undefined') {
-    const imagePath = path.resolve(uploadPath, user.image);
+
+  // delete the image from the post that was used for testing
+  if (target.Post?.images.length !== 0) {
+    target.Post?.images.forEach((image) => {
+      if (image.link === '') return;
+      const imagePath = path.resolve(uploadPath, image.link);
+      fs.removeSync(imagePath);
+    });
+  }
+
+  // delete the image from the list that was used for testing
+  if (target.List?.banner) {
+    const imagePath = path.resolve(uploadPath, target.List.banner);
     fs.removeSync(imagePath);
   }
-  await dao.deleteUser({ id: tester.id });
+  if (target.List?.thumbnail) {
+    const imagePath = path.resolve(uploadPath, target.List.thumbnail);
+    fs.removeSync(imagePath);
+  }
+
+  // delete the user that was used for testing
+  for (const id of [tester.id, target.id]) {
+    const user = await dao.getUser({ id });
+    if (typeof user?.image !== 'undefined') {
+      const imagePath = path.resolve(uploadPath, user.image);
+      fs.removeSync(imagePath);
+    }
+    await dao.deleteUser({ id });
+  }
   dao.release();
 
+  // wait for websocket to close
   await new Promise<void>((resolve) => {
     client.once('disconnect', () => resolve());
     client.close();
   });
 
+  // wait for the server to close
   await new Promise<void>((resolve, rejcet) => {
     server.close((err) => {
       if (err) return rejcet(err);
@@ -92,12 +221,10 @@ afterAll(async () => {
 
 // route - /api
 describe('Login API scenario', () => {
-  let user: AdvancedUser;
-
   it('should create a new user', async () => {
     const res = await agent
       .post('/api/users')
-      // .type('form')
+      .type('form')
       .field('id', tester.id)
       .field('password', tester.password)
       .field('nickname', tester.nickname)
@@ -120,16 +247,19 @@ describe('Login API scenario', () => {
   });
 
   it('should changed password', async () => {
+    const newPassword = randomString();
     const res = await agent
       .post('/api/password')
       .send({
         current: tester.password,
-        newPassword: tester.newPassword,
+        newPassword,
       })
       .set('Accept', 'application/json');
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ data: { id: tester.id } });
+
+    tester.password = newPassword;
   });
 
   it('should logout a user', async () => {
@@ -143,16 +273,19 @@ describe('Login API scenario', () => {
       .post('/api/login')
       .type('form')
       .field('id', tester.id)
-      .field('password', tester.newPassword);
+      .field('password', tester.password);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ data: { id: tester.id } });
-
-    user = res.body.data;
+    tester.User = res.body.data;
   });
 
   it('should receive image in response', async () => {
-    const res = await agent.get(`/api/image/${user.image}`);
+    if (typeof tester.User === 'undefined') {
+      throw new Error('login is required first');
+    }
+
+    const res = await agent.get(`/api/image/${tester.User.image}`);
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/image\/png/);
@@ -288,8 +421,6 @@ describe('Users API scenario', () => {
 
 // route - /api/posts
 describe('Posts API scenario', () => {
-  let post: AdvancedPost;
-
   it('should search posts', async () => {
     const res = await agent.get(`/api/posts?cursor=0&size=10&q=${target.id}`);
 
@@ -325,8 +456,7 @@ describe('Posts API scenario', () => {
         }),
       ])
     );
-
-    post = res.body.data;
+    tester.Post = res.body.data;
   });
 
   it('should get recommended posts', async () => {
@@ -361,17 +491,17 @@ describe('Posts API scenario', () => {
 
   it("should get posts target's post", async () => {
     const res = await agent.get(
-      `/api/posts/${target.postid}?userid=${target.id}`
+      `/api/posts/${target.Post?.postid}?userid=${target.id}`
     );
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      data: { postid: target.postid, userid: target.id },
+      data: { postid: target.Post?.postid, userid: target.id },
     });
   });
 
   it('should like a specific post', async () => {
-    const res = await agent.post(`/api/posts/${target.postid}/hearts`);
+    const res = await agent.post(`/api/posts/${target.Post?.postid}/hearts`);
 
     expect(res.status).toBe(201);
     expect(res.body.data.Hearts).toEqual(
@@ -380,7 +510,7 @@ describe('Posts API scenario', () => {
   });
 
   it('should cancle to like a specific post', async () => {
-    const res = await agent.delete(`/api/posts/${target.postid}/hearts`);
+    const res = await agent.delete(`/api/posts/${target.Post?.postid}/hearts`);
 
     expect(res.status).toBe(200);
     expect(res.body.data.Hearts).not.toEqual(
@@ -389,21 +519,21 @@ describe('Posts API scenario', () => {
   });
 
   it('should repost a specific post', async () => {
-    const res = await agent.post(`/api/posts/${target.postid}/reposts`);
+    const res = await agent.post(`/api/posts/${target.Post?.postid}/reposts`);
 
     expect(res.status).toBe(201);
-    expect(res.body.data).toMatchObject({ originalid: target.postid });
+    expect(res.body.data).toMatchObject({ originalid: target.Post?.postid });
   });
 
   it('should delete a reposted post', async () => {
-    const res = await agent.delete(`/api/posts/${target.postid}/reposts`);
+    const res = await agent.delete(`/api/posts/${target.Post?.postid}/reposts`);
 
     expect(res.status).toBe(204);
   });
 
   it("should get a specific post's comments", async () => {
     const res = await agent.get(
-      `/api/posts/${target.postid}/comments?cursor=0&size=10&userid=${target.id}`
+      `/api/posts/${target.Post?.postid}/comments?cursor=0&size=10&userid=${target.id}`
     );
 
     expect(res.status).toBe(200);
@@ -414,7 +544,7 @@ describe('Posts API scenario', () => {
     const content = 'should comment a specific post';
     // const image = path.resolve(__dirname, tester.image);
     const res = await agent
-      .post(`/api/posts/${target.postid}/comments`)
+      .post(`/api/posts/${target.Post?.postid}/comments`)
       .type('form')
       .field('content', content);
     // .field(
@@ -442,12 +572,12 @@ describe('Posts API scenario', () => {
   });
 
   it("should get a my post's view", async () => {
-    const res = await agent.get(`/api/posts/${post.postid}/views`);
+    const res = await agent.get(`/api/posts/${tester.Post?.postid}/views`);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       data: {
-        postid: post.postid,
+        postid: tester.Post?.postid,
         impressions: expect.any(Number),
         engagements: expect.any(Number),
         detailexpands: expect.any(Number),
@@ -459,22 +589,25 @@ describe('Posts API scenario', () => {
 
   it("should add a post's view count", async () => {
     const res = await agent
-      .post(`/api/posts/${target.postid}/views`)
+      .post(`/api/posts/${target.Post?.postid}/views`)
       .send({ userid: target.id })
       .set('Accept', 'application/json');
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
-      data: { postid: target.postid, _count: { Views: expect.any(Number) } },
+      data: {
+        postid: target.Post?.postid,
+        _count: { Views: expect.any(Number) },
+      },
     });
   });
 
   it('should bookmark a specific post', async () => {
-    const res = await agent.post(`/api/posts/${target.postid}/bookmarks`);
+    const res = await agent.post(`/api/posts/${target.Post?.postid}/bookmarks`);
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
-      data: { postid: target.postid, Bookmarks: expect.any(Array) },
+      data: { postid: target.Post?.postid, Bookmarks: expect.any(Array) },
     });
     expect(res.body.data.Bookmarks).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: tester.id })])
@@ -482,11 +615,13 @@ describe('Posts API scenario', () => {
   });
 
   it('should delete the bookmark for a specific post', async () => {
-    const res = await agent.delete(`/api/posts/${target.postid}/bookmarks`);
+    const res = await agent.delete(
+      `/api/posts/${target.Post?.postid}/bookmarks`
+    );
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      data: { postid: target.postid, Bookmarks: expect.any(Array) },
+      data: { postid: target.Post?.postid, Bookmarks: expect.any(Array) },
     });
     expect(res.body.data.Bookmarks).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ id: tester.id })])
@@ -495,7 +630,7 @@ describe('Posts API scenario', () => {
 
   it("should get a speicific post's engagements", async () => {
     const res = await agent.get(
-      `/api/posts/${target.postid}/engagements?cursor=0&size=10&userid=${target.id}&filter=likes`
+      `/api/posts/${target.Post?.postid}/engagements?cursor=0&size=10&userid=${target.id}&filter=likes`
     );
 
     expect(res.status).toBe(200);
@@ -506,37 +641,45 @@ describe('Posts API scenario', () => {
   });
 
   it('should pin my post', async () => {
-    const res = await agent.post(`/api/posts/${post.postid}/pinned`);
+    const res = await agent.post(`/api/posts/${tester.Post?.postid}/pinned`);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      data: { postid: post.postid, pinned: true },
+      data: { postid: tester.Post?.postid, pinned: true },
     });
   });
 
   it('should delete pin for my post', async () => {
-    const res = await agent.delete(`/api/posts/${post.postid}/pinned`);
+    const res = await agent.delete(`/api/posts/${tester.Post?.postid}/pinned`);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      data: { postid: post.postid, pinned: false },
+      data: { postid: tester.Post?.postid, pinned: false },
     });
   });
 
   it('should set scope for my post', async () => {
     const scope: Schemas['post']['scope'] = 'only';
     const res = await agent
-      .post(`/api/posts/${post.postid}/scope`)
+      .post(`/api/posts/${tester.Post?.postid}/scope`)
       .send({ scope })
       .set('Accept', 'application/json');
 
     expect(res.status).toBe(200);
-    expect(res.body).toMatchObject({ data: { postid: post.postid, scope } });
+    expect(res.body).toMatchObject({
+      data: { postid: tester.Post?.postid, scope },
+    });
   });
 
   it('should get an image from a speicific post', async () => {
-    const { imageId, link, width, height } = post.images[0];
-    const res = await agent.get(`/api/posts/${post.postid}/photos/${imageId}`);
+    if (typeof target.Post === 'undefined') {
+      throw new Error("the target's post must be posted first");
+    }
+
+    const { imageId, link, width, height } = target.Post.images[0];
+    const res = await agent.get(
+      `/api/posts/${target.Post.postid}/photos/${imageId}`
+    );
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -545,7 +688,7 @@ describe('Posts API scenario', () => {
   });
 
   it("should deleted user's post", async () => {
-    const res = await agent.delete(`/api/posts/${post.postid}`);
+    const res = await agent.delete(`/api/posts/${tester.Post?.postid}`);
 
     expect(res.status).toBe(204);
   });
@@ -553,8 +696,6 @@ describe('Posts API scenario', () => {
 
 // route - /api/rooms
 describe('Rooms API scenario', () => {
-  let room: AdvancedRooms;
-
   it('should get my rooms', async () => {
     const res = await agent.get('/api/rooms');
 
@@ -582,8 +723,7 @@ describe('Rooms API scenario', () => {
     expect(res.body).toMatchObject({
       data: { id: roomid, senderid: tester.id, receiverid: target.id },
     });
-
-    room = res.body.data;
+    tester.Room = res.body.data;
   });
 
   it('should send message', (done) => {
@@ -669,8 +809,6 @@ describe('Rooms API scenario', () => {
 
 // route - /api/messages
 describe('Messages API scenario', () => {
-  let messages: AdvancedMessages[];
-
   it('should search message', async () => {
     const q = 'test';
     const res = await agent.get(`/api/messages/search?cursor=0&size=10&q=${q}`);
@@ -698,15 +836,14 @@ describe('Messages API scenario', () => {
         roomid: roomid,
       });
     }
-
-    messages = res.body.data;
+    tester.Messages = res.body.data;
   });
 
   it('should disable message', async () => {
     const res = await agent
       .delete(`/api/messages/${roomid}`)
       .send({
-        messageid: messages[0].id,
+        messageid: tester.Messages?.at(0)?.id,
       })
       .set('Accept', 'application/json');
 
@@ -717,7 +854,7 @@ describe('Messages API scenario', () => {
     const res = await agent
       .post(`/api/messages/${roomid}/react`)
       .send({
-        messageid: messages[0].id,
+        messageid: tester.Messages?.at(0)?.id,
         content: '👍',
       })
       .set('Accept', 'application/json');
@@ -727,7 +864,7 @@ describe('Messages API scenario', () => {
 
   it('should delete reaction for room', async () => {
     const res = await agent.delete(`/api/messages/${roomid}/react`).send({
-      messageid: messages[0].id,
+      messageid: tester.Messages?.at(0)?.id,
     });
 
     expect(res.status).toBe(204);
@@ -736,8 +873,6 @@ describe('Messages API scenario', () => {
 
 // route - /api/lists
 describe('Lists API scenario', () => {
-  let myList: AdvancedLists;
-
   it('should create my list', async () => {
     const image = path.resolve(__dirname, tester.image);
     const name = `${tester.id}'s list`;
@@ -762,7 +897,7 @@ describe('Lists API scenario', () => {
         make,
       },
     });
-    myList = res.body.data;
+    tester.List = res.body.data;
   });
 
   it('should search list', async () => {
@@ -791,47 +926,47 @@ describe('Lists API scenario', () => {
 
   it('should get a speicific lists', async () => {
     const res = await agent.get(
-      `/api/lists/${myList.id}?userid=${myList.userid}`
+      `/api/lists/${tester.List?.id}?userid=${tester.List?.userid}`
     );
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       data: {
-        id: myList.id,
-        userid: myList.userid,
+        id: tester.List?.id,
+        userid: tester.List?.userid,
       },
     });
   });
 
   it('should update my list', async () => {
     const edit = {
-      name: 'edit ' + myList.name,
-      description: 'edit ' + myList.description,
+      name: 'edit ' + tester.List?.name,
+      description: 'edit ' + tester.List?.description,
       image: path.resolve(__dirname, tester.image),
     };
 
     const res = await agent
-      .post(`/api/lists/${myList.id}/edit`)
+      .post(`/api/lists/${tester.List?.id}/edit`)
       .type('form')
       .field('name', edit.name)
       .field('description', edit.description)
-      .field('make', myList.make)
+      .field('make', tester.List?.make || 'public')
       .attach('banner', edit.image);
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       data: {
-        id: myList.id,
+        id: tester.List?.id,
         name: edit.name,
         description: edit.description,
-        make: myList.make,
+        make: tester.List?.make,
       },
     });
   });
 
   it('should add member to a specific list', async () => {
     const res = await agent
-      .post(`/api/lists/${myList.id}/member`)
+      .post(`/api/lists/${tester.List?.id}/member`)
       .send({
         memberid: target.id,
       })
@@ -840,7 +975,7 @@ describe('Lists API scenario', () => {
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
       data: {
-        id: myList.id,
+        id: tester.List?.id,
         Member: expect.arrayContaining([
           expect.objectContaining({ id: target.id }),
         ]),
@@ -850,7 +985,7 @@ describe('Lists API scenario', () => {
 
   it('should get members to a specific list', async () => {
     const res = await agent.get(
-      `/api/lists/${myList.id}/member?cursor=0&size=10`
+      `/api/lists/${tester.List?.id}/member?cursor=0&size=10`
     );
 
     expect(res.status).toBe(200);
@@ -864,7 +999,7 @@ describe('Lists API scenario', () => {
 
   it('should get posts to a specific list', async () => {
     const res = await agent.get(
-      `/api/lists/${myList.id}/posts?cursor=0&size=10`
+      `/api/lists/${tester.List?.id}/posts?cursor=0&size=10`
     );
 
     expect(res.status).toBe(200);
@@ -878,7 +1013,7 @@ describe('Lists API scenario', () => {
 
   it('should remove member to a specific list', async () => {
     const res = await agent
-      .delete(`/api/lists/${myList.id}/member`)
+      .delete(`/api/lists/${tester.List?.id}/member`)
       .send({
         memberid: target.id,
       })
@@ -896,12 +1031,12 @@ describe('Lists API scenario', () => {
   });
 
   it('should follow a specific list', async () => {
-    const res = await agent.post(`/api/lists/${target.listid}/follow`);
+    const res = await agent.post(`/api/lists/${target.List?.id}/follow`);
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
       data: {
-        id: target.listid,
+        id: target.List?.id,
         Follower: expect.arrayContaining([
           expect.objectContaining({ id: tester.id }),
         ]),
@@ -911,7 +1046,7 @@ describe('Lists API scenario', () => {
 
   it('should get follow info for a specific list', async () => {
     const res = await agent.get(
-      `/api/lists/${target.listid}/follow?cursor=0&size=10`
+      `/api/lists/${target.List?.id}/follow?cursor=0&size=10`
     );
 
     expect(res.status).toBe(200);
@@ -928,7 +1063,7 @@ describe('Lists API scenario', () => {
   });
 
   it('should unfollow a specific list', async () => {
-    const res = await agent.delete(`/api/lists/${target.listid}/follow`);
+    const res = await agent.delete(`/api/lists/${target.List?.id}/follow`);
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
@@ -943,38 +1078,41 @@ describe('Lists API scenario', () => {
 
   it('should add post to a specific list', async () => {
     const res = await agent
-      .post(`/api/lists/${myList.id}/post`)
+      .post(`/api/lists/${tester.List?.id}/post`)
       .send({
-        postid: target.postid,
+        postid: target.Post?.postid,
       })
       .set('Accept', 'application/json');
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      data: { id: myList.id, Posts: expect.arrayContaining([target.postid]) },
+      data: {
+        id: tester.List?.id,
+        Posts: expect.arrayContaining([target.Post?.postid]),
+      },
     });
   });
 
   it('should exclude post to a speicific list', async () => {
     const res = await agent
-      .delete(`/api/lists/${myList.id}/post`)
+      .delete(`/api/lists/${tester.List?.id}/post`)
       .send({
-        postid: target.postid,
+        postid: target.Post?.postid,
       })
       .set('Accept', 'application/json');
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
-      data: { id: myList.id, Posts: expect.any(Array) },
+      data: { id: tester.List?.id, Posts: expect.any(Array) },
     });
     expect(res.body.data.Posts).not.toEqual(
-      expect.arrayContaining([target.postid])
+      expect.arrayContaining([target.Post?.postid])
     );
   });
 
   it('should pin your following list', async () => {
     const res = await agent
-      .post(`/api/lists/${myList.id}/pinned`)
+      .post(`/api/lists/${tester.List?.id}/pinned`)
       .send({
         userid: tester.id,
       })
@@ -983,7 +1121,7 @@ describe('Lists API scenario', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       data: {
-        id: myList.id,
+        id: tester.List?.id,
         userid: tester.id,
         Pinned: true,
       },
@@ -992,7 +1130,7 @@ describe('Lists API scenario', () => {
 
   it('should unpin your following list', async () => {
     const res = await agent
-      .delete(`/api/lists/${myList.id}/pinned`)
+      .delete(`/api/lists/${tester.List?.id}/pinned`)
       .send({
         userid: tester.id,
       })
@@ -1001,7 +1139,7 @@ describe('Lists API scenario', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       data: {
-        id: myList.id,
+        id: tester.List?.id,
         userid: tester.id,
         Pinned: false,
       },
@@ -1010,7 +1148,7 @@ describe('Lists API scenario', () => {
 
   it('should set the show a specific list', async () => {
     const res = await agent
-      .post(`/api/lists/${myList.id}/unshow`)
+      .post(`/api/lists/${tester.List?.id}/unshow`)
       .send({
         userid: tester.id,
       })
@@ -1019,7 +1157,7 @@ describe('Lists API scenario', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       data: {
-        id: myList.id,
+        id: tester.List?.id,
         userid: tester.id,
         UnShow: expect.arrayContaining([
           expect.objectContaining({ id: tester.id }),
@@ -1030,7 +1168,7 @@ describe('Lists API scenario', () => {
 
   it('should remove the show a speicific list', async () => {
     const res = await agent
-      .delete(`/api/lists/${myList.id}/unshow`)
+      .delete(`/api/lists/${tester.List?.id}/unshow`)
       .send({
         userid: tester.id,
       })
@@ -1039,7 +1177,7 @@ describe('Lists API scenario', () => {
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       data: {
-        id: myList.id,
+        id: tester.List?.id,
         userid: tester.id,
         UnShow: expect.any(Array),
       },
@@ -1051,10 +1189,9 @@ describe('Lists API scenario', () => {
 
   // finally delete myList
   it('should delete a my list', async () => {
-    const res = await agent.delete(`/api/lists/${myList.id}`);
+    const res = await agent.delete(`/api/lists/${tester.List?.id}`);
 
     expect(res.status).toBe(204);
-    myList;
   });
 });
 

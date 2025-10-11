@@ -12,6 +12,7 @@ import {
   QueryResultRow,
   Pool,
 } from 'pg';
+import { SCHEMA_NAME } from '@/db/env';
 
 export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,
@@ -163,19 +164,3 @@ export const decryptRoomId = ({
   const receiverId = userid === u1 ? u2 : u1;
   return receiverId;
 };
-
-export async function safeQuery<T extends QueryResultRow>(
-  client: Pool | PoolClient,
-  queryConfig: QueryConfig
-) {
-  try {
-    return await client.query<T>(queryConfig);
-  } catch (err) {
-    const wrapped: Error & { cause?: Error } = new Error(
-      `[Query failed]\n${queryConfig.text}`
-    );
-    wrapped.cause = err as DatabaseError;
-    Error.captureStackTrace(wrapped, safeQuery);
-    throw wrapped;
-  }
-}
