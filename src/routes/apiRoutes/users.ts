@@ -32,7 +32,8 @@ import { TypedResponse } from '@/model/Response';
 import { AdvancedUser } from '@/model/User';
 import { AdvancedLists } from '@/model/Lists';
 import DAO from '@/lib/DAO';
-import { Birth } from '@/db/schema';
+import { Birth, Verified } from '@/db/schema';
+import { updateUsersQuery } from '@/lib/query';
 
 const apiUsersRouter = express.Router();
 const storage = multer.diskStorage({
@@ -374,6 +375,75 @@ apiUsersRouter.delete(
     const dao = new DAO();
     const updatedUser = await dao.deleteBirth({
       id: currentUser.id,
+    });
+    dao.release();
+
+    return httpSuccessResponse(res, { data: updatedUser });
+  }
+);
+
+// "POST /api/users/verified"
+// 유저의 verified를 설정
+apiUsersRouter.post(
+  '/verified',
+  async (
+    req: TypedRequestBody<{ verified?: string }>,
+    res: TypedResponse<{ data?: AdvancedUser; message: string }>
+  ) => {
+    const verified = req.body.verified;
+    const { 'connect.sid': token } = req.cookies;
+    const VERIFIED_TYPES: Verified['type'][] = ['blue', 'gold', 'gray'];
+    if (!verified || !VERIFIED_TYPES.includes(verified as Verified['type'])) {
+      return httpBadRequestResponse(res);
+    }
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = await decodingUserToken(token);
+    if (typeof currentUser === 'undefined') {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token has expired');
+    }
+
+    if (currentUser.verified?.type === verified) {
+      return httpForbiddenResponse(res);
+    }
+
+    const dao = new DAO();
+    const updatedUser = await dao.updateUser({
+      id: currentUser.id,
+      verified: { type: verified as Verified['type'], date: new Date() },
+    });
+    dao.release();
+
+    return httpSuccessResponse(res, { data: updatedUser });
+  }
+);
+
+// "DELETE /api/users/verified"
+// 유저의 verified를 삭제
+apiUsersRouter.delete(
+  '/verified',
+  async (
+    req: TypedRequestCookies,
+    res: TypedResponse<{ data?: AdvancedUser; message: string }>
+  ) => {
+    const { 'connect.sid': token } = req.cookies;
+    if (!token) return httpUnAuthorizedResponse(res);
+
+    const currentUser = await decodingUserToken(token);
+    if (typeof currentUser === 'undefined') {
+      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      return httpUnAuthorizedResponse(res, 'The token has expired');
+    }
+
+    if (currentUser.verified === null) {
+      return httpForbiddenResponse(res);
+    }
+
+    const dao = new DAO();
+    const updatedUser = await dao.updateUser({
+      id: currentUser.id,
+      verified: null,
     });
     dao.release();
 

@@ -27,6 +27,7 @@ import { AdvancedRooms, Room, RoomsNotifications } from '@/model/Room';
 import { AdvancedUser, User } from '@/model/User';
 import { Views } from '@/model/Views';
 import { PoolClient } from 'pg';
+import bcrypt from 'bcrypt';
 
 class DAO {
   private client: PoolClient | undefined;
@@ -57,10 +58,6 @@ class DAO {
       wheres[0].push({ logic: 'OR', field: 'nickname', value: nickname });
     }
 
-    if (typeof password !== 'undefined') {
-      wheres.push([{ field: 'password', value: password }]);
-    }
-
     try {
       const usersQueryConfig = selectQuery({
         table: 'users',
@@ -70,6 +67,11 @@ class DAO {
         await safeQuery<Schemas['users']>(this.client, usersQueryConfig)
       ).rows[0];
       if (typeof user === 'undefined') return;
+
+      if (typeof password !== 'undefined') {
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) return;
+      }
 
       const advancedUsersQueryConfig = selectQuery({
         table: 'advancedusers',
@@ -1325,7 +1327,7 @@ class DAO {
     try {
       const queryConfig = insertUsersQuery({
         id,
-        password,
+        password: await bcrypt.hash(password, 10),
         nickname,
         birth,
         image,
@@ -1545,7 +1547,7 @@ class DAO {
     refer?: string;
     image?: string;
     banner?: string;
-    verified?: Verified;
+    verified?: Schemas['users']['verified'];
   }): Promise<AdvancedUser | undefined> {
     await this.init();
     if (!this.client) return;
@@ -1568,7 +1570,10 @@ class DAO {
     try {
       const queryConfig = updateQuery({
         table: 'users',
-        update: { fields: ['password'], values: [password] },
+        update: {
+          fields: ['password'],
+          values: [await bcrypt.hash(password, 10)],
+        },
         wheres: [[{ field: 'id', value: id }]],
       });
       // console.log(queryConfig.text);

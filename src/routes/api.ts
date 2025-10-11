@@ -99,7 +99,7 @@ apiRouter.post(
     dao.release();
 
     // 로그인 성공 시
-    if (findUser) {
+    if (typeof findUser !== 'undefined') {
       const userToken = generateUserToken(findUser);
       if (typeof userToken === 'undefined') {
         return httpInternalServerErrorResponse(res);
@@ -292,7 +292,7 @@ apiRouter.post(
       id: currentUser.id,
       password: current,
     });
-    if (!findUser) {
+    if (typeof findUser === 'undefined') {
       dao.release();
       return httpNotFoundResponse(res);
     }

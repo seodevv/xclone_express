@@ -490,7 +490,7 @@ export const updateUsersQuery = ({
   refer?: string;
   image?: string;
   banner?: string;
-  verified?: Verified;
+  verified?: Verified | null;
 }) => {
   const fields: (keyof Schemas['users'])[] = [];
   const values: any[] = [];

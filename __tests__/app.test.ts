@@ -240,7 +240,7 @@ describe('Login API scenario', () => {
       .send({
         password: tester.password,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ data: { id: tester.id } });
@@ -254,7 +254,7 @@ describe('Login API scenario', () => {
         current: tester.password,
         newPassword,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ data: { id: tester.id } });
@@ -322,7 +322,7 @@ describe('Users API scenario', () => {
     expect(res.body).toMatchObject({ data: expect.any(Array) });
   });
 
-  it('should updated my birth', async () => {
+  it('should update my birth', async () => {
     const date = new Date().toLocaleDateString('sv-SE');
     const res = await agent
       .post('/api/users/edit')
@@ -350,11 +350,37 @@ describe('Users API scenario', () => {
     });
   });
 
-  it('should updated birth', async () => {
+  it('should delete my birth', async () => {
     const res = await agent.delete('/api/users/birth');
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ data: { id: tester.id, birth: null } });
+  });
+
+  it('should update my verify', async () => {
+    const verified = 'blue';
+    const res = await agent
+      .post('/api/users/verified')
+      .send({
+        verified,
+      })
+      .set({
+        accept: 'application/json',
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      data: { id: tester.id, verified: { type: verified } },
+    });
+  });
+
+  it('should delete my verify', async () => {
+    const res = await agent.delete('/api/users/verified');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      data: { id: tester.id, verified: null },
+    });
   });
 
   it('should get target user', async () => {
@@ -591,7 +617,7 @@ describe('Posts API scenario', () => {
     const res = await agent
       .post(`/api/posts/${target.Post?.postid}/views`)
       .send({ userid: target.id })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
@@ -663,7 +689,7 @@ describe('Posts API scenario', () => {
     const res = await agent
       .post(`/api/posts/${tester.Post?.postid}/scope`)
       .send({ scope })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -789,7 +815,7 @@ describe('Rooms API scenario', () => {
       .send({
         snooze: 'forever',
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -845,7 +871,7 @@ describe('Messages API scenario', () => {
       .send({
         messageid: tester.Messages?.at(0)?.id,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(204);
   });
@@ -857,7 +883,7 @@ describe('Messages API scenario', () => {
         messageid: tester.Messages?.at(0)?.id,
         content: '👍',
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(201);
   });
@@ -970,7 +996,7 @@ describe('Lists API scenario', () => {
       .send({
         memberid: target.id,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
@@ -1017,7 +1043,7 @@ describe('Lists API scenario', () => {
       .send({
         memberid: target.id,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
@@ -1082,7 +1108,7 @@ describe('Lists API scenario', () => {
       .send({
         postid: target.Post?.postid,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -1099,7 +1125,7 @@ describe('Lists API scenario', () => {
       .send({
         postid: target.Post?.postid,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -1116,7 +1142,7 @@ describe('Lists API scenario', () => {
       .send({
         userid: tester.id,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -1134,7 +1160,7 @@ describe('Lists API scenario', () => {
       .send({
         userid: tester.id,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -1152,7 +1178,7 @@ describe('Lists API scenario', () => {
       .send({
         userid: tester.id,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
@@ -1172,7 +1198,7 @@ describe('Lists API scenario', () => {
       .send({
         userid: tester.id,
       })
-      .set('Accept', 'application/json');
+      .set({ accept: 'application/json' });
 
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({

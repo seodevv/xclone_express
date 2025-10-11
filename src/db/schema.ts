@@ -1,4 +1,3 @@
-import { AdvancedMessages } from '@/model/Message';
 import { QueryConfig } from 'pg';
 
 export type Birth = {
