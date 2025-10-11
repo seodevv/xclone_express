@@ -3,7 +3,7 @@ import path from 'path';
 import { decryptRoomId } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import { Server, Socket } from 'socket.io';
-import { pool, uploadPath } from '@/app';
+import { uploadPath } from '@/app';
 import {
   ClientToServerEvents,
   InterServerEvents,
@@ -11,6 +11,7 @@ import {
   SocketData,
 } from '@/model/Socket';
 import { createAdapter } from '@socket.io/postgres-adapter';
+import { pool } from '@/db/env';
 
 const clientSockets: Socket<
   ClientToServerEvents,

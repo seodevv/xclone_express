@@ -5,14 +5,6 @@ import { AdvancedUser } from '@/model/User';
 import { CookieOptions } from 'express';
 import DAO from '@/lib/DAO';
 import { SafeUser } from '@/db/schema';
-import {
-  QueryConfig,
-  PoolClient,
-  DatabaseError,
-  QueryResultRow,
-  Pool,
-} from 'pg';
-import { SCHEMA_NAME } from '@/db/env';
 
 export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,

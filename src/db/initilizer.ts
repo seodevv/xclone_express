@@ -1,11 +1,11 @@
-import { PGUSER, SCHEMA_NAME } from '@/db/env';
+import { PGUSER, pool, SCHEMA_NAME } from '@/db/env';
 import { safeQuery } from '@/db/queries';
 import { Pool, QueryConfig } from 'pg';
 
 // const USER = process.env.PGUSER || 'xclone';
 // const SCHEMA_NAME = process.env.PGSCHEMA || 'public';
 
-export default async function initializeDatabase(pool: Pool) {
+export default async function initializeDatabase() {
   await aliveCheck(pool);
 
   const pkeys: PKey[] = [];

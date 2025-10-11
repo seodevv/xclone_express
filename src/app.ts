@@ -19,7 +19,6 @@ import {
   ServerToClientEvents,
   SocketData,
 } from '@/model/Socket';
-import { pool } from '@/db/env';
 
 const host = process.env.SERVER_HOST || '0.0.0.0';
 const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 9090;
@@ -37,7 +36,7 @@ if (!fs.pathExistsSync(uploadPath)) {
 if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
   console.log(`Primary ${process.pid} is running`);
 
-  initializeDatabase(pool)
+  initializeDatabase()
     .then(() => {
       const num_worker = os.cpus().length > 4 ? 4 : os.cpus().length;
 
