@@ -38,7 +38,12 @@ if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
 
   initializeDatabase()
     .then(() => {
-      const num_worker = os.cpus().length > 4 ? 4 : os.cpus().length;
+      const MAX_WORKER =
+        process.env.MAX_WORKER && ~~process.env.MAX_WORKER !== 0
+          ? ~~process.env.MAX_WORKER
+          : 1;
+      const num_worker =
+        os.cpus().length > MAX_WORKER ? MAX_WORKER : os.cpus().length;
 
       for (let i = 0; i < num_worker; i++) {
         cluster.fork();
