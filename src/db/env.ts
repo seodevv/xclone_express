@@ -2,7 +2,7 @@ import path from 'path';
 import { Pool } from 'pg';
 import { readFileSync } from 'fs-extra';
 
-const ssl = Boolean(process.env.PGSSL);
+const ssl = process.env.PGSSL === 'true' ? true : false;
 export const PGUSER = process.env.PGUSER || 'xclone';
 export const SCHEMA_NAME = process.env.PGSCHEMA || 'public';
 
