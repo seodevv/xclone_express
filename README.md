@@ -8,11 +8,11 @@
 
 - **node**의 `cluster`를 사용 중입니다. `.env` 파일의 `MAX_WORKER`의 수를 지정해주면 하나의 *primary*와 `n`의 *worker*가 구동됩니다.(`MAX_WORKER`가 서버가 보유한 **cpus**보다 높은 경우 **cpus** 수량만큼 *worker*가 구동됩니다.)
 
-- 데이터베이스는 [postgresql 16](https://www.postgresql.org/)을 사용하며, `.env` 파일에 접속 정보를 넣으면 서버가 최초로 실행될 때 필요한 DDL을 자동 생성합니다.
+- 데이터베이스는 [PostgreSQL 16](https://www.postgresql.org/)을 사용하며, `.env` 파일에 접속 정보를 넣으면 서버가 최초로 실행될 때 필요한 DDL을 자동 생성합니다.
 
 - 이 프로젝트는 [Epretx](https://epretx.etri.re.kr/)의 [언어 분석 기술](https://epretx.etri.re.kr/apiDetail?id=2) API를 사용합니다. 사용을 원하는 경우 `.env` 파일의 `AI_OPEN_ETRI_API_KEY`의 정보를 넣으면 해당 기능을 사용할 수 있습니다.
 
-- 테스팅 툴로 `Jest`를 사용합니다. 해당 툴을 활용해 구현되어 있는 REST API 전부를 테스팅합니다.
+- 테스팅 툴로 `JEST`를 사용합니다. 해당 툴을 활용해 구현되어 있는 REST API 전부를 테스팅할 수 있습니다.
 
 # Started
 
@@ -29,7 +29,7 @@ PGDATABASE=xclone
 PGSCHEMA=xclone_schema
 ```
 
-이 프로젝트는 [Postgresql 16](https://www.postgresql.org/)을 기반으로 구동됩니다. 따라서 **Postgresql DB**의 **접속 정보**를 필요로 합니다.
+이 프로젝트는 [PostgreSQL 16](https://www.postgresql.org/)을 기반으로 구동됩니다. 따라서 **PostgreSQL DB**의 **접속 정보**를 필요로 합니다.
 
 - AWS RDS를 사용할 경우 **region**에 맞는 `pem` 파일과 함께 `PGSSL=true`를 활성화 해주어야 합니다.
 
@@ -72,12 +72,12 @@ SERVER_ORIGIN=https://localhost,https://localhost:3000
 ## if use AWS RDS, must use ssl.
 # PGSSL=true
 # PGHOST=ap-northeast-2.rds.amazonaws.com
-PGUSER=xclone
-PGPASSWORD=xclone
 PGHOST=localhost
 PGPORT=5432
 PGDATABASE=xclone
 PGSCHEMA=xclone_schema
+PGUSER=xclone
+PGPASSWORD=xclone
 
 ## jwt token secret
 JWT_SECRET=secret
@@ -87,19 +87,22 @@ AI_OPEN_ETRI_API_URL=http://epretx.etri.re.kr:8000/api/WiseNLU_spoken
 AI_OPEN_ETRI_API_KEY=
 ```
 
-1. NODE_ENV : 노드의 상태를 나타내며 development, production, test를 가집니다.
-
-2. SERVER_HOST : 호스트 서버의 주소를 나타냅니다.
-3. SERVER_PORT : 호스트 서버의 포트를 나타냅니다.
-4. SERVER_ORIGIN : cors 정책의 origin을 설정합니다.
-5. PG\* : PostgreSQL DB의 접속 정보를 나타냅니다.
-
-- AWS RDS를 사용할 경우 `PGSSL=true`를 활성화가 필요합니다.
-- AWS RDS에 맞는 *region*의 `pem` 파일이 필요로 합니다.
-
-6. JWT_SECRET : `jsonwebtoken`에서 사용할 `secret`을 나타냅니다.
-7. AI_OPEN_ETRI_API_URL : [Epretx](https://epretx.etri.re.kr) API 서비스의 요청 URL을 나타냅니다.
-8. AI_OPEN_ETRI_API_KEY : [Epretx](https://epretx.etri.re.kr) API 서비스를 사용하기 위한 *KEY*를 나타냅니다.
+|       variable       |                                    description                                     |                      values                      |
+| :------------------: | :--------------------------------------------------------------------------------: | :----------------------------------------------: |
+|       NODE_ENV       |                             노드의 상태를 나타냅니다.                              |          development, production, test           |
+|     SERVER_HOST      |                          서버의 호스트 주소를 나타냅니다.                          |                localhost, 0.0.0.0                |
+|     SERVER_PORT      |                           서버의 포트 주소를 나타냅니다.                           |                       9090                       |
+|    SERVER_ORIGIN     |      CORS 정책의 origin을 설정합니다.<br> 다수를 설정할 경우 , 로 구분합니다.      |    https://localhost, https://localhost:3000     |
+|        PGSSL         |                       DB 접속 시 SSL 사용 여부를 나타냅니다.                       |                   true, false                    |
+|        PGHOST        |                            DB 호스트 주소를 나타냅니다.                            |                    localhost                     |
+|        PGPORT        |                             DB 접속 포트를 나타냅니다.                             |                       5432                       |
+|      PGDATABASE      |                             접속할 DB 명을 나타냅니다.                             |                      xclone                      |
+|       PGSCHEMA       |                         사용할 DB 스키마 명을 나타냅니다.                          |                  xclone_schema                   |
+|        PGUSER        |                       DB 접속에 사용할 아이디를 나타냅니다.                        |                     postgres                     |
+|      PGPASSWORD      |                      DB 접속에 사용할 패스워드를 나타냅니다.                       |                     postgres                     |
+|      JWT_SECRET      |                   `jsonwebtoken`에서 사용할 SECRET을 나타냅니다.                   |                      secret                      |
+| AI_OPEN_ETRI_API_URL |      [Epretx](https://epretx.etri.re.kr) API 서비스의 요청 URL을 나타냅니다.       | http://epretx.etri.re.kr:8000/api/WiseNLU_spoken |
+| AI_OPEN_ETRI_API_KEY | [Epretx](https://epretx.etri.re.kr) API 서비스를 사용하기 위한 *KEY*를 나타냅니다. |                                                  |
 
 # socket.io
 
