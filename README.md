@@ -16,9 +16,8 @@
 
 ## required environment
 
-- .env
-
 ```dotenv
+# .env
 PGUSER=xclone
 PGPASSWORD=xclone
 PGHOST=localhost
@@ -27,7 +26,7 @@ PGDATABASE=xclone
 PGSCHEMA=xclone_schema
 ```
 
-이 어플리케이션은 Postgresql 16을 기반으로 구동됩니다. 따라서 Postgresql DB의 **접속 정보**를 필요로 합니다.
+이 어플리케이션은 [Postgresql 16](https://www.postgresql.org/)을 기반으로 구동됩니다. 따라서 <b><u>Postgresql DB</b></u>의 <b><u>접속 정보</b></u>를 필요로 합니다.
 
 ## development
 
