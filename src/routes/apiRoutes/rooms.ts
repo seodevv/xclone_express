@@ -60,6 +60,7 @@ apiRoomsRouter.get(
     res: TypedResponse<{ data?: RoomsNotifications[]; message: string }>
   ) => {
     const { 'connect.sid': token } = req.cookies;
+    console.log('cookies', req.cookies);
     console.log('token', token);
     if (!token) return httpUnAuthorizedResponse(res);
 
