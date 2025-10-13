@@ -8,6 +8,7 @@ import { SafeUser } from '@/db/schema';
 
 export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,
+  domain: '.seodevv.com',
   httpOnly: false,
   path: '/',
   sameSite: 'none',
