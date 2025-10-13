@@ -3,7 +3,7 @@ version: '3.8'
 services:
   xclone_express:
     build: .
-    container_name: xclone_express
+    image: xclone_express:1.0.0
     expose:
       - '9090'
     volumes:
