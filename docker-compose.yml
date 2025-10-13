@@ -30,8 +30,12 @@ services:
       - '80:80'
       - '443:443'
     volumes:
-      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
+      - ./nginx/conf/nginx.conf.template:/etc/nginx/nginx.conf.template
       - ./nginx/certs:/etc/nginx/certs
+    entrypoint: /usr/local/bin/docker-entrypoint.sh
+    env_file:
+      - .env
     depends_on:
       - xclone_express
     restart: always
