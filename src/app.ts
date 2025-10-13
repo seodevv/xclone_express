@@ -23,9 +23,8 @@ import {
 const host = process.env.SERVER_HOST || '0.0.0.0';
 const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 9090;
 const origin = process.env.SERVER_ORIGIN
-  ? process.env.SERVER_ORIGIN.split(',')
-  : ['http://localhost', 'https://localhost'];
-// const origin = 'https://localhost';
+  ? process.env.SERVER_ORIGIN
+  : 'https://localhost';
 
 export let server: ReturnType<(typeof https | typeof http)['createServer']>;
 export const uploadPath = path.join(__dirname, '../uploads');
@@ -94,6 +93,7 @@ const io = new Server<
   cors: {
     origin,
     methods: ['GET', 'POST'],
+    credentials: true,
   },
   maxHttpBufferSize: 1e9,
 });
