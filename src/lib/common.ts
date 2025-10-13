@@ -10,16 +10,16 @@ export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,
   httpOnly: true,
   path: '/',
-  sameSite: 'lax',
+  sameSite: 'none',
   secure: true,
-  domain: 'api.xclone.seodevv.com',
+  // domain: 'api.xclone.seodevv.com',
 };
 
 export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
   maxAge: 0,
   httpOnly: true,
   path: '/',
-  sameSite: 'lax',
+  sameSite: 'none',
   secure: true,
 };
 

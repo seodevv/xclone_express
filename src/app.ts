@@ -58,6 +58,7 @@ if (!fs.pathExistsSync(uploadPath)) {
 //   });
 // } else {
 const app = express();
+app.set('trust proxy', true);
 app.use(
   cors({
     origin,
