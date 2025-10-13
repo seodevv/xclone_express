@@ -3,6 +3,7 @@ module.exports = {
     {
       name: 'xClone_exp',
       script: './dist/app.js',
+      cwd: __dirname,
       instances: 1,
       exec_mode: 'fork',
       // instances: 4,
@@ -19,7 +20,7 @@ module.exports = {
       max_memory_restart: '200M',
       env: {
         NODE_ENV: 'production',
-        SERVER_HOST: '0.0.0.0',
+        SERVER_HOST: 'localhost',
         SERVER_PORT: 9090,
       },
       pid_file: './dist/xClone.pid',

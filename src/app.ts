@@ -73,15 +73,16 @@ if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
   );
   app.use('/api', apiRouter);
 
-  const options: https.ServerOptions = {
-    key: fs.readFileSync('./localhost-key.pem'),
-    cert: fs.readFileSync('./localhost.pem'),
-  };
-
   server =
     process.env.NODE_ENV === 'production'
       ? http.createServer({}, app)
-      : https.createServer(options, app);
+      : https.createServer(
+          {
+            key: fs.readFileSync('./localhost-key.pem'),
+            cert: fs.readFileSync('./localhost.pem'),
+          },
+          app
+        );
   const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
