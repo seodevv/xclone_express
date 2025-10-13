@@ -10,7 +10,7 @@ export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,
   httpOnly: true,
   path: '/',
-  sameSite: 'none',
+  sameSite: 'lax',
   secure: true,
 };
 
@@ -18,7 +18,7 @@ export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
   maxAge: 0,
   httpOnly: true,
   path: '/',
-  sameSite: 'none',
+  sameSite: 'lax',
   secure: true,
 };
 
