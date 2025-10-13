@@ -13,7 +13,6 @@ services:
       - NODE_ENV=production
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=9090
-      - SERVER_ORIGIN=*
     env_file:
       - .env
     restart: always
