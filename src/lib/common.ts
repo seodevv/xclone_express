@@ -12,6 +12,7 @@ export const COOKIE_OPTIONS: CookieOptions = {
   path: '/',
   sameSite: 'lax',
   secure: true,
+  domain: 'api.xclone.seodevv.com',
 };
 
 export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
