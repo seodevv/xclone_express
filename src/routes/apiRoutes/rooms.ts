@@ -60,9 +60,11 @@ apiRoomsRouter.get(
     res: TypedResponse<{ data?: RoomsNotifications[]; message: string }>
   ) => {
     const { 'connect.sid': token } = req.cookies;
+    console.log('token', token);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
+    console.log('currentUser', currentUser);
     if (typeof currentUser === 'undefined') {
       res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
