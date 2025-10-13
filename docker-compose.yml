@@ -13,6 +13,9 @@ services:
       - NODE_ENV=production
       - SERVER_HOST=0.0.0.0
       - SERVER_PORT=9090
+      - SERVER_ORIGIN=*
+    env_file:
+      - .env
     restart: always
     deploy:
       resources:
@@ -34,8 +37,8 @@ services:
       - ./nginx/conf/nginx.conf.template:/etc/nginx/nginx.conf.template
       - ./nginx/certs:/etc/nginx/certs
     entrypoint: /usr/local/bin/docker-entrypoint.sh
-    env_file:
-      - .env
+    environment:
+      - DOMAIN_NAME=${DOMAIN_NAME}
     depends_on:
       - xclone_express
     restart: always

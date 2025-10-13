@@ -2,7 +2,9 @@
 node_modules
 
 # environment
+.env
 .env.default
+.env*
 
 # build result
 dist
@@ -17,7 +19,16 @@ jest.config.ts
 .gitignore
 
 # certificate
-*.pem
+**/*.pem
+
+# docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+docker-entrypoint.sh
 
 # etc
+nginx
 uploads
+README.md
+pm2.config.js

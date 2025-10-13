@@ -1,0 +1,21 @@
+# Modules
+node_modules/
+
+# Build
+dist/
+
+# Environment
+.env
+
+# Git
+.git
+
+# Certificate
+./localhost-key.pem
+./localhost.pem
+./global-bundle.pem
+*.pem
+*.ppk
+
+# Production
+uploads/

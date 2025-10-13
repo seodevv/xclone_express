@@ -35,6 +35,7 @@ if (!fs.pathExistsSync(uploadPath)) {
 
 if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
   console.log(`Primary ${process.pid} is running`);
+  console.log('origin', origin);
 
   initializeDatabase()
     .then(() => {

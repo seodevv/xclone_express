@@ -1,20 +1,32 @@
-# Dockerfile
-FROM node:18-alpine
+## Dockerfile
+# builder
+FROM node:18-alpine AS builder
 
-# 작업 디렉토리
+# working directory
 WORKDIR /app
 
-# 패키지 설치
+# install packages
 COPY package*.json ./
 RUN npm install
 
-# 소스 코드 복사
+# copy source
 COPY . .
 RUN npm run build
 
-# pm2 설치
-# RUN npm install pm2 -g
+#######
+# runtime
+FROM node:18-alpine
 
+# working directory
+WORKDIR /app
+
+# build result
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist ./dist
+
+# expose
 EXPOSE 9090
-# CMD ["pm2-runtime", "pm2.config.js"]
+
+# execute
 CMD ["npm", "run", "start"]
