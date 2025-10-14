@@ -18,16 +18,25 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-      - name: Copy files to EC2
+      - name: Sync project files to EC2
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_SSH_DOMAIN }} "mkdir -p /app/xclone_express"
-          scp -o StrictHostKeyChecking=no -r ./ ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_SSH_DOMAIN }}:/app/xclone_express
+          rsync -avz --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='.gitignore' \
+            --exclude='__tests__' \
+            --exclude='jest.config.ts' \
+            --exclude='.env.default' \
+            --exclude='pm2.config.js' \
+            --exclude='README.md' \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./ ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_HOST }}:/app/xclone_express
 
       - name: Deploy with Docker Compose
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_SSH_DOMAIN }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_HOST }} << 'EOF'
             cd /app/xclone_express
-            docker-compose down
-            docker-compose build
-            docker-compose up -d
+            sudo chown -R $USER:$USER .
+            docker compose down
+            docker compose up -d --build
           EOF
