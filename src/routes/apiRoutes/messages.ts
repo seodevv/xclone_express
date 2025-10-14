@@ -38,13 +38,13 @@ apiMessagesRouter.get(
   ) => {
     await delay(1500);
     const { cursor = '0', size = '10', q = '' } = req.query;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -91,13 +91,13 @@ apiMessagesRouter.get(
   ) => {
     const { cursor = '0', size = '50' } = req.query;
     const { roomid } = req.params;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -141,7 +141,7 @@ apiMessagesRouter.delete(
   ) => {
     const roomid = req.params.roomid;
     const messageid = req.body.messageid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!messageid || !REGEX_NUMBER_ONLY.test(messageid)) {
       return httpBadRequestResponse(res);
     }
@@ -149,7 +149,7 @@ apiMessagesRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -190,14 +190,14 @@ apiMessagesRouter.post(
   ) => {
     const roomid = req.params.roomid;
     const { messageid, content } = req.body;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!messageid || !content) return httpBadRequestResponse(res);
     if (!REGEX_NUMBER_ONLY.test(messageid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -248,14 +248,14 @@ apiMessagesRouter.delete(
   ) => {
     const roomid = req.params.roomid;
     const messageid = req.body.messageid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!messageid) return httpBadRequestResponse(res);
     if (!REGEX_NUMBER_ONLY.test(messageid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 

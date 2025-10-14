@@ -65,13 +65,13 @@ apiListsRouter.get(
   ) => {
     await delay(1000);
     const { cursor = '0', size = '10', q, includeSelf } = req.query;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -120,7 +120,7 @@ apiListsRouter.post(
     await delay(1000);
     const { name, description, make } = req.body;
     const files = req.files;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
 
     if (
       !name ||
@@ -139,7 +139,7 @@ apiListsRouter.post(
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
       removingFiles(files);
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -177,13 +177,13 @@ apiListsRouter.get(
     }>
   ) => {
     const { cursor = '0', size = '10' } = req.query;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -221,13 +221,13 @@ apiListsRouter.get(
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
     const listid = req.params.listid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!REGEX_NUMBER_ONLY.test(listid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -258,13 +258,13 @@ apiListsRouter.delete(
     res: TypedResponse<{}>
   ) => {
     const listid = req.params.listid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!REGEX_NUMBER_ONLY.test(listid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -318,7 +318,7 @@ apiListsRouter.post(
     const listid = req.params.listid;
     const { name, description, make, def } = req.body;
     const files = req.files;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (
       !REGEX_NUMBER_ONLY.test(listid) ||
       (typeof name !== 'undefined' && name === '') ||
@@ -339,7 +339,7 @@ apiListsRouter.post(
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
       removingFiles(files);
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -411,14 +411,14 @@ apiListsRouter.get(
   ) => {
     const listid = req.params.listid;
     const { cursor = '0', size = '10' } = req.query;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!REGEX_NUMBER_ONLY.test(listid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -478,14 +478,14 @@ apiListsRouter.get(
   ) => {
     const { cursor = '0', size = '10' } = req.query;
     const listid = req.params.listid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!REGEX_NUMBER_ONLY.test(listid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -539,7 +539,7 @@ apiListsRouter.post(
   ) => {
     const listid = req.params.listid;
     const memberid = req.body.memberid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!memberid || !REGEX_NUMBER_ONLY.test(listid)) {
       return httpBadRequestResponse(res);
     }
@@ -547,7 +547,7 @@ apiListsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -608,7 +608,7 @@ apiListsRouter.delete(
   ) => {
     const listid = req.params.listid;
     const memberid = req.body.memberid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!memberid || !REGEX_NUMBER_ONLY.test(listid)) {
       return httpBadRequestResponse(res);
     }
@@ -616,7 +616,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -683,7 +683,7 @@ apiListsRouter.get(
   ) => {
     const { cursor = '0', size = '10' } = req.query;
     const listid = req.params.listid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!REGEX_NUMBER_ONLY.test(listid)) {
       return httpBadRequestResponse(res);
@@ -692,7 +692,7 @@ apiListsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -741,7 +741,7 @@ apiListsRouter.post(
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
     const listid = req.params.listid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
 
     if (!REGEX_NUMBER_ONLY.test(listid)) {
       return httpBadRequestResponse(res);
@@ -750,7 +750,7 @@ apiListsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -809,7 +809,7 @@ apiListsRouter.delete(
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
     const listid = req.params.listid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!REGEX_NUMBER_ONLY.test(listid)) {
       return httpBadRequestResponse(res);
     }
@@ -817,7 +817,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -876,7 +876,7 @@ apiListsRouter.post(
   ) => {
     const listid = req.params.listid;
     const postid = req.body.postid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (
       !postid ||
       !REGEX_NUMBER_ONLY.test(postid) ||
@@ -887,7 +887,7 @@ apiListsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -952,7 +952,7 @@ apiListsRouter.delete(
   ) => {
     const listid = req.params.listid;
     const postid = req.body.postid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (
       !postid ||
       !REGEX_NUMBER_ONLY.test(postid) ||
@@ -964,7 +964,7 @@ apiListsRouter.delete(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1031,14 +1031,14 @@ apiListsRouter.post(
   ) => {
     const listid = req.params.listid;
     const userid = req.body.userid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!userid || !REGEX_NUMBER_ONLY.test(listid))
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1092,14 +1092,14 @@ apiListsRouter.delete(
   ) => {
     const listid = req.params.listid;
     const userid = req.body.userid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!userid || !REGEX_NUMBER_ONLY.test(listid))
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1154,14 +1154,14 @@ apiListsRouter.post(
   ) => {
     const listid = req.params.listid;
     const userid = req.body.userid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!userid || !REGEX_NUMBER_ONLY.test(listid))
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1207,14 +1207,14 @@ apiListsRouter.delete(
   ) => {
     const listid = req.params.listid;
     const userid = req.body.userid;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!userid || !REGEX_NUMBER_ONLY.test(listid))
       return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 

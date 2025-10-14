@@ -104,7 +104,7 @@ apiRouter.post(
       if (typeof userToken === 'undefined') {
         return httpInternalServerErrorResponse(res);
       }
-      res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
+      res.cookie('access.token', userToken, COOKIE_OPTIONS);
       return httpSuccessResponse(res, { data: findUser });
     }
 
@@ -178,7 +178,7 @@ apiRouter.post(
       if (typeof userToken === 'undefined') {
         return httpInternalServerErrorResponse(res);
       }
-      res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
+      res.cookie('access.token', userToken, COOKIE_OPTIONS);
       return httpSuccessResponse(res, { data: user });
     } catch (error) {
       console.error(error);
@@ -221,7 +221,7 @@ apiRouter.post(
       return httpInternalServerErrorResponse(res);
     }
 
-    res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
+    res.cookie('access.token', userToken, COOKIE_OPTIONS);
     return httpSuccessResponse(res, { data: user });
   }
 );
@@ -231,8 +231,8 @@ apiRouter.post(
 apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
-    // res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
-    res.clearCookie('connect.sid', COOKIE_CLEAR_OPTIONS);
+    // res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+    res.clearCookie('access.token', COOKIE_CLEAR_OPTIONS);
     return httpSuccessResponse(res, { message: 'Logout successful' });
   }
 );
@@ -247,13 +247,13 @@ apiRouter.post(
   ) => {
     await delay(1000);
     const password = req.body.password;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!password) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -278,13 +278,13 @@ apiRouter.post(
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { current, newPassword } = req.body;
-    const { 'connect.sid': token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!current || !newPassword) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
