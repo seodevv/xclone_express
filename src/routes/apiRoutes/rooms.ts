@@ -60,6 +60,7 @@ apiRoomsRouter.get(
     res: TypedResponse<{ data?: RoomsNotifications[]; message: string }>
   ) => {
     const { 'connect.sid': token } = req.cookies;
+    console.log(req.cookies);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
