@@ -13,6 +13,9 @@ server {
     ssl_certificate_key /etc/nginx/certs/privkey.pem;
 
     location / {
+        add_header 'Access-Control-Allow-Origin' 'https://xclone.seodevv.com' always;
+        add_header 'Access-Control-Allow-Credentials' 'true' always;
+
         proxy_pass http://xclone_express:9090;
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;

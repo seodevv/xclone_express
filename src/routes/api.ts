@@ -232,6 +232,7 @@ apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
     res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
+    res.clearCookie('connect.sid', COOKIE_CLEAR_OPTIONS);
     return httpSuccessResponse(res, { message: 'Logout successful' });
   }
 );
