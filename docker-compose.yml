@@ -34,7 +34,7 @@ services:
     volumes:
       - ./docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
       - ./nginx/conf/nginx.conf.template:/etc/nginx/nginx.conf.template
-      - ./nginx/certs:/etc/nginx/certs
+      - /etc/letsencrypt/archive:/etc/letsencrypt/archive:ro
     entrypoint: /usr/local/bin/docker-entrypoint.sh
     environment:
       - DOMAIN_NAME=${DOMAIN_NAME}
