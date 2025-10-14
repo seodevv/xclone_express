@@ -11,7 +11,7 @@ export const COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
   path: '/',
   sameSite: 'none',
-  secure: false,
+  secure: true,
 };
 
 export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
@@ -19,7 +19,7 @@ export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
   httpOnly: true,
   path: '/',
   sameSite: 'none',
-  secure: false,
+  secure: true,
 };
 
 export const IMAGE_DEFAULT_PROFILE = 'default_profile.png';
