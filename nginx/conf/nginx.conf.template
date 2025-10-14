@@ -39,7 +39,7 @@ server {
         #proxy_cookie_path / "/; secure; SameSite=None";
         #proxy_cookie_path /api "/api; secure; SameSite=None";
         
-        access_log /var/log/nginx/xclone_debug.log custom_debug;
+        #access_log /var/log/nginx/xclone_debug.log custom_debug;
         error_log /var/log/nginx/debug.log debug;
 
         proxy_pass_header Set-Cookie;
