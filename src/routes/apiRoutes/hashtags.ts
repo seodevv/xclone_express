@@ -25,13 +25,13 @@ apiHashtagsRouter.get(
     }>
   ) => {
     const { cursor = '0', size = '10' } = req.query;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 

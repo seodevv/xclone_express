@@ -54,12 +54,12 @@ apiUsersRouter.get(
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res, 'please login first');
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -123,7 +123,7 @@ apiUsersRouter.post(
     if (typeof userToken === 'undefined') {
       return httpInternalServerErrorResponse(res);
     }
-    res.cookie('access.token', userToken, COOKIE_OPTIONS);
+    res.cookie('accessToken', userToken, COOKIE_OPTIONS);
 
     return httpCreatedResponse(res, { data: newUser });
   }
@@ -151,12 +151,12 @@ apiUsersRouter.get(
   ) => {
     await delay(1000);
     const { cursor = '0', size = '10', q, pf, lf, f, self } = req.query;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -200,7 +200,7 @@ apiUsersRouter.get(
   ) => {
     const { cursor = '0', size = '10', mode = 'all' } = req.query;
     const pageSize = ~~size !== 0 ? ~~size : 10;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
 
     if (typeof token === 'undefined') {
       const dao = new DAO();
@@ -226,7 +226,7 @@ apiUsersRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -289,7 +289,7 @@ apiUsersRouter.post(
         })
       : undefined;
     const files = req.files;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!updated || !files || Array.isArray(files)) {
       removingFiles(files);
       return httpBadRequestResponse(res);
@@ -302,7 +302,7 @@ apiUsersRouter.post(
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
       removingFiles(files);
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -355,12 +355,12 @@ apiUsersRouter.delete(
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -390,7 +390,7 @@ apiUsersRouter.post(
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const verified = req.body.verified;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const VERIFIED_TYPES: Verified['type'][] = ['blue', 'gold', 'gray'];
     if (!verified || !VERIFIED_TYPES.includes(verified as Verified['type'])) {
       return httpBadRequestResponse(res);
@@ -399,7 +399,7 @@ apiUsersRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -426,12 +426,12 @@ apiUsersRouter.delete(
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -538,7 +538,7 @@ apiUsersRouter.get(
   ) => {
     const { cursor = '0', size = '10', filter = 'all' } = req.query;
     const id = req.params.id;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (filter !== 'all' && filter !== 'own' && filter !== 'memberships') {
       return httpBadRequestResponse(res);
@@ -547,7 +547,7 @@ apiUsersRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -698,12 +698,12 @@ apiUsersRouter.post(
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { id } = req.params;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res, 'please login first');
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -747,12 +747,12 @@ apiUsersRouter.delete(
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { id } = req.params;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 

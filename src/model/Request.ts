@@ -3,7 +3,7 @@ import { Query } from 'express-serve-static-core';
 import { ParamsDictionary } from 'express-serve-static-core';
 
 interface TypeCookie extends Record<string, any> {
-  'access.token'?: string;
+  accessToken?: string;
 }
 
 export interface TypedRequestCookies extends Request {

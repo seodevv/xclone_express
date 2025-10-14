@@ -67,13 +67,13 @@ apiPostsRouter.get(
   ) => {
     await delay(1000);
     const { cursor = '0', size = '10', q, pf, lf, f } = req.query;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : f === 'media' ? 12 : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -127,7 +127,7 @@ apiPostsRouter.post(
     await delay(2000);
     const { content, mediaInfo, repostid } = req.body;
     const files = req.files;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const media = mediaInfo
       ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
       : undefined;
@@ -143,7 +143,7 @@ apiPostsRouter.post(
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
       removingFiles(files);
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -220,13 +220,13 @@ apiPostsRouter.get(
     }>
   ) => {
     const { cursor = '0', size = '10' } = req.query;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -276,13 +276,13 @@ apiPostsRouter.get(
     }>
   ) => {
     const { cursor = '0', size = '10' } = req.query;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const findUser = await decodingUserToken(token);
     if (typeof findUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpNotFoundResponse(res);
     }
 
@@ -333,13 +333,13 @@ apiPostsRouter.get(
   ) => {
     await delay(1000);
     const { cursor = '0', size = '10' } = req.query;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -398,14 +398,14 @@ apiPostsRouter.delete(
     res: TypedResponse<{ message: string }>
   ) => {
     const postid = req.params.postid;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -453,14 +453,14 @@ apiPostsRouter.post(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const postid = req.params.postid;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -500,14 +500,14 @@ apiPostsRouter.delete(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const postid = req.params.postid;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -545,14 +545,14 @@ apiPostsRouter.post(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const postid = req.params.postid;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -596,14 +596,14 @@ apiPostsRouter.delete(
     res: TypedResponse<{ message: string }>
   ) => {
     const postid = req.params.postid;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const regex = /^[0-9]*$/;
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -695,7 +695,7 @@ apiPostsRouter.post(
     const postid = req.params.postid;
     const { content, mediaInfo } = req.body;
     const files = req.files;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const regex = /^[0-9]*$/;
     const media = mediaInfo
       ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
@@ -713,7 +713,7 @@ apiPostsRouter.post(
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
       removingFiles(files);
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -755,14 +755,14 @@ apiPostsRouter.get(
   ) => {
     const postid = req.params.postid;
     const regex = /^[0-9]+$/;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
 
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -802,7 +802,7 @@ apiPostsRouter.post(
   ) => {
     const postid = req.params.postid;
     const { userid, type = 'impressions' } = req.body;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const regex = /^[0-9]+$/;
 
     if (!userid || !regex.test(postid)) return httpBadRequestResponse(res);
@@ -819,7 +819,7 @@ apiPostsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -850,13 +850,13 @@ apiPostsRouter.post(
   ) => {
     const postid = req.params.postid;
     const regex = /^[0-9]+$/;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -894,14 +894,14 @@ apiPostsRouter.delete(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const postid = req.params.postid;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const regex = /^[0-9]+$/;
     if (!regex.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -947,7 +947,7 @@ apiPostsRouter.get(
     await delay(1000);
     const postid = req.params.postid;
     const { cursor = '0', size = '10', userid, filter } = req.query;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
     if (
       !userid ||
@@ -960,7 +960,7 @@ apiPostsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1057,13 +1057,13 @@ apiPostsRouter.post(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const postid = req.params.postid;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!REGEX_NUMBER_ONLY.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1101,13 +1101,13 @@ apiPostsRouter.delete(
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
     const postid = req.params.postid;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (!REGEX_NUMBER_ONLY.test(postid)) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -1146,7 +1146,7 @@ apiPostsRouter.post(
   ) => {
     const postid = req.params.postid;
     const scope = req.body.scope;
-    const { 'access.token': token } = req.cookies;
+    const { accessToken: token } = req.cookies;
     if (
       !REGEX_NUMBER_ONLY.test(postid) ||
       typeof scope === 'undefined' ||
@@ -1161,7 +1161,7 @@ apiPostsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
