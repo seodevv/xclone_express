@@ -91,11 +91,11 @@ const io = new Server<
   InterServerEvents,
   SocketData
 >(server, {
-  cors: {
-    origin,
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
+  // cors: {
+  //   origin,
+  //   methods: ['GET', 'POST'],
+  //   credentials: true,
+  // },
   maxHttpBufferSize: 1e9,
 });
 setupSocket(io);
