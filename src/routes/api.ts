@@ -105,15 +105,13 @@ apiRouter.post(
         return httpInternalServerErrorResponse(res);
       }
       // res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
-      // res.cookie('connect.sid', userToken, {
-      //   maxAge: 1000 * 60 * 60 * 24 * 30,
-      //   httpOnly: true,
-      //   path: '/',
-      //   sameSite: 'none',
-      //   secure: true,
-      // });
-      const cookieString = `connect.sid=${userToken}; Max-Age=2592000; HttpOnly; Path=/; Secure; SameSite=None; Domain=.seodevv.com`;
-      res.setHeader('Set-Cookie', cookieString);
+      res.cookie('connect.sid', userToken, {
+        maxAge: 1000 * 60 * 5,
+        httpOnly: false,
+        // path: '/',
+        sameSite: 'lax',
+        secure: true,
+      });
       return httpSuccessResponse(res, { data: findUser });
     }
 
@@ -241,9 +239,7 @@ apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
     // res.cookie('connect.sid', '', COOKIE_CLEAR_OPTIONS);
-    // res.clearCookie('connect.sid', COOKIE_CLEAR_OPTIONS);
-    const cookieString = `connect.sid=; Max-Age=0; HttpOnly; Path=/; Secure; SameSite=None; Domain=.seodevv.com`;
-    res.setHeader('Set-Cookie', cookieString);
+    res.clearCookie('connect.sid', COOKIE_CLEAR_OPTIONS);
     return httpSuccessResponse(res, { message: 'Logout successful' });
   }
 );
