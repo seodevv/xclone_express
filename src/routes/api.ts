@@ -104,14 +104,7 @@ apiRouter.post(
       if (typeof userToken === 'undefined') {
         return httpInternalServerErrorResponse(res);
       }
-      // res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
-      res.cookie('connect.sid', userToken, {
-        maxAge: 1000 * 60 * 5,
-        httpOnly: false,
-        // path: '/',
-        sameSite: 'lax',
-        secure: true,
-      });
+      res.cookie('connect.sid', userToken, COOKIE_OPTIONS);
       return httpSuccessResponse(res, { data: findUser });
     }
 
