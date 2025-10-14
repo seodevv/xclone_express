@@ -7,7 +7,7 @@ import DAO from '@/lib/DAO';
 import { SafeUser } from '@/db/schema';
 
 export const COOKIE_OPTIONS: CookieOptions = {
-  maxAge: 1000 * 60 * 5 * 24 * 30,
+  maxAge: 1000 * 60 * 60 * 24 * 30,
   httpOnly: true,
   path: '/',
   sameSite: 'none',

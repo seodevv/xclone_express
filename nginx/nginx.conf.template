@@ -28,7 +28,7 @@ server {
         # access_log /var/log/nginx/xclone_debug.log custom_debug;
         # error_log /var/log/nginx/debug.log debug;
 
-        # proxy_pass_header Set-Cookie;
-        # proxy_set_header Cookie $http_cookie;
+        proxy_pass_header Set-Cookie;
+        proxy_set_header Cookie $http_cookie;
     }
 }
