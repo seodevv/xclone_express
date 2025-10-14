@@ -8,9 +8,9 @@ import http from 'http';
 import https from 'https';
 import apiRouter from '@/routes/api';
 import morgan from 'morgan';
-import os from 'os';
-import cluster from 'cluster';
-import initializeDatabase from '@/db/initilizer';
+// import os from 'os';
+// import cluster from 'cluster';
+// import initializeDatabase from '@/db/initilizer';
 import { Server } from 'socket.io';
 import { setupSocket } from '@/lib/socket';
 import {
@@ -58,7 +58,7 @@ if (!fs.pathExistsSync(uploadPath)) {
 //   });
 // } else {
 const app = express();
-app.set('trust proxy', true);
+// app.set('trust proxy', true);
 app.use(
   cors({
     origin,
@@ -75,16 +75,28 @@ app.use(
 );
 app.use('/api', apiRouter);
 
-server =
-  process.env.NODE_ENV === 'production'
-    ? http.createServer({}, app)
-    : https.createServer(
-        {
-          key: fs.readFileSync('./localhost-key.pem'),
-          cert: fs.readFileSync('./localhost.pem'),
-        },
-        app
-      );
+server = https.createServer(
+  {
+    cert: fs.readFileSync(
+      '/etc/letsencrypt/archive/api.xclone.seodevv.com/fullchain1.pem'
+    ),
+    key: fs.readFileSync(
+      '/etc/letsencrypt/archive/api.xclone.seodevv.com/privkey1.pem'
+    ),
+  },
+  app
+);
+
+// server =
+//   process.env.NODE_ENV === 'production'
+//     ? http.createServer({}, app)
+//     : https.createServer(
+//         {
+//           key: fs.readFileSync('./localhost-key.pem'),
+//           cert: fs.readFileSync('./localhost.pem'),
+//         },
+//         app
+//       );
 const io = new Server<
   ClientToServerEvents,
   ServerToClientEvents,
@@ -101,10 +113,11 @@ const io = new Server<
 setupSocket(io);
 
 server.listen(port, host, async () => {
-  console.log(
-    `Worker ${process.pid} is running on : ${
-      process.env.NODE_ENV === 'production' ? 'http' : 'https'
-    }://${host}:${port}`
-  );
+  // console.log(
+  //   `Worker ${process.pid} is running on : ${
+  //     process.env.NODE_ENV === 'production' ? 'http' : 'https'
+  //   }://${host}:${port}`
+  // );
+  console.log(`Worker ${process.pid} is running on : https://${host}:${port}`);
 });
 // }
