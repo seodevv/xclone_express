@@ -21,6 +21,9 @@ jobs:
       - name: Sync project files to EC2
         run: |
           rsync -avz --delete \
+            --exclude='.env' \
+            --exclude='global-bundle.pem' \
+            --exclude='nginx/certs' \
             --exclude='.git' \
             --exclude='.github' \
             --exclude='.gitignore' \
@@ -29,6 +32,7 @@ jobs:
             --exclude='.env.default' \
             --exclude='pm2.config.js' \
             --exclude='README.md' \
+            --exclude='uploads' \
             -e "ssh -o StrictHostKeyChecking=no" \
             ./ ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_SSH_DOMAIN }}:/app/xclone_express
 
