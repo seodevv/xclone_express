@@ -66,8 +66,8 @@ app.set('trust proxy', true);
 //     credentials: true,
 //   })
 // );
-app.use(express.json());
 app.use(cookieParser());
+app.use(express.json());
 app.use(
   morgan(
     `[Worker ${process.pid}] :remote-addr :method :url :status :res[content-length] - :response-time ms`
