@@ -59,13 +59,14 @@ if (!fs.pathExistsSync(uploadPath)) {
 // } else {
 const app = express();
 app.set('trust proxy', true);
-app.use(
-  cors({
-    origin,
-    optionsSuccessStatus: 200,
-    credentials: true,
-  })
-);
+app
+  .use
+  // cors({
+  //   origin,
+  //   optionsSuccessStatus: 200,
+  //   credentials: true,
+  // })
+  ();
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -91,11 +92,11 @@ const io = new Server<
   InterServerEvents,
   SocketData
 >(server, {
-  cors: {
-    origin,
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
+  // cors: {
+  //   origin,
+  //   methods: ['GET', 'POST'],
+  //   credentials: true,
+  // },
   maxHttpBufferSize: 1e9,
 });
 setupSocket(io);
