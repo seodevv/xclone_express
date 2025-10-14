@@ -5,7 +5,7 @@ services:
     build: .
     image: xclone_express:1.0.0
     port:
-      - '443:443'
+      - '443:9090'
     # expose:
     #   - '9090'
     volumes:
@@ -15,7 +15,7 @@ services:
     environment:
       - NODE_ENV=production
       - SERVER_HOST=0.0.0.0
-      - SERVER_PORT=443
+      - SERVER_PORT=9090
     env_file:
       - .env
     restart: always
