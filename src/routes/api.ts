@@ -112,8 +112,8 @@ apiRouter.post(
       //   sameSite: 'none',
       //   secure: true,
       // });
-      // const cookieString = `connect.sid=${userToken}; Max-Age=2592000; HttpOnly; Path=/; Secure; SameSite=None;`;
-      // res.setHeader('Set-Cookie', cookieString);
+      const cookieString = `connect.sid=${userToken}; Max-Age=2592000; HttpOnly; Path=/; Secure; SameSite=None;`;
+      res.setHeader('Set-Cookie', cookieString);
       return httpSuccessResponse(res, { data: findUser });
     }
 
