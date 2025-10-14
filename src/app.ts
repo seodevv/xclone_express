@@ -59,13 +59,13 @@ if (!fs.pathExistsSync(uploadPath)) {
 // } else {
 const app = express();
 app.set('trust proxy', true);
-app.use(
-  cors({
-    origin,
-    optionsSuccessStatus: 200,
-    credentials: true,
-  })
-);
+// app.use(
+//   cors({
+//     origin,
+//     optionsSuccessStatus: 200,
+//     credentials: true,
+//   })
+// );
 app.use(express.json());
 app.use(cookieParser());
 app.use(
