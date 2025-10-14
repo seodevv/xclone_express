@@ -36,7 +36,6 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_SSH_DOMAIN }} << 'EOF'
             cd /app/xclone_express
-            sudo chown -R $USER:$USER .
             docker compose down
             docker compose up -d --build
           EOF
