@@ -30,11 +30,11 @@ jobs:
             --exclude='pm2.config.js' \
             --exclude='README.md' \
             -e "ssh -o StrictHostKeyChecking=no" \
-            ./ ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_HOST }}:/app/xclone_express
+            ./ ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_SSH_DOMAIN }}:/app/xclone_express
 
       - name: Deploy with Docker Compose
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_HOST }} << 'EOF'
+          ssh -o StrictHostKeyChecking=no ${{ secrets.EC2_SSH_ID }}@${{ secrets.EC2_SSH_DOMAIN }} << 'EOF'
             cd /app/xclone_express
             sudo chown -R $USER:$USER .
             docker compose down
