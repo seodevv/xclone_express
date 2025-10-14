@@ -12,6 +12,7 @@ export const COOKIE_OPTIONS: CookieOptions = {
   path: '/',
   sameSite: 'none',
   secure: true,
+  domain: '.seodevv.com',
 };
 
 export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
@@ -20,6 +21,7 @@ export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
   path: '/',
   sameSite: 'none',
   secure: true,
+  domain: '.seodevv.com',
 };
 
 export const IMAGE_DEFAULT_PROFILE = 'default_profile.png';
