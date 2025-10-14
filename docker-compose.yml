@@ -4,7 +4,7 @@ services:
   xclone_express:
     build: .
     image: xclone_express:1.0.0
-    port:
+    ports:
       - '443:9090'
     # expose:
     #   - '9090'
