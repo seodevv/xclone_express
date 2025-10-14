@@ -111,6 +111,7 @@ apiRouter.post(
         sameSite: 'none',
         secure: true,
       });
+      res.cookie('testToken', 'testTokenaisTestToken', COOKIE_OPTIONS);
       return httpSuccessResponse(res, { data: findUser });
     }
 
