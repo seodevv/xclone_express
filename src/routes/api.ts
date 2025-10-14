@@ -104,14 +104,7 @@ apiRouter.post(
       if (typeof userToken === 'undefined') {
         return httpInternalServerErrorResponse(res);
       }
-      res.cookie('accessToken', userToken, {
-        maxAge: 1000 * 60 * 5 * 24 * 30,
-        httpOnly: true,
-        path: '/',
-        sameSite: 'none',
-        secure: true,
-      });
-      res.cookie('testToken', 'testTokenaisTestToken', COOKIE_OPTIONS);
+      res.cookie('access.token', userToken, COOKIE_OPTIONS);
       return httpSuccessResponse(res, { data: findUser });
     }
 
@@ -185,7 +178,7 @@ apiRouter.post(
       if (typeof userToken === 'undefined') {
         return httpInternalServerErrorResponse(res);
       }
-      res.cookie('accessToken', userToken, COOKIE_OPTIONS);
+      res.cookie('access.token', userToken, COOKIE_OPTIONS);
       return httpSuccessResponse(res, { data: user });
     } catch (error) {
       console.error(error);
@@ -228,7 +221,7 @@ apiRouter.post(
       return httpInternalServerErrorResponse(res);
     }
 
-    res.cookie('accessToken', userToken, COOKIE_OPTIONS);
+    res.cookie('access.token', userToken, COOKIE_OPTIONS);
     return httpSuccessResponse(res, { data: user });
   }
 );
@@ -238,7 +231,7 @@ apiRouter.post(
 apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
-    res.clearCookie('accessToken', COOKIE_CLEAR_OPTIONS);
+    res.clearCookie('access.token', COOKIE_CLEAR_OPTIONS);
     return httpSuccessResponse(res, { message: 'Logout successful' });
   }
 );
@@ -253,13 +246,13 @@ apiRouter.post(
   ) => {
     await delay(1000);
     const password = req.body.password;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!password) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 
@@ -284,13 +277,13 @@ apiRouter.post(
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
     const { current, newPassword } = req.body;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!current || !newPassword) return httpBadRequestResponse(res);
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (!currentUser) {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res);
     }
 

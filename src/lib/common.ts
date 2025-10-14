@@ -11,14 +11,15 @@ export const COOKIE_OPTIONS: CookieOptions = {
   httpOnly: true,
   path: '/',
   sameSite: 'none',
-  secure: true,
+  secure: false,
 };
 
 export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
+  maxAge: 0,
   httpOnly: true,
   path: '/',
   sameSite: 'none',
-  secure: true,
+  secure: false,
 };
 
 export const IMAGE_DEFAULT_PROFILE = 'default_profile.png';

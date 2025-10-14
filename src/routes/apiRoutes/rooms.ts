@@ -32,12 +32,12 @@ apiRoomsRouter.get(
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: AdvancedRooms[]; message: string }>
   ) => {
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -59,7 +59,7 @@ apiRoomsRouter.get(
     req: TypedRequestCookies,
     res: TypedResponse<{ data?: RoomsNotifications[]; message: string }>
   ) => {
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     console.log('=== 요청 헤더 전체 로그 ===');
     console.log(req.headers);
     console.log('============================');
@@ -70,7 +70,7 @@ apiRoomsRouter.get(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token has expired');
     }
 
@@ -96,13 +96,13 @@ apiRoomsRouter.get(
     }>
   ) => {
     const { roomid } = req.params;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
     if (!roomid.includes('-')) return httpBadRequestResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
 
@@ -169,12 +169,12 @@ apiRoomsRouter.delete(
     res: TypedResponse<{ data?: AdvancedRooms; message: string }>
   ) => {
     const { roomid } = req.params;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
 
@@ -218,12 +218,12 @@ apiRoomsRouter.post(
     res: TypedResponse<{ data?: AdvancedRooms; message: string }>
   ) => {
     const { roomid } = req.params;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token the expired');
     }
 
@@ -256,12 +256,12 @@ apiRoomsRouter.post(
     res: TypedResponse<{ data?: AdvancedRooms; message: string }>
   ) => {
     const { roomid } = req.params;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
 
@@ -306,12 +306,12 @@ apiRoomsRouter.delete(
     res: TypedResponse<{ data?: AdvancedRooms; message: string }>
   ) => {
     const { roomid } = req.params;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
 
@@ -357,7 +357,7 @@ apiRoomsRouter.post(
   ) => {
     const { roomid } = req.params;
     const { snooze } = req.body;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
     if (
       snooze !== '1h' &&
@@ -370,7 +370,7 @@ apiRoomsRouter.post(
 
     const currentUser = await decodingUserToken(token);
     if (typeof currentUser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
 
@@ -412,12 +412,12 @@ apiRoomsRouter.delete(
     res: TypedResponse<{ data?: AdvancedRooms; message: string }>
   ) => {
     const { roomid } = req.params;
-    const { accessToken: token } = req.cookies;
+    const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentuser = await decodingUserToken(token);
     if (typeof currentuser === 'undefined') {
-      res.cookie('accessToken', '', COOKIE_CLEAR_OPTIONS);
+      res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
       return httpUnAuthorizedResponse(res, 'The token is expired');
     }
 

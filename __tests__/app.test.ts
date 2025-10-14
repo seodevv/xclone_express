@@ -17,6 +17,7 @@ import { AdvancedMessages } from '../src/model/Message';
 import { AdvancedLists } from '../src/model/Lists';
 import { HashTags } from '../src/model/Hashtag';
 import crypto from 'crypto';
+import http from 'http';
 
 interface CustomSocket
   extends Socket<ServerToClientEvents, ClientToServerEvents> {
@@ -77,13 +78,18 @@ beforeAll(async () => {
 
   // waits for the websocket to connect to the server
   await new Promise<void>((resolve, reject) => {
-    client = io('https://127.0.0.1:9090/messages', {
-      rejectUnauthorized: false,
-      retries: 0,
-      auth: {
-        sessionId: tester.id,
-      },
-    });
+    client = io(
+      `${
+        server instanceof http.Server ? 'http' : 'https'
+      }://127.0.0.1:9090/messages`,
+      {
+        rejectUnauthorized: false,
+        retries: 0,
+        auth: {
+          sessionId: tester.id,
+        },
+      }
+    );
     client.on('connect', () => {
       resolve();
     });

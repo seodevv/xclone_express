@@ -19,11 +19,15 @@ import {
   ServerToClientEvents,
   SocketData,
 } from '@/model/Socket';
+import { setupServer } from '@/lib/setup';
 
 const host = process.env.SERVER_HOST || '0.0.0.0';
-const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 9090;
+const port =
+  process.env.SERVER_PORT && ~~process.env.SERVER_PORT !== 0
+    ? ~~process.env.SERVER_PORT
+    : 9090;
 const origin = process.env.SERVER_ORIGIN
-  ? process.env.SERVER_ORIGIN
+  ? process.env.SERVER_ORIGIN.split(',')
   : 'https://localhost';
 
 export let server: ReturnType<(typeof https | typeof http)['createServer']>;
@@ -75,28 +79,8 @@ app.use(
 );
 app.use('/api', apiRouter);
 
-server = https.createServer(
-  {
-    cert: fs.readFileSync(
-      '/etc/letsencrypt/archive/api.xclone.seodevv.com/fullchain1.pem'
-    ),
-    key: fs.readFileSync(
-      '/etc/letsencrypt/archive/api.xclone.seodevv.com/privkey1.pem'
-    ),
-  },
-  app
-);
+server = setupServer(app);
 
-// server =
-//   process.env.NODE_ENV === 'production'
-//     ? http.createServer({}, app)
-//     : https.createServer(
-//         {
-//           key: fs.readFileSync('./localhost-key.pem'),
-//           cert: fs.readFileSync('./localhost.pem'),
-//         },
-//         app
-//       );
 const io = new Server<
   ClientToServerEvents,
   ServerToClientEvents,
@@ -113,11 +97,10 @@ const io = new Server<
 setupSocket(io);
 
 server.listen(port, host, async () => {
-  // console.log(
-  //   `Worker ${process.pid} is running on : ${
-  //     process.env.NODE_ENV === 'production' ? 'http' : 'https'
-  //   }://${host}:${port}`
-  // );
-  console.log(`Worker ${process.pid} is running on : https://${host}:${port}`);
+  console.log(
+    `Worker ${process.pid} is running on : ${
+      server instanceof http.Server ? 'http' : 'https'
+    }://${host}:${port}`
+  );
 });
 // }
