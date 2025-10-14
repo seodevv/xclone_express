@@ -8,17 +8,18 @@ import { SafeUser } from '@/db/schema';
 
 export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60,
-  // httpOnly: true,
-  // path: '/',
-  // sameSite: 'none',
-  // secure: true,
+  httpOnly: true,
+  path: '/',
+  sameSite: 'lax',
+  secure: false,
 };
 
 export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
   maxAge: 0,
-  // path: '/',
-  // sameSite: 'none',
-  // secure: true,
+  httpOnly: true,
+  path: '/',
+  sameSite: 'lax',
+  secure: false,
 };
 
 export const IMAGE_DEFAULT_PROFILE = 'default_profile.png';
