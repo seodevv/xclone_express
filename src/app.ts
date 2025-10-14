@@ -22,9 +22,9 @@ import {
 
 const host = process.env.SERVER_HOST || '0.0.0.0';
 const port = process.env.SERVER_PORT ? parseInt(process.env.SERVER_PORT) : 9090;
-// const origin = process.env.SERVER_ORIGIN
-//   ? process.env.SERVER_ORIGIN
-//   : 'https://localhost';
+const origin = process.env.SERVER_ORIGIN
+  ? process.env.SERVER_ORIGIN
+  : 'https://localhost';
 
 export let server: ReturnType<(typeof https | typeof http)['createServer']>;
 export const uploadPath = path.join(__dirname, '../uploads');
@@ -59,13 +59,13 @@ if (!fs.pathExistsSync(uploadPath)) {
 // } else {
 const app = express();
 app.set('trust proxy', true);
-// app.use(
-//   cors({
-//     origin,
-//     optionsSuccessStatus: 200,
-//     credentials: true,
-//   })
-// );
+app.use(
+  cors({
+    origin,
+    optionsSuccessStatus: 200,
+    credentials: true,
+  })
+);
 app.use(cookieParser());
 app.use(express.json());
 app.use(
@@ -91,11 +91,11 @@ const io = new Server<
   InterServerEvents,
   SocketData
 >(server, {
-  // cors: {
-  //   origin,
-  //   methods: ['GET', 'POST'],
-  //   credentials: true,
-  // },
+  cors: {
+    origin,
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
   maxHttpBufferSize: 1e9,
 });
 setupSocket(io);

@@ -14,23 +14,23 @@ server {
 
     location / {
 
-        if ($request_method = 'OPTIONS') {
-            add_header 'Access-Control-Allow-Origin' 'https://xclone.seodevv.com' always;
-            add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS' always;
-            add_header 'Access-Control-Allow-Headers' 'Authorization,Content-Type' always;
-            add_header 'Access-Control-Allow-Credentials' 'true' always;
-            add_header 'Content-Length' 0;
-            add_header 'Content-Type' 'text/plain';
-            return 204;
-        }
+        #if ($request_method = 'OPTIONS') {
+        #    add_header 'Access-Control-Allow-Origin' 'https://xclone.seodevv.com' always;
+        #    add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, PATCH, DELETE, OPTIONS' always;
+        #    add_header 'Access-Control-Allow-Headers' 'Authorization,Content-Type' always;
+        #    add_header 'Access-Control-Allow-Credentials' 'true' always;
+        #    add_header 'Content-Length' 0;
+        #    add_header 'Content-Type' 'text/plain';
+        #    return 204;
+        #}
 
-        add_header 'Access-Control-Allow-Origin' 'https://xclone.seodevv.com' always;
-        add_header 'Access-Control-Allow-Credentials' 'true' always;
+        #add_header 'Access-Control-Allow-Origin' 'https://xclone.seodevv.com' always;
+        #add_header 'Access-Control-Allow-Credentials' 'true' always;
 
         proxy_pass http://xclone_express:9090;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
+        #proxy_set_header Upgrade $http_upgrade;
+        #proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -39,10 +39,10 @@ server {
         #proxy_cookie_path / "/; secure; SameSite=None";
         #proxy_cookie_path /api "/api; secure; SameSite=None";
         
-        access_log /var/log/nginx/xclone_debug.log custom_debug;
-        error_log /var/log/nginx/debug.log debug;
+        #access_log /var/log/nginx/xclone_debug.log custom_debug;
+        #error_log /var/log/nginx/debug.log debug;
 
-        proxy_pass_header Set-Cookie;
-        proxy_set_header Cookie $http_cookie;
+        #proxy_pass_header Set-Cookie;
+        #proxy_set_header Cookie $http_cookie;
     }
 }

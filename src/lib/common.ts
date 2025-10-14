@@ -7,19 +7,18 @@ import DAO from '@/lib/DAO';
 import { SafeUser } from '@/db/schema';
 
 export const COOKIE_OPTIONS: CookieOptions = {
-  maxAge: 1000 * 60,
+  maxAge: 1000 * 60 * 5 * 24 * 30,
   httpOnly: true,
   path: '/',
-  sameSite: 'lax',
-  secure: false,
+  sameSite: 'none',
+  secure: true,
 };
 
 export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
-  maxAge: 0,
   httpOnly: true,
   path: '/',
-  sameSite: 'lax',
-  secure: false,
+  sameSite: 'none',
+  secure: true,
 };
 
 export const IMAGE_DEFAULT_PROFILE = 'default_profile.png';

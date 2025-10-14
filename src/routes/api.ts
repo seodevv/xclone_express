@@ -231,7 +231,6 @@ apiRouter.post(
 apiRouter.post(
   '/logout',
   (req: TypedRequestCookies, res: TypedResponse<{ message: string }>) => {
-    // res.cookie('access.token', '', COOKIE_CLEAR_OPTIONS);
     res.clearCookie('access.token', COOKIE_CLEAR_OPTIONS);
     return httpSuccessResponse(res, { message: 'Logout successful' });
   }
