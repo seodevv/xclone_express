@@ -13,50 +13,6 @@ import {
 import { createAdapter } from '@socket.io/postgres-adapter';
 import { pool } from '@/db/env';
 
-const clientSockets: Socket<
-  ClientToServerEvents,
-  ServerToClientEvents,
-  InterServerEvents,
-  SocketData
->[] = [];
-
-function addClientSocket(socket: (typeof clientSockets)[0]) {
-  const index = clientSockets.findIndex(
-    (clientSocket) =>
-      clientSocket.handshake.auth.sessionId === socket.handshake.auth.sessionId
-  );
-  if (index > -1) {
-    clientSockets[index] = socket;
-  } else {
-    clientSockets.push(socket);
-  }
-  console.log(
-    `[${socket.id}][${socket.handshake.auth.sessionId}] a user connected`
-  );
-  console.log(
-    `[client sockets] ${clientSockets
-      .map((s) => s.handshake.auth.sessionId)
-      .join(', ')}`
-  );
-}
-function removeClientSocket(socket: (typeof clientSockets)[0]) {
-  const index = clientSockets.findIndex(
-    (clientSocket) =>
-      clientSocket.handshake.auth.sessionId === socket.handshake.auth.sessionId
-  );
-  if (index > -1) {
-    clientSockets.splice(index, 1);
-  }
-  console.log(
-    `[${socket.id}][${socket.handshake.auth.sessionId}] user disconnected`
-  );
-  console.log(
-    `[client sockets] ${clientSockets
-      .map((s) => s.handshake.auth.sessionId)
-      .join(', ')}`
-  );
-}
-
 export function setupSocket(
   io: Server<
     ClientToServerEvents,
@@ -68,8 +24,10 @@ export function setupSocket(
   io.adapter(createAdapter(pool));
 
   io.of('/messages').on('connection', (socket) => {
-    addClientSocket(socket);
     const sessionid = socket.handshake.auth.sessionId;
+    socket.join(sessionid);
+
+    console.log(`[${socket.id}][${sessionid}][${process.pid}] connected`);
 
     socket.on('message', async (data, callback) => {
       const { roomid, senderid, content, parentid, media } = data;
@@ -119,20 +77,14 @@ export function setupSocket(
           }
         }
 
-        const target = clientSockets.find(
-          (socket) => socket.handshake.auth.sessionId === receiverid
-        );
-
         const updatedRoom = await dao.getAdvancedRoom({
           sessionid: receiverid,
           roomid,
         });
-        if (typeof target !== 'undefined') {
-          target.emit('message', {
-            room: updatedRoom,
-            message: createdMessage,
-          });
-        }
+        io.of('/messages').to(receiverid).emit('message', {
+          room: updatedRoom,
+          message: createdMessage,
+        });
       }
 
       dao.release();
@@ -186,10 +138,10 @@ export function setupSocket(
       dao.release();
 
       callback(updatedMessage);
-      const target = clientSockets.find(
-        (socket) => socket.handshake.auth.sessionId === receiverid
-      );
-      target?.emit('reaction', { message: updatedMessage });
+
+      io.of('/messages').to(receiverid).emit('reaction', {
+        message: updatedMessage,
+      });
     });
 
     socket.on('focus', async ({ roomid }, callback) => {
@@ -203,14 +155,10 @@ export function setupSocket(
       dao.release();
 
       callback();
-      const target = clientSockets.find(
-        (socket) => socket.handshake.auth.sessionId === receiverid
-      );
-      target?.emit('focus', { roomid });
-    });
 
-    socket.on('disconnect', () => {
-      removeClientSocket(socket);
+      io.of('/messages').to(receiverid).emit('focus', {
+        roomid,
+      });
     });
   });
 }

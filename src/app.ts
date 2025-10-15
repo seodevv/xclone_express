@@ -1,13 +1,13 @@
 import 'dotenv/config';
 import cors from 'cors';
 import express from 'express';
-import cookieParser from 'cookie-parser';
-import http from 'http';
-import https from 'https';
-import apiRouter from '@/routes/api';
-import morgan from 'morgan';
-import os from 'os';
 import cluster from 'cluster';
+import os from 'os';
+import http from 'http';
+import https from 'http';
+import cookieParser from 'cookie-parser';
+import morgan from 'morgan';
+import apiRouter from '@/routes/api';
 import initializeDatabase from '@/db/initilizer';
 import { Server } from 'socket.io';
 import { setupSocket } from '@/lib/socket';
@@ -31,13 +31,13 @@ const origin = process.env.SERVER_ORIGIN
 export const uploadPath = setupUploads();
 export let server: ReturnType<(typeof https | typeof http)['createServer']>;
 
-const MAX_WORKER = process.env.MAX_WORKER ? ~~process.env.MAX_WORKER : 1;
-const numWorkers =
-  os.cpus().length > MAX_WORKER ? MAX_WORKER : os.cpus().length;
-
-if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
+if (cluster.isPrimary) {
   initializeDatabase()
     .then(() => {
+      const MAX_WORKER = process.env.MAX_WORKER ? ~~process.env.MAX_WORKER : 1;
+      const numWorkers =
+        os.cpus().length > MAX_WORKER ? MAX_WORKER : os.cpus().length;
+
       for (let i = 0; i < numWorkers; i++) {
         cluster.fork();
       }
@@ -67,15 +67,7 @@ if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
   );
   app.use('/api', apiRouter);
 
-  server = setupServer(app);
-  server.listen(port, host, () => {
-    console.log(
-      `Express worker is running on : [worker:${process.pid}] ${
-        server instanceof http.Server ? 'http' : 'https'
-      }://${host}:${port}`
-    );
-  });
-
+  const server = setupServer(app);
   const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
@@ -90,4 +82,12 @@ if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
     maxHttpBufferSize: 1e9,
   });
   setupSocket(io);
+
+  server.listen(port, host, () => {
+    console.log(
+      `Express worker is running on : [worker:${process.pid}] ${
+        server instanceof http.Server ? 'http' : 'https'
+      }://${host}:${port}`
+    );
+  });
 }

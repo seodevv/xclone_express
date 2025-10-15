@@ -31,4 +31,3 @@ docker-entrypoint.sh
 nginx
 uploads
 README.md
-pm2.config.js
