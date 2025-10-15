@@ -6,13 +6,18 @@ import { CookieOptions } from 'express';
 import DAO from '@/lib/DAO';
 import { SafeUser } from '@/db/schema';
 
+const domain =
+  process.env.DOMAIN_NAME && /[^.]+\.[^.]+$/.test(process.env.DOMAIN_NAME)
+    ? process.env.DOMAIN_NAME.match(/[^.]+\.[^.]+$/)?.at(0)
+    : undefined;
+
 export const COOKIE_OPTIONS: CookieOptions = {
   maxAge: 1000 * 60 * 60 * 24 * 30,
   httpOnly: true,
   path: '/',
   sameSite: 'none',
   secure: true,
-  domain: '.seodevv.com',
+  domain,
 };
 
 export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
@@ -21,7 +26,7 @@ export const COOKIE_CLEAR_OPTIONS: CookieOptions = {
   path: '/',
   sameSite: 'none',
   secure: true,
-  domain: '.seodevv.com',
+  domain,
 };
 
 export const IMAGE_DEFAULT_PROFILE = 'default_profile.png';

@@ -132,8 +132,6 @@ apiPostsRouter.post(
       ? (JSON.parse(mediaInfo) as (GifType | ImageType)[])
       : undefined;
 
-    console.log(req.headers);
-
     if (!files) return httpBadRequestResponse(res);
     if (!content && files.length === 0 && !media)
       return httpBadRequestResponse(res);

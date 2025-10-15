@@ -60,12 +60,6 @@ apiRoomsRouter.get(
     res: TypedResponse<{ data?: RoomsNotifications[]; message: string }>
   ) => {
     const { 'access.token': token } = req.cookies;
-    console.log('=== 요청 헤더 전체 로그 ===');
-    console.log(req.headers);
-    console.log('============================');
-    console.log('=== 요청 쿠키 전체 로그 ===');
-    console.log('cookie', req.cookies);
-    console.log('============================');
     if (!token) return httpUnAuthorizedResponse(res);
 
     const currentUser = await decodingUserToken(token);

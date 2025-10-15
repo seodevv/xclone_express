@@ -17,5 +17,15 @@ dist/
 *.pem
 *.ppk
 
+# docker
+docker-compose.local.yml
+
+# test
+test.conf
+test.txt
+test.json
+test.yml
+test.xml
+
 # Production
 uploads/

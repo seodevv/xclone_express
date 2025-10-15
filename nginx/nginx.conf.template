@@ -32,3 +32,14 @@ server {
         proxy_set_header Cookie $http_cookie;
     }
 }
+
+server {
+    listen 80 default_server;
+    listen 443 ssl default_server;
+    server_name _;
+
+    ssl_certificate	/etc/letsencrypt/archive/${DOMAIN_NAME}/fullchain1.pem;
+    ssl_certificate_key /etc/letsencrypt/archive/${DOMAIN_NAME}/privkey1.pem;
+
+    return 444;
+}

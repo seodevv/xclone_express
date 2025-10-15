@@ -4,9 +4,9 @@ import { Express } from 'express';
 import fs from 'fs-extra';
 import path from 'path';
 
-export function setupServer(app: Express): http.Server | https.Server {
-  const root = path.resolve(__dirname, '..', '..');
+const root = path.resolve(__dirname, '..', '..');
 
+export function setupServer(app?: Express): http.Server | https.Server {
   if (process.env.SSL === 'true') {
     const cert = process.env.SSL_CERT
       ? process.env.SSL_CERT.startsWith('.')
@@ -35,4 +35,14 @@ export function setupServer(app: Express): http.Server | https.Server {
   }
 
   return http.createServer({}, app);
+}
+
+export function setupUploads(): string {
+  const uploadPath = path.resolve(root, 'uploads');
+
+  if (!fs.pathExistsSync(uploadPath)) {
+    fs.mkdirSync(uploadPath);
+  }
+
+  return uploadPath;
 }
