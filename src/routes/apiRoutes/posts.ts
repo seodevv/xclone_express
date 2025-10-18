@@ -40,7 +40,10 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const fileName = `${Date.now()}_${file.originalname}`;
+    const fileName = `${Date.now()}_${Buffer.from(
+      file.originalname,
+      'latin1'
+    ).toString('utf8')}`;
     cb(null, fileName);
   },
 });
@@ -431,6 +434,7 @@ apiPostsRouter.delete(
     dao.release();
     if (findPost.images.length) {
       findPost.images.forEach((image) => {
+        if (image.link === '') return;
         try {
           const imagePath = path.join(uploadPath, '/', image.link);
           fs.removeSync(imagePath);

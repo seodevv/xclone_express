@@ -3,7 +3,6 @@ import https from 'https';
 import { Express } from 'express';
 import fs from 'fs-extra';
 import path from 'path';
-
 const root = path.resolve(__dirname, '..', '..');
 
 export function setupServer(app?: Express): http.Server | https.Server {

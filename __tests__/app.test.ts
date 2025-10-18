@@ -202,7 +202,7 @@ afterAll(async () => {
   // delete the user that was used for testing
   for (const id of [tester.id, target.id]) {
     const user = await dao.getUser({ id });
-    if (typeof user?.image !== 'undefined') {
+    if (typeof user?.image !== 'undefined' && user.image !== '') {
       const imagePath = path.resolve(uploadPath, user.image);
       fs.removeSync(imagePath);
     }

@@ -97,6 +97,7 @@ export const removingFiles = (
   if (files) {
     if (Array.isArray(files)) {
       Object.values(files).forEach((file: Express.Multer.File) => {
+        if (file.filename === '') return;
         fs.removeSync(uploadPath + '/' + file.filename);
       });
       return;
@@ -106,6 +107,7 @@ export const removingFiles = (
     Object.values(files).forEach((array) =>
       array.forEach((file) => {
         if (already.includes(file.filename)) return;
+        if (file.filename === '') return;
         fs.removeSync(uploadPath + '/' + file.filename);
         already.push(file.filename);
       })

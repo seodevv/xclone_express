@@ -40,7 +40,10 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const fileName = `${Date.now()}_${file.originalname}`;
+    const fileName = `${Date.now()}_${Buffer.from(
+      file.originalname,
+      'latin1'
+    ).toString('utf8')}`;
     cb(null, fileName);
   },
 });
@@ -282,11 +285,14 @@ apiListsRouter.delete(
     await dao.deleteLists({ id: findLists.id });
     dao.release();
 
-    if (findLists.banner !== IMAGE_DEFAULT_LISTS) {
+    if (findLists.banner !== IMAGE_DEFAULT_LISTS && findLists.banner !== '') {
       const imagePath = path.join(uploadPath, '/', findLists.banner);
       fs.removeSync(imagePath);
     }
-    if (findLists.thumbnail !== IMAGE_DEFAULT_LISTS) {
+    if (
+      findLists.thumbnail !== IMAGE_DEFAULT_LISTS &&
+      findLists.thumbnail !== ''
+    ) {
       const imagePath = path.join(uploadPath, '/', findLists.thumbnail);
       fs.removeSync(imagePath);
     }
@@ -378,14 +384,16 @@ apiListsRouter.post(
 
     if (
       findLists.banner !== IMAGE_DEFAULT_LISTS &&
-      findLists.banner !== updateLists?.banner
+      findLists.banner !== updateLists?.banner &&
+      findLists.banner !== ''
     ) {
       const imagePath = path.join(uploadPath, '/', findLists.banner);
       fs.removeSync(imagePath);
     }
     if (
       findLists.thumbnail !== IMAGE_DEFAULT_LISTS &&
-      findLists.thumbnail !== updateLists?.thumbnail
+      findLists.thumbnail !== updateLists?.thumbnail &&
+      findLists.thumbnail !== ''
     ) {
       const imagePath = path.join(uploadPath, '/', findLists.thumbnail);
       fs.removeSync(imagePath);

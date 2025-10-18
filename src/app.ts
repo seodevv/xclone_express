@@ -29,9 +29,10 @@ const origin = process.env.SERVER_ORIGIN
   : 'https://localhost';
 
 export const uploadPath = setupUploads();
+
 export let server: ReturnType<(typeof https | typeof http)['createServer']>;
 
-if (cluster.isPrimary) {
+if (cluster.isPrimary && process.env.NODE_ENV !== 'test') {
   initializeDatabase()
     .then(() => {
       const MAX_WORKER = process.env.MAX_WORKER ? ~~process.env.MAX_WORKER : 1;
@@ -67,7 +68,7 @@ if (cluster.isPrimary) {
   );
   app.use('/api', apiRouter);
 
-  const server = setupServer(app);
+  server = setupServer(app);
   const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,

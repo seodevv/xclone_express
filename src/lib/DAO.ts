@@ -1145,7 +1145,6 @@ class DAO {
         sort,
         pagination,
       });
-      // console.log('[getListsList]\n', queryConfig.text);
       const result = await safeQuery<AdvancedLists>(this.client, queryConfig);
       return result.rows;
     } catch (error) {
@@ -1203,7 +1202,7 @@ class DAO {
     try {
       const queryConfig = selectQuery({
         table: 'hashtags',
-        order: [{ field: 'count', by: 'DESC' }],
+        order: [{ field: 'count', by: 'DESC' }, { field: 'title' }],
         limit: pagination?.limit || 10,
         offset:
           typeof pagination !== 'undefined'
@@ -1376,8 +1375,8 @@ class DAO {
             };
           }
           const file = files
-            ? (Object.values(files).find(
-                (v) => v.originalname === m.fileName
+            ? (Object.values(files).find((v: Express.Multer.File) =>
+                v.filename.endsWith(m.fileName)
               ) as Express.Multer.File)
             : undefined;
 

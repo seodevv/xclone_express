@@ -40,7 +40,10 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: (req, file, cb) => {
-    const fileName = `${Date.now()}_${file.originalname}`;
+    const fileName = `${Date.now()}_${Buffer.from(
+      file.originalname,
+      'latin1'
+    ).toString('utf8')}`;
     cb(null, fileName);
   },
 });
@@ -89,11 +92,16 @@ apiUsersRouter.post(
       return httpBadRequestResponse(res);
     }
 
+    console.log('[/api/users]\n');
+    console.log('[file]', file);
+
     const dao = new DAO();
     const findUser = await dao.getUser({ id });
     if (typeof findUser !== 'undefined') {
       dao.release();
-      fs.removeSync(uploadPath + '/' + file.filename);
+      if (file.filename !== '') {
+        fs.removeSync(uploadPath + '/' + file.filename);
+      }
       return httpForbiddenResponse(res, 'This ID already exists.');
     }
 
@@ -115,7 +123,9 @@ apiUsersRouter.post(
     dao.release();
 
     if (typeof newUser === 'undefined') {
-      fs.removeSync(uploadPath + '/' + file.filename);
+      if (file.filename !== '') {
+        fs.removeSync(uploadPath + '/' + file.filename);
+      }
       return httpInternalServerErrorResponse(res);
     }
 
