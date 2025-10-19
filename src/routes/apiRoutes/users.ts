@@ -84,7 +84,6 @@ apiUsersRouter.post(
     }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    await delay(2000);
     const { id, nickname, birth, password } = req.body;
     const file = req.file;
     if (!id || !password || !nickname || !file) {
@@ -159,7 +158,6 @@ apiUsersRouter.get(
       message: string;
     }>
   ) => {
-    await delay(1000);
     const { cursor = '0', size = '10', q, pf, lf, f, self } = req.query;
     const { 'access.token': token } = req.cookies;
     if (!token) return httpUnAuthorizedResponse(res);

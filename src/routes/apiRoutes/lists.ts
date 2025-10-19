@@ -66,7 +66,6 @@ apiListsRouter.get(
       message: string;
     }>
   ) => {
-    await delay(1000);
     const { cursor = '0', size = '10', q, includeSelf } = req.query;
     const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
@@ -120,7 +119,6 @@ apiListsRouter.post(
     }>,
     res: TypedResponse<{ data?: AdvancedLists; message: string }>
   ) => {
-    await delay(1000);
     const { name, description, make } = req.body;
     const files = req.files;
     const { 'access.token': token } = req.cookies;

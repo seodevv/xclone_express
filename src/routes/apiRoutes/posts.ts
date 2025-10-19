@@ -68,7 +68,6 @@ apiPostsRouter.get(
       message: string;
     }>
   ) => {
-    await delay(1000);
     const { cursor = '0', size = '10', q, pf, lf, f } = req.query;
     const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : f === 'media' ? 12 : 10;
@@ -127,7 +126,6 @@ apiPostsRouter.post(
     }>,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
-    await delay(2000);
     const { content, mediaInfo, repostid } = req.body;
     const files = req.files;
     const { 'access.token': token } = req.cookies;
@@ -186,7 +184,6 @@ apiPostsRouter.get(
       message: string;
     }>
   ) => {
-    await delay(1000);
     const { cursor = '0', size = '10', filter = 'all' } = req.query;
     const pageSize = ~~size !== 0 ? ~~size : 10;
 
@@ -334,7 +331,6 @@ apiPostsRouter.get(
       message: string;
     }>
   ) => {
-    await delay(1000);
     const { cursor = '0', size = '10' } = req.query;
     const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;
@@ -695,7 +691,6 @@ apiPostsRouter.post(
     >,
     res: TypedResponse<{ data?: AdvancedPost; message: string }>
   ) => {
-    await delay(3000);
     const postid = req.params.postid;
     const { content, mediaInfo } = req.body;
     const files = req.files;
@@ -948,7 +943,6 @@ apiPostsRouter.get(
       message: string;
     }>
   ) => {
-    await delay(1000);
     const postid = req.params.postid;
     const { cursor = '0', size = '10', userid, filter } = req.query;
     const { 'access.token': token } = req.cookies;

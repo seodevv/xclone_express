@@ -36,7 +36,6 @@ apiMessagesRouter.get(
       message: string;
     }>
   ) => {
-    await delay(1500);
     const { cursor = '0', size = '10', q = '' } = req.query;
     const { 'access.token': token } = req.cookies;
     const pageSize = ~~size !== 0 ? ~~size : 10;

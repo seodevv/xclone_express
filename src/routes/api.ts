@@ -57,7 +57,6 @@ apiRouter.get(
     }>,
     res: TypedResponse<{ message: string }>
   ) => {
-    await delay(1000);
     const { type = 'login', id, nickname } = req.query;
     if (!id) return httpBadRequestResponse(res);
 
@@ -89,7 +88,6 @@ apiRouter.post(
     req: TypedRequestBody<{ id?: string; password?: string }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    await delay(1000);
     const { id, password } = req.body;
     // body 가 없을 시
     if (!id || !password) return httpBadRequestResponse(res);
@@ -244,7 +242,6 @@ apiRouter.post(
     req: TypedRequestBody<{ password?: string }>,
     res: TypedResponse<{ data?: AdvancedUser; message: string }>
   ) => {
-    await delay(1000);
     const password = req.body.password;
     const { 'access.token': token } = req.cookies;
     if (!password) return httpBadRequestResponse(res);
