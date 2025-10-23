@@ -16,7 +16,6 @@ import {
 import {
   generateUserToken,
   decodingUserToken,
-  delay,
   COOKIE_OPTIONS,
   removingFiles,
   COOKIE_CLEAR_OPTIONS,

@@ -4,6 +4,7 @@ services:
   xclone_express:
     build: .
     image: xclone_express:2.1.2
+    container_name: api_xclone
     expose:
       - '9090'
     volumes:
@@ -28,7 +29,7 @@ services:
 
   nginx:
     image: nginx:alpine
-    container_name: nginx
+    container_name: api_nginx
     ports:
       - '80:80'
       - '443:443'

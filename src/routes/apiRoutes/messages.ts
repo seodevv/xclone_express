@@ -1,4 +1,3 @@
-import { Schemas } from './../../db/schema';
 import { COOKIE_CLEAR_OPTIONS, decodingUserToken, delay } from '@/lib/common';
 import DAO from '@/lib/DAO';
 import { REGEX_NUMBER_ONLY } from '@/lib/regex';
